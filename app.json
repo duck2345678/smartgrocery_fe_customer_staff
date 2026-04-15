@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "SmartGrocery",
+    "slug": "smartgrocery",
+    "scheme": "smartgrocery",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "splash": {
+      "backgroundColor": "#22C55E"
+    },
+    "plugins": ["expo-router"]
+  }
+}
