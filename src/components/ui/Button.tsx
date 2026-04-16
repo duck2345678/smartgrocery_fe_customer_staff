@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, TouchableOpacityProps } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, TouchableOpacityProps, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -21,6 +21,7 @@ interface ButtonProps extends TouchableOpacityProps {
   hapticVariant?: HapticVariant;
   className?: string;
   textClassName?: string;
+  icon?: React.ReactNode;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -30,6 +31,7 @@ const Button: React.FC<ButtonProps> = ({
   hapticVariant = 'light',
   className,
   textClassName,
+  icon,
   onPress,
   disabled,
   ...props
@@ -86,15 +88,20 @@ const Button: React.FC<ButtonProps> = ({
       {loading ? (
         <ActivityIndicator color={variant === 'solid' ? 'white' : 'currentColor'} />
       ) : (
-        <Text 
-          className={cn(
-            'text-lg font-outfit-bold text-center',
-            textVariantStyles[variant],
-            textClassName
-          )}
-        >
-          {label}
-        </Text>
+        <>
+          {icon && <View className={label ? 'mr-2' : ''}>{icon}</View>}
+          {label ? (
+            <Text 
+              className={cn(
+                'text-lg font-outfit-bold text-center',
+                textVariantStyles[variant],
+                textClassName
+              )}
+            >
+              {label}
+            </Text>
+          ) : null}
+        </>
       )}
     </TouchableOpacity>
   );

@@ -1,20 +1,30 @@
-import { Tabs } from 'expo-router';
-import { LayoutDashboard, ClipboardList, Package, Truck, Settings } from 'lucide-react-native';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Stack } from 'expo-router';
+import { View } from 'react-native';
+
+// Create a Context for the global SLA "tick"
+const SLAContext = createContext<{ now: number }>({ now: Date.now() });
+
+export const useSLA = () => useContext(SLAContext);
 
 export default function StaffLayout() {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    // Single global timer: updates every 60 seconds as suggested by Tech Lead
+    // to prevent CPU overload in list rendering
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <Tabs screenOptions={{ 
-      tabBarActiveTintColor: '#2563EB',
-      headerShown: false 
-    }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }) => <LayoutDashboard size={24} color={color} />,
-        }}
-      />
-      {/* Assigned, Picking, Packing, Settings tabs to be added later */}
-    </Tabs>
+    <SLAContext.Provider value={{ now }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" options={{ title: 'Staff Dashboard' }} />
+      </Stack>
+    </SLAContext.Provider>
   );
 }
