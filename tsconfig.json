@@ -2,23 +2,20 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "types": [
-      "node"
-    ]
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["src/*"]
+    },
+    "jsx": "react-native",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "lib": ["DOM", "ESNext"]
   },
   "include": [
     "app",
-    "src/api",
-    "src/store",
-    "src/styles",
-    "src/types",
+    "src",
     "nativewind-env.d.ts",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ],
-  "exclude": [
-    "src/App.tsx",
-    "src/main.tsx",
-    "src/assets"
   ]
 }
