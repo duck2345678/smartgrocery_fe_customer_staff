@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 export type UserDto = {
-  id: string | number;
+  id: number;
   email: string;
   fullName?: string | null;
   role: 'CUSTOMER' | 'STAFF' | 'ADMIN';
