@@ -6,9 +6,12 @@
     "experiments": {
       "typedRoutes": true
     },
-    "splash": {
-      "backgroundColor": "#22C55E"
-    },
-    "plugins": ["expo-router"]
+    "userInterfaceStyle": "light",
+    "orientation": "portrait",
+    "icon": "./public/icon.png",
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ]
   }
 }
