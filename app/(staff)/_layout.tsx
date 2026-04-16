@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Tabs } from 'expo-router';
-import { LayoutDashboard, ClipboardList, Package, Truck, Settings } from 'lucide-react-native';
+import { AppState, AppStateStatus } from 'react-native';
+import { LayoutDashboard, ClipboardList } from 'lucide-react-native';
 
 // Create a Context for the global SLA "tick"
 const SLAContext = createContext<{ now: number }>({ now: Date.now() });
@@ -9,14 +10,33 @@ export const useSLA = () => useContext(SLAContext);
 
 export default function StaffLayout() {
   const [now, setNow] = useState(Date.now());
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    // Single global timer: updates every 60 seconds to optimize performance
+    // 1. Centralized SLA Tick: updates every 60 seconds
     const interval = setInterval(() => {
       setNow(Date.now());
     }, 60000);
 
-    return () => clearInterval(interval);
+    // 2. Tech Lead's "Bulletproof" AppState Resync Logic
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        // App has come to the foreground! Resync immediately.
+        console.log('App has come to the foreground! Resyncing SLA Timer...');
+        setNow(Date.now());
+      }
+      appState.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, []);
 
   return (
@@ -27,9 +47,9 @@ export default function StaffLayout() {
         tabBarStyle: {
           borderTopWidth: 1,
           borderTopColor: '#F1F5F9',
+          height: 60,
           paddingBottom: 8,
           paddingTop: 8,
-          height: 60,
         },
         tabBarLabelStyle: {
           fontFamily: 'Inter',
@@ -46,11 +66,10 @@ export default function StaffLayout() {
         <Tabs.Screen
           name="assignments"
           options={{
-            title: 'Assigned',
+            title: 'Phân công',
             tabBarIcon: ({ color }) => <ClipboardList size={24} color={color} />,
           }}
         />
-        {/* Picking, Packing, Settings tabs to be added in future sprints */}
       </Tabs>
     </SLAContext.Provider>
   );

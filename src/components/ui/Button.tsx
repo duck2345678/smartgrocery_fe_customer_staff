@@ -39,7 +39,6 @@ const Button: React.FC<ButtonProps> = ({
   const handlePress = (event: any) => {
     if (loading || disabled) return;
 
-    // Trigger Haptics sparingly as per user's "bulletproof" advice
     if (hapticVariant !== 'none') {
       switch (hapticVariant) {
         case 'light':

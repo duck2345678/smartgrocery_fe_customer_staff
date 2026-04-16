@@ -1,17 +1,12 @@
 import React from 'react';
-import { View, Text, ViewProps } from 'react-native';
+import { View, Text } from 'react-native';
 import { OrderAssignment, AssignmentStatus } from '../../types/fulfillment';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 import { Clock, MapPin, Package, Phone } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { clsx } from 'clsx';
 
 interface OrderCardProps {
   order: OrderAssignment;
@@ -23,7 +18,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, remainingMinute
   const isCritical = remainingMinutes <= 5 && order.status !== AssignmentStatus.COMPLETED;
   const isWarning = remainingMinutes <= 15 && remainingMinutes > 5;
 
-  // Trigger Haptics for critical orders (only if it just became critical or on first render)
+  // Trigger Haptics for critical orders on mount or when state changes
   React.useEffect(() => {
     if (isCritical) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -38,7 +33,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, remainingMinute
 
   return (
     <Card 
-      className={cn(
+      className={clsx(
         'mb-4 border-l-4',
         isCritical ? 'border-l-danger bg-red-50' : isWarning ? 'border-l-warning' : 'border-l-primary'
       )}
@@ -59,7 +54,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, remainingMinute
       <View className="space-y-2 mb-4">
         <View className="flex-row items-center">
           <Clock size={16} color={isCritical ? '#DC2626' : '#64748B'} />
-          <Text className={cn('ml-2 text-sm font-inter-bold', slaColorClass)}>
+          <Text className={clsx('ml-2 text-sm font-inter-bold', slaColorClass)}>
             SLA: {remainingMinutes} mins remaining
           </Text>
         </View>
@@ -81,7 +76,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, remainingMinute
 
       <View className="flex-row gap-x-2">
         <Button 
-          label={order.status === AssignmentStatus.PENDING ? 'Start Picking' : 'Continue'} 
+          label={order.status === AssignmentStatus.PENDING ? 'Nhận đơn' : 'Tiếp tục'} 
           className="flex-1 py-3"
           onPress={() => onAction?.(order)}
         />

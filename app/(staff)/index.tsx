@@ -3,17 +3,18 @@ import { View, Text, SafeAreaView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useAuthStore } from '../../src/store/authStore';
 import { useSLA } from './_layout';
-import { MOCK_ASSIGNMENTS } from '../../src/utils/mockFulfillmentData';
-import { AssignmentStatus, OrderAssignment } from '../../src/types/fulfillment';
+import { useFulfillment } from '../../src/hooks/useFulfillment';
+import { OrderAssignment } from '../../src/types/fulfillment';
 import OrderCard from '../../src/components/staff/OrderCard';
 import Card from '../../src/components/ui/Card';
 import Button from '../../src/components/ui/Button';
-import { LogOut, Bell, AlertTriangle, Clock as ClockIcon, ClipboardList } from 'lucide-react-native';
+import { Bell, AlertTriangle, ClipboardList, RefreshCw } from 'lucide-react-native';
 import { clsx } from 'clsx';
 
 export default function StaffDashboard() {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { now } = useSLA();
+  const { assignments, isLoading, refetch } = useFulfillment();
 
   // Helper to calculate remaining SLA minutes
   const getRemainingMinutes = (assignedAt: string) => {
@@ -22,13 +23,13 @@ export default function StaffDashboard() {
     return Math.max(0, Math.floor((expiryTime - now) / 60000));
   };
 
-  // Memoized stats to prevent recalculation on every tick
+  // Stats calculation
   const stats = useMemo(() => {
-    const total = MOCK_ASSIGNMENTS.length;
-    const urgent = MOCK_ASSIGNMENTS.filter(o => getRemainingMinutes(o.assignedAt) <= 5).length;
-    const issues = MOCK_ASSIGNMENTS.filter(o => o.status === AssignmentStatus.CANCELLED).length;
-    return { total, urgent, issues };
-  }, [now]);
+    const total = assignments.length;
+    const urgent = assignments.filter(o => getRemainingMinutes(o.assignedAt) <= 5).length;
+    const pending = assignments.filter(o => o.status === 'PENDING').length;
+    return { total, urgent, pending };
+  }, [assignments, now]);
 
   const renderItem = ({ item }: { item: OrderAssignment }) => (
     <OrderCard 
@@ -42,23 +43,24 @@ export default function StaffDashboard() {
     <SafeAreaView className="flex-1 bg-background">
       <View className="p-6 pb-2 flex-row justify-between items-center">
         <View>
-          <Text className="text-slate-500 font-inter">Cửa hàng: Quận 1, TP.HCM</Text>
+          <Text className="text-slate-500 font-inter">Khu vực: Fulfillment Center A</Text>
           <Text className="text-2xl font-outfit-bold text-slate-900">Chào, {user?.fullName}</Text>
         </View>
         <Button 
           label="" 
           variant="ghost" 
-          onPress={() => logout()} 
-          icon={<LogOut size={24} color="#64748B" />} 
+          onPress={() => refetch()} 
+          icon={<RefreshCw size={24} color="#64748B" />} 
         />
       </View>
 
+      {/* Metrics Row */}
       <View className="px-6 py-4 flex-row gap-x-3">
         <MetricCard 
           icon={<ClipboardList size={20} color="#2563EB" />} 
-          label="Cần làm" 
-          value={stats.total} 
-          subLabel="Đơn đã nhận"
+          label="Cần xử lý" 
+          value={stats.pending} 
+          subLabel="Đơn mới gán"
         />
         <MetricCard 
           icon={<AlertTriangle size={20} color="#DC2626" />} 
@@ -69,20 +71,26 @@ export default function StaffDashboard() {
         />
         <MetricCard 
           icon={<Bell size={20} color="#F59E0B" />} 
-          label="Sự cố" 
-          value={stats.issues} 
-          subLabel="Cần xử lý"
-          isWarning={stats.issues > 0}
+          label="Tổng gán" 
+          value={stats.total} 
+          subLabel="Đang quản lý"
         />
       </View>
 
+      {/* Priority Queue Section */}
       <View className="flex-1 px-6">
-        <Text className="text-lg font-outfit-bold text-slate-800 mb-4 mt-2">Hàng đợi ưu tiên</Text>
+        <View className="flex-row justify-between items-center mb-4 mt-2">
+          <Text className="text-lg font-outfit-bold text-slate-800">Hàng đợi ưu tiên</Text>
+          <Text className="text-xs text-slate-400 font-inter italic">Cập nhật mỗi phút</Text>
+        </View>
+        
         <FlashList
-          data={MOCK_ASSIGNMENTS}
+          data={assignments}
           renderItem={renderItem}
           estimatedItemSize={200}
           showsVerticalScrollIndicator={false}
+          onRefresh={refetch}
+          refreshing={isLoading}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center pt-20">
               <ClipboardList size={64} color="#CBD5E1" />
@@ -120,12 +128,12 @@ function MetricCard({
     >
       <View className="flex-row items-center mb-1">
         {icon}
-        <Text className="text-xs font-inter-bold text-slate-500 ml-1.5 uppercase">{label}</Text>
+        <Text className="text-[10px] font-inter-bold text-slate-500 ml-1.5 uppercase">{label}</Text>
       </View>
-      <Text className={clsx('text-2xl font-outfit-bold', isDanger ? 'text-danger' : 'text-slate-900')}>
+      <Text className={clsx('text-xl font-outfit-bold', isDanger ? 'text-danger' : 'text-slate-900')}>
         {value}
       </Text>
-      <Text className="text-[10px] text-slate-400 font-inter">{subLabel}</Text>
+      <Text className="text-[9px] text-slate-400 font-inter">{subLabel}</Text>
     </Card>
   );
 }
