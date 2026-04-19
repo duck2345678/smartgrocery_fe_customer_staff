@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { productApi, type Category } from '../../src/api/products';
 import { type Product } from '../../src/types/product';
@@ -12,7 +12,15 @@ import { Search, RefreshCw } from 'lucide-react-native';
 
 export default function CustomerShop() {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
+  const params = useLocalSearchParams<{ categoryId?: string }>();
+  const categoryFromParams = useMemo(() => {
+    const raw = params.categoryId;
+    const n = typeof raw === 'string' ? Number(raw) : undefined;
+    return typeof n === 'number' && Number.isFinite(n) ? n : undefined;
+  }, [params.categoryId]);
+
+  const [categoryOverride, setCategoryOverride] = useState<number | null | undefined>(undefined);
+  const selectedCategory = categoryOverride === undefined ? categoryFromParams : categoryOverride ?? undefined;
 
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
@@ -30,7 +38,7 @@ export default function CustomerShop() {
   const products = useMemo(() => data ?? [], [data]);
 
   const handleCategoryPress = useCallback((catId: number) => {
-    setSelectedCategory((prev) => (prev === catId ? undefined : catId));
+    setCategoryOverride((prev) => (prev === catId ? null : catId));
   }, []);
 
   const renderItem = ({ item }: { item: Product }) => {
@@ -100,7 +108,7 @@ export default function CustomerShop() {
         <View className="px-6 mb-2">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             <Pressable
-              onPress={() => setSelectedCategory(undefined)}
+              onPress={() => setCategoryOverride(null)}
               className={clsx(
                 'px-4 py-2 rounded-full border',
                 selectedCategory === undefined ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-200'
@@ -158,4 +166,3 @@ export default function CustomerShop() {
     </View>
   );
 }
-

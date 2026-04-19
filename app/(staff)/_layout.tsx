@@ -46,6 +46,18 @@ const StaffTabs = memo(function StaffTabs() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="lease-queue"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="lease-orders"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 });
@@ -83,4 +95,3 @@ export default function StaffLayout() {
     </ProtectedRoute>
   );
 }
-

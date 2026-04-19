@@ -8,8 +8,8 @@ import { useCart } from '../../src/hooks/useCart';
 import { useCheckout } from '../../src/hooks/useCheckout';
 import { useAuthStore } from '../../src/store/authStore';
 import { useAddresses } from '../../src/hooks/useAddresses';
-import { useSubstitutionStore } from '../../src/store/substitutionStore';
 import { type UserAddress } from '../../src/types/address';
+import { useAddressStore } from '../../src/store/addressStore';
 
 const SHIPPING_FEE = 15000;
 
@@ -21,7 +21,7 @@ export default function CheckoutScreen() {
   const { addresses, isLoading: isLoadingAddresses, isError: isAddressError, refetch: refetchAddresses } = useAddresses(
     userId
   );
-  const isAllowed = useSubstitutionStore((s) => s.isAllowed);
+  const selectedAddressId = useAddressStore((s) => s.selectedAddressId);
 
   const defaultAddressId = useMemo(() => {
     const def = addresses.find((a) => a.isDefault)?.id;
@@ -37,21 +37,17 @@ export default function CheckoutScreen() {
   const handleConfirm = async () => {
     if (isPlacingOrder) return;
     if (items.length === 0) return;
-    const selectedAddressId = addressId ?? defaultAddressId;
-    if (!selectedAddressId) {
+    const preferred = selectedAddressId && addresses.some((a) => a.id === selectedAddressId) ? selectedAddressId : undefined;
+    const finalAddressId = addressId ?? preferred ?? defaultAddressId;
+    if (!finalAddressId) {
       Alert.alert('Thiếu thông tin', 'Vui lòng chọn địa chỉ giao hàng.');
       return;
     }
     try {
       const created = await createOrder({
-        addressId: selectedAddressId,
+        addressId: finalAddressId,
         paymentMethod,
         note: note.trim() ? note.trim() : undefined,
-        items: items.map((i) => ({
-          variantId: i.variantId ?? i.productId,
-          quantity: i.quantity,
-          allowSubstitution: isAllowed(i.productId),
-        })),
       });
       router.replace({ pathname: '/(customer)/order-success', params: { orderId: String(created.id) } } as never);
     } catch (e) {
@@ -94,7 +90,7 @@ export default function CheckoutScreen() {
                 <AddressOption
                   key={a.id}
                   address={a}
-                  activeId={addressId ?? defaultAddressId}
+                  activeId={addressId ?? selectedAddressId ?? defaultAddressId}
                   onSelect={(id) => setAddressId(id)}
                 />
               ))}

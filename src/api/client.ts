@@ -121,10 +121,11 @@ apiClient.interceptors.response.use(
     }
 
     const status = error.response?.status;
+    const reqInfo = originalRequest?.url ? ` (${String(originalRequest.method ?? 'GET').toUpperCase()} ${originalRequest.url})` : '';
     const message =
       extractMessage(error.response?.data) ??
       (typeof status === 'number' && status >= 500
-        ? 'Máy chủ đang gặp lỗi. Vui lòng thử lại sau.'
+        ? `Máy chủ đang gặp lỗi. Vui lòng thử lại sau.${reqInfo}`
         : 'Đã có lỗi xảy ra');
     const apiError = new Error(message) as Error & { status?: number };
     apiError.status = status;

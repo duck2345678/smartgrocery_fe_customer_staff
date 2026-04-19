@@ -9,7 +9,6 @@ export function useCheckout() {
       addressId: number;
       paymentMethod: 'COD' | 'VNPAY';
       note?: string;
-      items: Array<{ variantId: number; quantity: number; allowSubstitution: boolean }>;
     }) => orderApi.createOrderFromCart(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });

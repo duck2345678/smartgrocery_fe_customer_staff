@@ -94,6 +94,22 @@ export default function StaffDashboard() {
         />
       </View>
 
+      <View className="px-6 pb-4">
+        <Card className="p-4 border border-slate-100 bg-white">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="font-outfit-bold text-slate-900">Lease Order Queue</Text>
+              <Text className="text-xs font-inter text-slate-500 mt-1">
+                Assign / Heartbeat / Release + Pick List offline-first
+              </Text>
+            </View>
+            <Pressable onPress={() => router.push('/(staff)/lease-queue' as never)} hitSlop={8}>
+              <Text className="text-sm font-inter-bold text-blue-600">Mở</Text>
+            </Pressable>
+          </View>
+        </Card>
+      </View>
+
       {/* Metrics Row */}
       <View className="px-6 py-4 flex-row gap-x-3">
         <MetricCard 

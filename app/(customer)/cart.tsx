@@ -8,13 +8,11 @@ import Button from '../../src/components/ui/Button';
 import Card from '../../src/components/ui/Card';
 import { useCart } from '../../src/hooks/useCart';
 import { CartItem } from '../../src/types/cart';
-import { useSubstitutionStore } from '../../src/store/substitutionStore';
 
 export default function CartScreen() {
   const router = useRouter();
-  const { items, subtotal, isLoading, isError, refetch, updateQuantity, removeItem, isUpdating } = useCart();
-  const isAllowed = useSubstitutionStore((s) => s.isAllowed);
-  const setAllowed = useSubstitutionStore((s) => s.setAllowed);
+  const { items, subtotal, isLoading, isError, refetch, updateQuantity, removeItem, updateAllowSubstitution, isUpdating } =
+    useCart();
 
   const data = useMemo(() => items, [items]);
 
@@ -46,10 +44,16 @@ export default function CartScreen() {
               </Text>
             </View>
             <Switch
-              value={isAllowed(item.productId)}
-              onValueChange={(v) => setAllowed(item.productId, v)}
+              value={Boolean(item.allowSubstitution)}
+              onValueChange={async (v) => {
+                try {
+                  await updateAllowSubstitution({ cartItemId: item.cartItemId as number, allowSubstitution: v });
+                } catch (e) {
+                  Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể cập nhật tuỳ chọn thay thế.');
+                }
+              }}
               trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
-              thumbColor={isAllowed(item.productId) ? '#22C55E' : '#FFFFFF'}
+              thumbColor={item.allowSubstitution ? '#22C55E' : '#FFFFFF'}
             />
           </View>
 
@@ -58,7 +62,7 @@ export default function CartScreen() {
               <Pressable
                 onPress={async () => {
                   try {
-                    await updateQuantity({ cartItemId: item.cartItemId, productId: item.productId, quantity: item.quantity - 1 });
+                    await updateQuantity({ cartItemId: item.cartItemId as number, quantity: item.quantity - 1 });
                   } catch (e) {
                     Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể cập nhật giỏ hàng.');
                   }
@@ -75,7 +79,7 @@ export default function CartScreen() {
               <Pressable
                 onPress={async () => {
                   try {
-                    await updateQuantity({ cartItemId: item.cartItemId, productId: item.productId, quantity: item.quantity + 1 });
+                    await updateQuantity({ cartItemId: item.cartItemId as number, quantity: item.quantity + 1 });
                   } catch (e) {
                     Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể cập nhật giỏ hàng.');
                   }
@@ -91,7 +95,7 @@ export default function CartScreen() {
             <Pressable
               onPress={async () => {
                 try {
-                  await removeItem({ cartItemId: item.cartItemId, productId: item.productId });
+                  await removeItem({ cartItemId: item.cartItemId as number });
                 } catch (e) {
                   Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể xoá sản phẩm.');
                 }

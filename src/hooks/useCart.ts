@@ -16,12 +16,8 @@ export function useCart() {
   });
 
   const updateQuantity = useMutation({
-    mutationFn: (input: { cartItemId?: number; productId: number; quantity: number }) => {
-      if (typeof input.cartItemId === 'number') {
-        return cartApi.updateItemQuantity({ cartItemId: input.cartItemId, quantity: input.quantity });
-      }
-      return cartApi.updateItemQuantity({ productId: input.productId, quantity: input.quantity });
-    },
+    mutationFn: (input: { cartItemId: number; quantity: number }) =>
+      cartApi.updateItemQuantity({ cartItemId: input.cartItemId, quantity: input.quantity }),
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: ['cart'] });
       const previous = queryClient.getQueryData<Cart>(['cart']);
@@ -30,7 +26,7 @@ export function useCart() {
         const base = current?.items ?? [];
         const nextItems = base
           .map((it) => {
-            const match = typeof input.cartItemId === 'number' ? it.cartItemId === input.cartItemId : it.productId === input.productId;
+            const match = it.cartItemId === input.cartItemId;
             if (!match) return it;
             const nextQty = Math.max(0, Math.min(input.quantity, Math.max(0, it.stock)));
             return { ...it, quantity: nextQty };
@@ -54,10 +50,7 @@ export function useCart() {
   });
 
   const removeItem = useMutation({
-    mutationFn: (input: { cartItemId?: number; productId: number }) => {
-      if (typeof input.cartItemId === 'number') return cartApi.removeItem({ cartItemId: input.cartItemId });
-      return cartApi.removeItem({ productId: input.productId });
-    },
+    mutationFn: (input: { cartItemId: number }) => cartApi.removeItem({ cartItemId: input.cartItemId }),
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: ['cart'] });
       const previous = queryClient.getQueryData<Cart>(['cart']);
@@ -65,8 +58,37 @@ export function useCart() {
       queryClient.setQueryData<Cart>(['cart'], (current) => {
         const base = current?.items ?? [];
         const nextItems = base.filter((it) => {
-          const match = typeof input.cartItemId === 'number' ? it.cartItemId === input.cartItemId : it.productId === input.productId;
-          return !match;
+          return it.cartItemId !== input.cartItemId;
+        });
+        return { items: nextItems };
+      });
+
+      return { previous };
+    },
+    onError: (err, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(['cart'], context.previous);
+      throw err;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['cart'], data);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+  });
+
+  const updateAllowSubstitution = useMutation({
+    mutationFn: (input: { cartItemId: number; allowSubstitution: boolean }) =>
+      cartApi.updateAllowSubstitution({ cartItemId: input.cartItemId, allowSubstitution: input.allowSubstitution }),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: ['cart'] });
+      const previous = queryClient.getQueryData<Cart>(['cart']);
+
+      queryClient.setQueryData<Cart>(['cart'], (current) => {
+        const base = current?.items ?? [];
+        const nextItems = base.map((it) => {
+          if (it.cartItemId !== input.cartItemId) return it;
+          return { ...it, allowSubstitution: input.allowSubstitution };
         });
         return { items: nextItems };
       });
@@ -146,7 +168,8 @@ export function useCart() {
     refetch: cartQuery.refetch,
     updateQuantity: updateQuantity.mutateAsync,
     removeItem: removeItem.mutateAsync,
+    updateAllowSubstitution: updateAllowSubstitution.mutateAsync,
     addProduct: addProduct.mutateAsync,
-    isUpdating: updateQuantity.isPending || removeItem.isPending || addProduct.isPending,
+    isUpdating: updateQuantity.isPending || removeItem.isPending || updateAllowSubstitution.isPending || addProduct.isPending,
   };
 }

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { productApi, type Category } from '../../src/api/products';
 import { Product } from '../../src/types/product';
@@ -12,9 +12,11 @@ import CartButton from '../../src/components/customer/CartButton';
 
 export default function CustomerSearch() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ q?: string }>();
   const inputRef = useRef<TextInput>(null);
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const initialQuery = typeof params.q === 'string' ? params.q : '';
+  const [query, setQuery] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery.trim());
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
 
   // Debounce search input by 300ms
@@ -30,6 +32,7 @@ export default function CustomerSearch() {
     const timer = setTimeout(() => inputRef.current?.focus(), 100);
     return () => clearTimeout(timer);
   }, []);
+
 
   const categoriesQuery = useQuery({
     queryKey: ['categories'],

@@ -96,9 +96,7 @@ const coerceProductDtos = (value: unknown): ProductDto[] => {
 export const productApi = {
   getProducts: async (params?: ProductListParams): Promise<Product[]> => {
     const response = await apiClient.get('/products', { params });
-    console.log('[productApi.getProducts] raw response.data type:', typeof response.data, 'keys:', response.data ? Object.keys(response.data) : 'null');
     const dtos = coerceProductDtos(response.data);
-    console.log('[productApi.getProducts] parsed dtos count:', dtos.length);
     return dtos.map(mapProductDto);
   },
   getProductById: async (id: number): Promise<Product> => {

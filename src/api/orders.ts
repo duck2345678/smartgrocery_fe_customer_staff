@@ -28,13 +28,11 @@ export const orderApi = {
     addressId: number;
     paymentMethod: 'COD' | 'VNPAY';
     note?: string;
-    items: Array<{ variantId: number; quantity: number; allowSubstitution: boolean }>;
   }): Promise<Order> => {
     const response = await apiClient.post('/orders/checkout', {
       addressId: input.addressId,
       paymentMethod: input.paymentMethod,
       customerNote: input.note,
-      items: input.items,
     });
     return response.data as Order;
   },

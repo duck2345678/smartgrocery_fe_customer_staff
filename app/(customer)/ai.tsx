@@ -58,7 +58,10 @@ export default function CustomerAIHub() {
       return;
     }
     if (action.type === 'REPLACE_CART_ITEM') {
-      await removeItem({ productId: action.fromProductId });
+      const from = cartItems.find((i) => i.productId === action.fromProductId);
+      if (from?.cartItemId) {
+        await removeItem({ cartItemId: from.cartItemId });
+      }
       const product = await productApi.getProductById(action.toProductId);
       await addProduct({ product, quantity: action.quantity });
     }

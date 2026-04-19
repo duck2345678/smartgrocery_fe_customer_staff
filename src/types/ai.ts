@@ -50,3 +50,11 @@ export type DiscoverPayload = {
   categoryHint?: string;
 };
 
+export type AINudge = {
+  productId: number;
+  name: string;
+  image: string | null;
+  price: number;
+  reason: string;
+  confidenceScore: number;
+};

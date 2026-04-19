@@ -10,4 +10,5 @@ export type CartItem = {
   imageUrl: Product['imageUrl'];
   stock: Product['stock'];
   quantity: number;
+  allowSubstitution?: boolean;
 };

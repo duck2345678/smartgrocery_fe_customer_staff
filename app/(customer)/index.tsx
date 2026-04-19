@@ -1,194 +1,191 @@
-import { useMemo, useState, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Animated, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
+import HomeHeader from '../../src/components/customer/home/HomeHeader';
+import SearchBar from '../../src/components/customer/home/SearchBar';
+import BannerCarousel from '../../src/components/customer/home/BannerCarousel';
+import AiNudge from '../../src/components/customer/home/AiNudge';
+import CategoryGrid from '../../src/components/customer/home/CategoryGrid';
+import DealsRow from '../../src/components/customer/home/DealsRow';
+import Button from '../../src/components/ui/Button';
+import Skeleton from '../../src/components/ui/Skeleton';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { productApi } from '../../src/api/products';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { productApi, type Category } from '../../src/api/products';
-import { Product } from '../../src/types/product';
-import { clsx } from 'clsx';
-import CartButton from '../../src/components/customer/CartButton';
-import { Search, RefreshCw } from 'lucide-react-native';
+import { type Product } from '../../src/types/product';
 
 export default function CustomerHome() {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
+  const queryClient = useQueryClient();
+  const anim = useRef(new Animated.Value(0)).current;
+  const [refreshing, setRefreshing] = useState(false);
+  const { width } = useWindowDimensions();
+  const columns = width >= 1024 ? 4 : width >= 768 ? 3 : 2;
+  const gap = 12;
+  const paddingX = 24;
+  const itemWidth = Math.floor((width - paddingX * 2 - gap * (columns - 1)) / columns);
 
-  const categoriesQuery = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => productApi.getCategories(),
-    staleTime: 10 * 60 * 1000,
-  });
-
-  const categories: Category[] = useMemo(
-    () => categoriesQuery.data ?? [],
-    [categoriesQuery.data]
+  useFocusEffect(
+    useCallback(() => {
+      anim.setValue(0);
+      Animated.timing(anim, { toValue: 1, duration: 260, useNativeDriver: true }).start();
+      return () => {};
+    }, [anim])
   );
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['products', { categoryId: selectedCategory }],
-    queryFn: () => productApi.getProducts({ categoryId: selectedCategory }),
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['categories'] }),
+        queryClient.invalidateQueries({ queryKey: ['home-deals'] }),
+        queryClient.invalidateQueries({ queryKey: ['home-daily-products'] }),
+        queryClient.invalidateQueries({ queryKey: ['home-ai-nudge'] }),
+        queryClient.invalidateQueries({ queryKey: ['cart'] }),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
+
+  const dailyQuery = useInfiniteQuery({
+    queryKey: ['home-daily-products'],
+    queryFn: ({ pageParam }) => productApi.getProducts({ page: pageParam as number, size: 10 }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _, lastPageParam) => {
+      if (!lastPage || lastPage.length < 10) return undefined;
+      return (lastPageParam as number) + 1;
+    },
+    staleTime: 60 * 1000,
   });
 
-  const products = useMemo(() => data ?? [], [data]);
+  const dailyProducts = dailyQuery.data?.pages.flat() ?? [];
 
-  const handleCategoryPress = useCallback((catId: number) => {
-    setSelectedCategory((prev) => (prev === catId ? undefined : catId));
-  }, []);
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
+  const opacity = anim;
 
-  const renderItem = ({ item }: { item: Product }) => {
-    const isOut = item.stock <= 0;
-    return (
-      <Pressable
-        onPress={() => router.push(`/(customer)/products/${item.id}` as never)}
-        className="mb-4 bg-white border border-slate-100 rounded-2xl overflow-hidden"
-      >
-        <View className="w-full h-44 bg-slate-100">
-          <Image
-            source={{ uri: item.imageUrl }}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="cover"
-            cachePolicy="disk"
-          />
-        </View>
-
-        <View className="p-4">
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="text-base font-outfit-bold text-slate-900" numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text className="text-xs text-slate-500 font-inter mt-1">{item.category}</Text>
-            </View>
-            <View className={clsx('px-2.5 py-1 rounded-full border', isOut ? 'bg-slate-100 border-slate-200' : 'bg-emerald-50 border-emerald-200')}>
-              <Text className={clsx('text-[10px] font-inter-bold', isOut ? 'text-slate-500' : 'text-emerald-700')}>
-                {isOut ? 'HẾT HÀNG' : `CÒN ${item.stock}`}
-              </Text>
-            </View>
-          </View>
-
-          <View className="flex-row items-end justify-between mt-3">
-            <Text className="text-lg font-outfit-bold text-slate-900">
-              {item.price.toLocaleString('vi-VN')}₫
-              <Text className="text-xs font-inter text-slate-500"> / {item.unit}</Text>
-            </Text>
-            {typeof item.rating === 'number' ? (
-              <Text className="text-xs font-inter-bold text-slate-600">★ {item.rating.toFixed(1)}</Text>
-            ) : null}
-          </View>
-        </View>
-      </Pressable>
-    );
-  };
+  const header = (
+    <View>
+      <SearchBar />
+      <BannerCarousel />
+      <AiNudge />
+      <CategoryGrid />
+      <DealsRow />
+      <View className="px-6 pb-3">
+        <Text className="text-base font-outfit-bold text-slate-900">Sản phẩm hàng ngày</Text>
+      </View>
+    </View>
+  );
 
   return (
     <View className="flex-1 bg-background">
-      {/* Header */}
-      <View className="px-6 pt-6 pb-2 flex-row items-start justify-between">
-        <View className="flex-1 pr-4">
-          <Text className="text-xs font-inter-bold text-slate-400 uppercase">SmartGrocery</Text>
-          <Text className="text-2xl font-outfit-bold text-slate-900">Hôm nay bạn cần gì?</Text>
-        </View>
-        <CartButton />
-      </View>
-
-      {/* Search Bar (navigates to search screen) */}
-      <Pressable
-        onPress={() => router.push('/(customer)/search' as never)}
-        className="mx-6 mb-3 flex-row items-center bg-slate-100 rounded-2xl px-4 py-3"
-      >
-        <Search size={18} color="#94A3B8" />
-        <Text className="flex-1 ml-2 text-base font-inter text-slate-400">Tìm sản phẩm...</Text>
-      </Pressable>
-
-      {/* Category Chips */}
-      {categories.length > 0 && (
-        <View className="px-6 mb-2">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
-          >
-            <Pressable
-              onPress={() => setSelectedCategory(undefined)}
-              className={clsx(
-                'px-4 py-2 rounded-full border',
-                selectedCategory === undefined
-                  ? 'bg-emerald-500 border-emerald-500'
-                  : 'bg-white border-slate-200'
-              )}
-            >
-              <Text
-                className={clsx(
-                  'text-sm font-inter-bold',
-                  selectedCategory === undefined ? 'text-white' : 'text-slate-700'
-                )}
-              >
-                Tất cả
-              </Text>
-            </Pressable>
-            {categories.map((cat) => {
-              const active = selectedCategory === cat.id;
-              return (
-                <Pressable
-                  key={cat.id}
-                  onPress={() => handleCategoryPress(cat.id)}
-                  className={clsx(
-                    'px-4 py-2 rounded-full border',
-                    active
-                      ? 'bg-emerald-500 border-emerald-500'
-                      : 'bg-white border-slate-200'
-                  )}
-                >
-                  <Text
-                    className={clsx(
-                      'text-sm font-inter-bold',
-                      active ? 'text-white' : 'text-slate-700'
-                    )}
-                  >
-                    {cat.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* Product List */}
-      <View className="flex-1 px-6">
+      <HomeHeader />
+      <Animated.View style={{ opacity, transform: [{ translateY }] }}>
         <FlashList
-          data={products}
-          renderItem={renderItem}
-          keyExtractor={(item) => String(item.id)}
+          data={dailyProducts}
+          numColumns={columns}
           estimatedItemSize={280}
-          onRefresh={refetch}
-          refreshing={isLoading}
+          keyExtractor={(i) => `${columns}-${i.id}`}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center pt-20">
-              {isError ? (
-                <View className="items-center">
-                  <Text className="text-slate-500 font-inter mb-4">
-                    {error instanceof Error ? error.message : 'Không tải được sản phẩm.'}
-                  </Text>
-                  <Pressable
-                    onPress={() => refetch()}
-                    className="flex-row items-center px-5 py-3 bg-emerald-500 rounded-2xl"
-                  >
-                    <RefreshCw size={16} color="#FFF" />
-                    <Text className="text-white font-inter-bold ml-2">Thử lại</Text>
-                  </Pressable>
+          ListHeaderComponent={header}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
+          onEndReached={() => {
+            if (dailyQuery.hasNextPage && !dailyQuery.isFetchingNextPage) void dailyQuery.fetchNextPage();
+          }}
+          onEndReachedThreshold={0.5}
+          renderItem={({ item, index }: { item: Product; index: number }) => {
+            const col = index % columns;
+            const marginLeft = col === 0 ? paddingX : 0;
+            const marginRight = col === columns - 1 ? paddingX : gap;
+            return (
+              <View style={{ width: itemWidth, marginLeft, marginRight, marginBottom: gap }}>
+                <View
+                  className="bg-white border border-slate-100 rounded-2xl overflow-hidden"
+                >
+                  <View className="w-full h-28 bg-slate-100">
+                    <Image
+                      source={{ uri: item.imageUrl }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                      cachePolicy="disk"
+                      transition={200}
+                    />
+                  </View>
+                  <View className="p-3">
+                    <Text className="text-sm font-inter-bold text-slate-900" numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text className="text-[11px] font-inter text-slate-500 mt-1" numberOfLines={1}>
+                      {item.category}
+                    </Text>
+                    <View className="flex-row items-end justify-between mt-2">
+                      <Text className="text-base font-outfit-bold text-slate-900">
+                        {item.price.toLocaleString('vi-VN')}₫
+                      </Text>
+                      <Text className="text-[11px] font-inter-bold text-slate-600">
+                        {item.stock > 0 ? `Còn ${item.stock}` : 'Hết'}
+                      </Text>
+                    </View>
+                    <View className="mt-2">
+                      <Button
+                        label="Xem"
+                        variant="outline"
+                        onPress={() => router.push(`/(customer)/products/${item.id}` as never)}
+                      />
+                    </View>
+                  </View>
                 </View>
-              ) : (
-                <Text className="text-slate-400 font-inter">
-                  Chưa có sản phẩm.
-                </Text>
-              )}
-            </View>
+              </View>
+            );
+          }}
+          ListEmptyComponent={
+            dailyQuery.isLoading ? (
+              <View className="px-6">
+                <View className="flex-row flex-wrap" style={{ gap }}>
+                  {Array.from({ length: columns * 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-56 rounded-2xl" style={{ width: itemWidth } as never} />
+                  ))}
+                </View>
+              </View>
+            ) : dailyQuery.isError ? (
+              <View className="px-6">
+                <View className="bg-white border border-slate-100 rounded-2xl p-4">
+                  <Text className="text-sm font-inter text-slate-600">Không tải được sản phẩm.</Text>
+                  <View className="mt-3">
+                    <Button label="Thử lại" onPress={() => void dailyQuery.refetch()} variant="outline" />
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View className="px-6">
+                <Text className="text-slate-400 font-inter">Chưa có sản phẩm.</Text>
+              </View>
+            )
+          }
+          ListFooterComponent={
+            dailyQuery.isFetchingNextPage ? (
+              <View className="px-6 mt-2">
+                <View className="flex-row flex-wrap" style={{ gap }}>
+                  {Array.from({ length: columns }).map((_, i) => (
+                    <Skeleton key={i} className="h-56 rounded-2xl" style={{ width: itemWidth } as never} />
+                  ))}
+                </View>
+              </View>
+            ) : dailyQuery.hasNextPage ? (
+              <View className="px-6 mt-2">
+                <Button label="Tải thêm" onPress={() => void dailyQuery.fetchNextPage()} />
+              </View>
+            ) : (
+              <View className="px-6 mt-2 pb-6 items-center">
+                <Text className="text-xs font-inter text-slate-400">Bạn đã xem hết sản phẩm.</Text>
+              </View>
+            )
           }
         />
-      </View>
+      </Animated.View>
     </View>
   );
 }
