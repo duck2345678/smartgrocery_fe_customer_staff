@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import React, { useEffect, memo } from 'react';
 import { Stack } from 'expo-router';
 import { QueryClient } from '@tanstack/react-query';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
@@ -19,18 +19,16 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import "../src/styles/global.css";
 
-// Setup React Query with Persistence for Offline Support
+// ── Singleton instances (never re-created) ──────────────────────────
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 60 * 24,
+      staleTime: 1000 * 60 * 5,
       retry: 2,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+      retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 10000),
     },
-    mutations: {
-      retry: 1,
-    },
+    mutations: { retry: 1 },
   },
 });
 
@@ -39,8 +37,26 @@ const asyncStoragePersister = createAsyncStoragePersister({
   key: 'SG_RQ_CACHE_V2',
 });
 
+const persistOptions = { persister: asyncStoragePersister };
+
+const SCREEN_OPTIONS = { headerShown: false } as const;
+
 // Prevent splash screen from hiding until fonts are loaded
 SplashScreen.preventAutoHideAsync();
+
+// ── Navigator isolated from NativeWind re-renders ───────────────────
+// Memo prevents the navigator from being re-rendered when the parent
+// (RootLayout) re-renders due to Zustand / React-Query state changes.
+// This breaks the infinite loop: wrap-jsx → useSyncState → forceStoreRerender → wrap-jsx.
+const NavigatorShell = memo(function NavigatorShell() {
+  return (
+    <Stack screenOptions={SCREEN_OPTIONS}>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(customer)" />
+      <Stack.Screen name="(staff)" />
+    </Stack>
+  );
+});
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -57,7 +73,6 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Fallback: If fonts take too long, allow rendering anyway
   if (!fontsLoaded && !fontError) {
     return (
       <View style={{ flex: 1, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center' }}>
@@ -69,13 +84,9 @@ export default function RootLayout() {
   return (
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister: asyncStoragePersister }}
+      persistOptions={persistOptions}
     >
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(customer)" options={{ headerShown: false }} />
-        <Stack.Screen name="(staff)" options={{ headerShown: false }} />
-      </Stack>
+      <NavigatorShell />
     </PersistQueryClientProvider>
   );
 }

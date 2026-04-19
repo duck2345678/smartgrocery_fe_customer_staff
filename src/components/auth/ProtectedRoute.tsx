@@ -14,8 +14,12 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
     return <Redirect href="/(auth)/login" />;
   }
 
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
   if (role && user?.role !== role) {
-    const target: Href = user?.role === 'STAFF' ? '/(staff)' : '/(customer)';
+    const target: Href = user.role === 'STAFF' ? '/(staff)' : '/(customer)';
     return <Redirect href={target} />;
   }
 
