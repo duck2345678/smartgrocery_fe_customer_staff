@@ -31,6 +31,14 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, remainingMinute
       ? 'text-warning' 
       : 'text-success';
 
+  const statusLabel = (() => {
+    if (order.status === AssignmentStatus.PENDING) return 'MỚI';
+    if (order.status === AssignmentStatus.IN_PROGRESS) return 'ĐANG LÀM';
+    if (order.status === AssignmentStatus.COMPLETED) return 'XONG';
+    if (order.status === AssignmentStatus.CANCELLED) return 'HUỶ';
+    return order.status;
+  })();
+
   return (
     <Card 
       className={clsx(
@@ -46,7 +54,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, remainingMinute
           <Text className="text-lg font-outfit-bold text-slate-900">{order.customerName}</Text>
         </View>
         <Badge 
-          label={order.status} 
+          label={statusLabel} 
           variant={order.status === AssignmentStatus.IN_PROGRESS ? 'info' : 'neutral'} 
         />
       </View>
@@ -55,7 +63,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, remainingMinute
         <View className="flex-row items-center">
           <Clock size={16} color={isCritical ? '#DC2626' : '#64748B'} />
           <Text className={clsx('ml-2 text-sm font-inter-bold', slaColorClass)}>
-            SLA: {remainingMinutes} mins remaining
+            SLA: còn {remainingMinutes} phút
           </Text>
         </View>
 

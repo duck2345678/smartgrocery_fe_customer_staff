@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, TouchableOpacityProps, View } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, TouchableOpacityProps, View, type GestureResponderEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -36,7 +36,7 @@ const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const handlePress = (event: any) => {
+  const handlePress = (event: GestureResponderEvent) => {
     if (loading || disabled) return;
 
     if (hapticVariant !== 'none') {

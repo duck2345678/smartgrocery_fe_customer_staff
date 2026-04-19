@@ -1,31 +1,25 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Tabs } from 'expo-router';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, type AppStateStatus } from 'react-native';
 import { LayoutDashboard, ClipboardList } from 'lucide-react-native';
+import { useSLAStore } from '../../src/store/slaStore';
 
-// Create a Context for the global SLA "tick"
-const SLAContext = createContext<{ now: number }>({ now: Date.now() });
-
-export const useSLA = () => useContext(SLAContext);
+import { ProtectedRoute } from '../../src/components/auth/ProtectedRoute';
 
 export default function StaffLayout() {
-  const [now, setNow] = useState(Date.now());
+  const setNow = useSLAStore((s) => s.setNow);
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    // 1. Centralized SLA Tick: updates every 60 seconds
+    // Update immediately on mount
+    setNow(Date.now());
+
     const interval = setInterval(() => {
       setNow(Date.now());
     }, 60000);
 
-    // 2. Tech Lead's "Bulletproof" AppState Resync Logic
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
-        // App has come to the foreground! Resync immediately.
-        console.log('App has come to the foreground! Resyncing SLA Timer...');
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         setNow(Date.now());
       }
       appState.current = nextAppState;
@@ -37,40 +31,47 @@ export default function StaffLayout() {
       clearInterval(interval);
       subscription.remove();
     };
-  }, []);
+  }, [setNow]);
 
   return (
-    <SLAContext.Provider value={{ now }}>
+    <ProtectedRoute role="STAFF">
       <Tabs screenOptions={{ 
-        tabBarActiveTintColor: '#2563EB',
-        headerShown: false,
-        tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: '#F1F5F9',
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
-        },
-        tabBarLabelStyle: {
-          fontFamily: 'Inter',
-          fontSize: 12,
-        }
-      }}>
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'Dashboard',
-            tabBarIcon: ({ color }) => <LayoutDashboard size={24} color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="assignments"
-          options={{
-            title: 'Phân công',
-            tabBarIcon: ({ color }) => <ClipboardList size={24} color={color} />,
-          }}
-        />
-      </Tabs>
-    </SLAContext.Provider>
+          tabBarActiveTintColor: '#2563EB',
+          headerShown: false,
+          tabBarStyle: {
+            borderTopWidth: 1,
+            borderTopColor: '#F1F5F9',
+            height: 60,
+            paddingBottom: 8,
+            paddingTop: 8,
+          },
+          tabBarLabelStyle: {
+            fontFamily: 'Inter',
+            fontSize: 12,
+          }
+        }}>
+          <Tabs.Screen
+            name="index"
+            options={{
+              title: 'Dashboard',
+              tabBarIcon: ({ color }) => <LayoutDashboard size={24} color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="assignments"
+            options={{
+              title: 'Phân công',
+              tabBarIcon: ({ color }) => <ClipboardList size={24} color={color} />,
+            }}
+          />
+          {/* Hidden from tab bar — accessed via router.push */}
+          <Tabs.Screen
+            name="orders"
+            options={{
+              href: null,
+            }}
+          />
+        </Tabs>
+      </ProtectedRoute>
   );
 }

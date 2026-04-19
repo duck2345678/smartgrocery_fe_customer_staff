@@ -1,6 +1,5 @@
 /**
- * API Contract - SmartGrocery Mobile
- * Foundation for synchronization between Đức (UI) and Danh (Data)
+ * API Contract - SmartGrocery Mobile (Staff Module)
  */
 
 export enum OrderTaskType {
@@ -16,6 +15,13 @@ export enum AssignmentStatus {
   CANCELLED = 'CANCELLED',
 }
 
+export enum FulfillmentItemStatus {
+  PENDING = 'PENDING',
+  PICKED = 'PICKED',
+  MISSING = 'MISSING',
+  DAMAGED = 'DAMAGED',
+}
+
 export interface User {
   id: number;
   email: string;
@@ -23,10 +29,18 @@ export interface User {
   role: 'CUSTOMER' | 'STAFF' | 'ADMIN';
 }
 
-export interface AuthResponse {
-  token: string;
-  refreshToken: string;
-  user: User;
+export interface FulfillmentItem {
+  id: number;
+  variantId: number;
+  productName: string;
+  variantName: string;
+  sku: string;
+  barcode?: string;
+  quantity: number;
+  pickedQuantity: number;
+  status: FulfillmentItemStatus;
+  // UI state for Tech Lead's Scan-to-Unlock
+  isUnlocked?: boolean; 
 }
 
 export interface OrderAssignment {
@@ -38,15 +52,17 @@ export interface OrderAssignment {
   taskType: OrderTaskType;
   status: AssignmentStatus;
   proofImageUrl?: string;
-  assignedAt: string; // ISO Date String
-  completedAt?: string; // ISO Date String
-  
-  // UI Helpers provided by Backend
+  assignedAt: string;
+  completedAt?: string;
   customerName: string;
   customerPhone: string;
   deliveryAddress: string;
   totalItems: number;
-  
-  // Computed on Frontend (Đức's logic)
-  remainingSlaMinutes?: number; 
+  items?: FulfillmentItem[]; // Detailed items for Picking/Packing
+}
+
+export interface AuthResponse {
+  token: string;
+  refreshToken: string;
+  user: User;
 }

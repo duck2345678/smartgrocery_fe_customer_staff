@@ -4,8 +4,6 @@ import { QueryClient } from '@tanstack/react-query';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuthStore } from '../src/store/authStore';
-import { usePathname, useRouter } from 'expo-router';
 import { View } from 'react-native';
 import {
   useFonts,
@@ -27,22 +25,24 @@ const queryClient = new QueryClient({
     queries: {
       gcTime: 1000 * 60 * 60 * 24, // 24 hours
       staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    },
+    mutations: {
+      retry: 1,
     },
   },
 });
 
 const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
+  key: 'SG_RQ_CACHE_V2',
 });
 
 // Prevent splash screen from hiding until fonts are loaded
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const { isAuthenticated, user } = useAuthStore();
-  const router = useRouter();
-  const pathname = usePathname();
-
   const [fontsLoaded, fontError] = useFonts({
     'Outfit-Regular': Outfit_400Regular,
     'Outfit-Bold': Outfit_700Bold,
@@ -53,58 +53,29 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded, fontError]);
 
-  useEffect(() => {
-    if (!fontsLoaded && !fontError) return;
-    // Auth Guard Logic
-    const isAuthRoute = pathname.startsWith('/(auth)');
-    const isCustomerRoute = pathname.startsWith('/(customer)');
-    const isStaffRoute = pathname.startsWith('/(staff)');
-
-    if (!isAuthenticated && !isAuthRoute) {
-      // Redirect to login if not authenticated
-      router.replace('/(auth)/login');
-    } else if (isAuthenticated) {
-      // Redirect based on role if at root or in auth routes
-      if (isAuthRoute || pathname === '/') {
-        if (user?.role === 'STAFF') {
-          router.replace('/(staff)');
-        } else {
-          router.replace('/(customer)');
-        }
-      }
-      
-      // Prevent cross-role access
-      if (user?.role === 'CUSTOMER' && isStaffRoute) {
-        router.replace('/(customer)');
-      }
-      if (user?.role === 'STAFF' && isCustomerRoute) {
-        router.replace('/(staff)');
-      }
-    }
-  }, [isAuthenticated, user?.role, pathname]);
-
+  // Fallback: If fonts take too long, allow rendering anyway
   if (!fontsLoaded && !fontError) {
-    return null;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, borderTopWidth: 2, borderColor: '#22C55E' }} />
+      </View>
+    );
   }
-
-  const themeClass = user?.role === 'STAFF' ? 'theme-staff' : '';
 
   return (
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{ persister: asyncStoragePersister }}
     >
-      <View className={`flex-1 ${themeClass}`}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(customer)" options={{ headerShown: false }} />
-          <Stack.Screen name="(staff)" options={{ headerShown: false }} />
-        </Stack>
-      </View>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(customer)" options={{ headerShown: false }} />
+        <Stack.Screen name="(staff)" options={{ headerShown: false }} />
+      </Stack>
     </PersistQueryClientProvider>
   );
 }

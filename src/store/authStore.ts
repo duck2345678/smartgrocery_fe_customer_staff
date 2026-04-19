@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { useCartStore } from "./cartStore";
+import { useOrderStore } from "./orderStore";
 
 export type UserDto = {
   id: number;
@@ -37,11 +39,13 @@ export const useAuthStore = create<AuthState>()(
         set({ user });
       },
       logout: () => {
+        useCartStore.getState().clear();
+        useOrderStore.getState().clearOrders();
         set({ token: null, refreshToken: null, isAuthenticated: false, user: null });
       },
     }),
     {
-      name: "smart-grocery-auth",
+      name: "smart-grocery-auth-v2",
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

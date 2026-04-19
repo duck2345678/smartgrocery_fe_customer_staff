@@ -11,6 +11,7 @@ interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   icon?: React.ReactNode;
+  rightElement?: React.ReactNode;
   containerClassName?: string;
 }
 
@@ -18,6 +19,7 @@ const Input: React.FC<InputProps> = ({
   label, 
   error, 
   icon, 
+  rightElement,
   containerClassName,
   className,
   ...props 
@@ -45,6 +47,7 @@ const Input: React.FC<InputProps> = ({
           placeholderTextColor="#94A3B8"
           {...props}
         />
+        {rightElement ? <View className="ml-2">{rightElement}</View> : null}
       </View>
       {error && (
         <Text className="text-xs text-danger mt-1 ml-1 font-inter">

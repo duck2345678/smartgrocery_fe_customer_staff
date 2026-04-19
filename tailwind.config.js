@@ -5,12 +5,12 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "with-opacity(--color-primary)",
-          fg: "with-opacity(--color-primary-fg)",
+          DEFAULT: "rgb(var(--color-primary))",
+          fg: "rgb(var(--color-primary-fg))",
         },
-        background: "with-opacity(--color-background)",
-        surface: "with-opacity(--color-surface)",
-        border: "with-opacity(--color-border)",
+        background: "rgb(var(--color-background))",
+        surface: "rgb(var(--color-surface))",
+        border: "rgb(var(--color-border))",
         success: "#16A34A",
         warning: "#F59E0B",
         danger: "#DC2626",
@@ -30,12 +30,3 @@ module.exports = {
   },
   plugins: [],
 };
-
-function withOpacity(variableName) {
-  return ({ opacityValue }) => {
-    if (opacityValue !== undefined) {
-      return `rgba(var(${variableName}), ${opacityValue})`;
-    }
-    return `rgb(var(${variableName}))`;
-  };
-}

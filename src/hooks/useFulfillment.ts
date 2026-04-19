@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { fulfillmentApi } from '../api/fulfillment';
 import { useAuthStore } from '../store/authStore';
-import { AssignmentStatus, OrderAssignment } from '../types/fulfillment';
+import { AssignmentStatus } from '../types/fulfillment';
 
 export const useFulfillment = () => {
   const queryClient = useQueryClient();

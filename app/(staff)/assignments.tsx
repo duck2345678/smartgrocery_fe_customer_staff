@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, SafeAreaView } from 'react-native';
+import { Text, SafeAreaView } from 'react-native';
 import { ClipboardList } from 'lucide-react-native';
 
 export default function AssignmentsScreen() {

@@ -1,35 +1,37 @@
-import React, { useState } from 'react';
-import { View, Text, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuthStore } from '../../src/store/authStore';
 import { authApi } from '../../src/api/auth';
 import Input from '../../src/components/ui/Input';
 import Button from '../../src/components/ui/Button';
-import { Mail, Lock } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { getEmailError, getPasswordError, isLoginFormValid } from '../../src/utils/loginValidation';
 
 export default function LoginScreen() {
   const { setTokens, setUser } = useAuthStore();
-  const router = useRouter();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [touched, setTouched] = useState({ email: false, password: false });
+  const [focused, setFocused] = useState({ email: false, password: false });
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-  const validate = () => {
-    const newErrors: { email?: string; password?: string } = {};
-    if (!email) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Invalid email format';
-    
-    if (!password) newErrors.password = 'Password is required';
-    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const emailError = useMemo(
+    () => getEmailError({ email, touched: touched.email, focused: focused.email }),
+    [email, focused.email, touched.email]
+  );
+  const passwordError = useMemo(
+    () => getPasswordError({ password, touched: touched.password, focused: focused.password }),
+    [focused.password, password, touched.password]
+  );
+
+  const isFormValid = useMemo(() => isLoginFormValid({ email, password }), [email, password]);
+  const isSubmitDisabled = loading || !isFormValid;
 
   const handleLogin = async () => {
-    if (!validate()) return;
+    setTouched({ email: true, password: true });
+    if (!isLoginFormValid({ email, password })) return;
     
     setLoading(true);
     try {
@@ -41,12 +43,8 @@ export default function LoginScreen() {
       
       // Navigation is handled by Auth Guard in root layout
       // so we don't necessarily need to push here
-    } catch (error: any) {
-      console.error('Login error:', error);
-      Alert.alert(
-        'Login Failed',
-        error.response?.data?.message || 'Invalid email or password. Please try again.'
-      );
+    } catch {
+      Alert.alert('Đăng nhập thất bại', 'Email hoặc mật khẩu không đúng. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -57,11 +55,11 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-background"
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <View className="flex-1 justify-center p-6 mt-12">
           <View className="mb-10 items-center">
             <Text className="text-4xl font-outfit-bold text-primary">SmartGrocery</Text>
-            <Text className="text-slate-500 font-inter mt-2">Đăng nhập để bắt đầu phiên làm việc</Text>
+            <Text className="text-slate-500 font-inter mt-2">Chào mừng bạn quay trở lại!</Text>
           </View>
 
           <Input 
@@ -72,7 +70,12 @@ export default function LoginScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
             icon={<Mail size={20} color="#94A3B8" />}
-            error={errors.email}
+            error={emailError}
+            onFocus={() => setFocused((s) => ({ ...s, email: true }))}
+            onBlur={() => {
+              setFocused((s) => ({ ...s, email: false }));
+              setTouched((s) => ({ ...s, email: true }));
+            }}
           />
 
           <Input 
@@ -80,16 +83,32 @@ export default function LoginScreen() {
             placeholder="••••••••"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            secureTextEntry={!isPasswordVisible}
             icon={<Lock size={20} color="#94A3B8" />}
-            error={errors.password}
+            error={passwordError}
+            onFocus={() => setFocused((s) => ({ ...s, password: true }))}
+            onBlur={() => {
+              setFocused((s) => ({ ...s, password: false }));
+              setTouched((s) => ({ ...s, password: true }));
+            }}
+            rightElement={
+              <TouchableOpacity
+                onPress={() => setIsPasswordVisible((v) => !v)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}
+              >
+                {isPasswordVisible ? <EyeOff size={20} color="#64748B" /> : <Eye size={20} color="#64748B" />}
+              </TouchableOpacity>
+            }
           />
 
           <Button 
             label="Đăng nhập" 
             onPress={handleLogin}
             loading={loading}
-            className="mt-6"
+            disabled={isSubmitDisabled}
+            className="mt-6 w-full"
             hapticVariant="medium"
           />
 
@@ -97,16 +116,6 @@ export default function LoginScreen() {
             <Text className="text-slate-500 font-inter">Chưa có tài khoản? </Text>
             <Text className="text-primary font-inter-bold">Đăng ký ngay</Text>
           </View>
-
-          {/* Quick link to Design System during dev */}
-          <Button 
-            label="Showcase Design System" 
-            variant="ghost" 
-            onPress={() => router.push('/(auth)/design-system' as any)}
-            className="mt-10"
-            textClassName="text-slate-400 text-sm"
-            hapticVariant="none"
-          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
