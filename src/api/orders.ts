@@ -1,5 +1,4 @@
 import apiClient from './client';
-import { type CartItem } from '../types/cart';
 import { type Order } from '../types/order';
 
 const coerceOrders = (value: unknown): Order[] => {
@@ -16,12 +15,12 @@ const coerceOrders = (value: unknown): Order[] => {
 
 export const orderApi = {
   getOrders: async (): Promise<Order[]> => {
-    const response = await apiClient.get('/me/orders');
+    const response = await apiClient.get('/orders/my-orders');
     return coerceOrders(response.data);
   },
 
   getOrderById: async (id: number): Promise<Order> => {
-    const response = await apiClient.get(`/me/orders/${id}`);
+    const response = await apiClient.get(`/orders/${id}`);
     return response.data as Order;
   },
 
@@ -29,13 +28,13 @@ export const orderApi = {
     addressId: number;
     paymentMethod: 'COD' | 'VNPAY';
     note?: string;
-    items?: CartItem[];
-    shippingFee?: number;
+    items: Array<{ variantId: number; quantity: number; allowSubstitution: boolean }>;
   }): Promise<Order> => {
-    const response = await apiClient.post('/me/orders', {
+    const response = await apiClient.post('/orders/checkout', {
       addressId: input.addressId,
       paymentMethod: input.paymentMethod,
-      note: input.note,
+      customerNote: input.note,
+      items: input.items,
     });
     return response.data as Order;
   },

@@ -1,8 +1,10 @@
 import React, { memo } from 'react';
 import { Tabs } from 'expo-router';
-import { Home, Search, Brain, History, User } from 'lucide-react-native';
+import { Home, Brain, User, Store, ShoppingCart } from 'lucide-react-native';
+import { View, Text } from 'react-native';
 
 import { ProtectedRoute } from '../../src/components/auth/ProtectedRoute';
+import { useCart } from '../../src/hooks/useCart';
 
 const TAB_SCREEN_OPTIONS = {
   tabBarActiveTintColor: '#22C55E',
@@ -31,10 +33,10 @@ const CustomerTabs = memo(function CustomerTabs() {
         }}
       />
       <Tabs.Screen
-        name="search"
+        name="shop"
         options={{
-          title: 'Tìm kiếm',
-          tabBarIcon: ({ color }: { color: string }) => <Search size={24} color={color} />,
+          title: 'Mua sắm',
+          tabBarIcon: ({ color }: { color: string }) => <Store size={24} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -45,10 +47,10 @@ const CustomerTabs = memo(function CustomerTabs() {
         }}
       />
       <Tabs.Screen
-        name="orders"
+        name="cart"
         options={{
-          title: 'Đơn hàng',
-          tabBarIcon: ({ color }: { color: string }) => <History size={24} color={color} />,
+          title: 'Giỏ hàng',
+          tabBarIcon: ({ color }: { color: string }) => <CartTabIcon color={color} />,
         }}
       />
       <Tabs.Screen
@@ -59,13 +61,44 @@ const CustomerTabs = memo(function CustomerTabs() {
         }}
       />
       {/* Hidden from tab bar — accessed via router.push */}
-      <Tabs.Screen name="cart" options={{ href: null }} />
+      <Tabs.Screen name="search" options={{ href: null }} />
+      <Tabs.Screen name="orders" options={{ href: null }} />
       <Tabs.Screen name="checkout" options={{ href: null }} />
       <Tabs.Screen name="order-success" options={{ href: null }} />
       <Tabs.Screen name="products" options={{ href: null }} />
+      <Tabs.Screen name="ai-meal-review" options={{ href: null }} />
     </Tabs>
   );
 });
+
+function CartTabIcon({ color }: { color: string }) {
+  const { count } = useCart();
+  return (
+    <View style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
+      <ShoppingCart size={24} color={count > 0 ? '#22C55E' : color} />
+      {count > 0 ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: -2,
+            right: -6,
+            minWidth: 16,
+            height: 16,
+            paddingHorizontal: 4,
+            borderRadius: 999,
+            backgroundColor: '#EF4444',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ color: '#fff', fontSize: 10, fontFamily: 'Inter-Bold' }} numberOfLines={1}>
+            {count > 99 ? '99+' : String(count)}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 export default function CustomerLayout() {
   return (
@@ -74,4 +107,3 @@ export default function CustomerLayout() {
     </ProtectedRoute>
   );
 }
-

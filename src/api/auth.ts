@@ -1,20 +1,56 @@
 import apiClient from './client';
-import { AuthResponse } from '../types/fulfillment';
+import { type UserDto } from '../store/authStore';
+
+type RawAuthResponse = {
+  token: string;
+  refreshToken: string;
+  user: unknown;
+};
+
+type AuthResponse = {
+  token: string;
+  refreshToken: string;
+  user: UserDto;
+};
+
+const normalizeUser = (value: unknown): UserDto => {
+  const v = value as Record<string, unknown>;
+  const role = (v.role ?? v.roleName ?? v.role_code ?? v.roleCode) as unknown;
+  const roleStr = typeof role === 'string' ? role : '';
+  const normalizedRole =
+    roleStr === 'CUSTOMER' || roleStr === 'STAFF' || roleStr === 'ADMIN' ? roleStr : 'CUSTOMER';
+
+  return {
+    id: Number(v.id ?? 0),
+    email: String(v.email ?? ''),
+    fullName: typeof v.fullName === 'string' ? v.fullName : null,
+    role: normalizedRole,
+  };
+};
+
+const normalizeAuthResponse = (value: unknown): AuthResponse => {
+  const v = value as RawAuthResponse;
+  return {
+    token: String(v.token ?? ''),
+    refreshToken: String(v.refreshToken ?? ''),
+    user: normalizeUser(v.user),
+  };
+};
 
 export const authApi = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/login', {
+    const response = await apiClient.post<RawAuthResponse>('/auth/login', {
       email,
       password,
     });
-    return response.data;
+    return normalizeAuthResponse(response.data);
   },
   
   refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/refresh', {
+    const response = await apiClient.post<RawAuthResponse>('/auth/refresh', {
       refreshToken,
     });
-    return response.data;
+    return normalizeAuthResponse(response.data);
   },
 
   logout: async (refreshToken: string): Promise<void> => {

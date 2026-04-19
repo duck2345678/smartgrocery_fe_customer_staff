@@ -22,6 +22,7 @@ const unwrap = <T>(value: unknown): T => {
 };
 
 const extractMessage = (data: unknown): string | null => {
+  if (typeof data === 'string' && data.trim()) return data.trim();
   if (!data || typeof data !== 'object') return null;
   if ('message' in data && typeof (data as { message?: unknown }).message === 'string') {
     return (data as { message: string }).message;
@@ -32,6 +33,7 @@ const extractMessage = (data: unknown): string | null => {
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -79,6 +81,16 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = (error.config ?? {}) as RetriableRequestConfig;
 
+    if (!error.response) {
+      const message =
+        error.code === 'ECONNABORTED'
+          ? 'Kết nối đến máy chủ bị quá thời gian. Vui lòng kiểm tra IP/Port hoặc mạng.'
+          : 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra IP/Port hoặc mạng.';
+      const apiError = new Error(message) as Error & { status?: number };
+      apiError.status = 0;
+      return Promise.reject(apiError);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -108,9 +120,14 @@ apiClient.interceptors.response.use(
       }
     }
 
-    const message = extractMessage(error.response?.data) ?? 'Đã có lỗi xảy ra';
+    const status = error.response?.status;
+    const message =
+      extractMessage(error.response?.data) ??
+      (typeof status === 'number' && status >= 500
+        ? 'Máy chủ đang gặp lỗi. Vui lòng thử lại sau.'
+        : 'Đã có lỗi xảy ra');
     const apiError = new Error(message) as Error & { status?: number };
-    apiError.status = error.response?.status;
+    apiError.status = status;
     return Promise.reject(apiError);
   }
 );

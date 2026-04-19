@@ -6,6 +6,10 @@ import Card from '../../src/components/ui/Card';
 import Input from '../../src/components/ui/Input';
 import { useCart } from '../../src/hooks/useCart';
 import { useCheckout } from '../../src/hooks/useCheckout';
+import { useAuthStore } from '../../src/store/authStore';
+import { useAddresses } from '../../src/hooks/useAddresses';
+import { useSubstitutionStore } from '../../src/store/substitutionStore';
+import { type UserAddress } from '../../src/types/address';
 
 const SHIPPING_FEE = 15000;
 
@@ -13,7 +17,18 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const { items, subtotal } = useCart();
   const { createOrder, isPlacingOrder } = useCheckout();
-  const [addressId, setAddressId] = useState<number>(101);
+  const userId = useAuthStore((s) => s.user?.id);
+  const { addresses, isLoading: isLoadingAddresses, isError: isAddressError, refetch: refetchAddresses } = useAddresses(
+    userId
+  );
+  const isAllowed = useSubstitutionStore((s) => s.isAllowed);
+
+  const defaultAddressId = useMemo(() => {
+    const def = addresses.find((a) => a.isDefault)?.id;
+    return def ?? addresses[0]?.id;
+  }, [addresses]);
+
+  const [addressId, setAddressId] = useState<number | undefined>(undefined);
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'VNPAY'>('COD');
   const [note, setNote] = useState('');
 
@@ -22,13 +37,21 @@ export default function CheckoutScreen() {
   const handleConfirm = async () => {
     if (isPlacingOrder) return;
     if (items.length === 0) return;
+    const selectedAddressId = addressId ?? defaultAddressId;
+    if (!selectedAddressId) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng chọn địa chỉ giao hàng.');
+      return;
+    }
     try {
       const created = await createOrder({
-        addressId,
+        addressId: selectedAddressId,
         paymentMethod,
         note: note.trim() ? note.trim() : undefined,
-        items,
-        shippingFee: SHIPPING_FEE,
+        items: items.map((i) => ({
+          variantId: i.variantId ?? i.productId,
+          quantity: i.quantity,
+          allowSubstitution: isAllowed(i.productId),
+        })),
       });
       router.replace({ pathname: '/(customer)/order-success', params: { orderId: String(created.id) } } as never);
     } catch (e) {
@@ -50,10 +73,33 @@ export default function CheckoutScreen() {
       <View className="flex-1 p-6">
         <Card className="p-4 border border-slate-100 mb-4">
           <Text className="text-sm font-inter-bold text-slate-800">Địa chỉ giao hàng</Text>
-          <View className="mt-3 gap-y-2">
-            <AddressOption id={101} label="Nhà (Q.1, TP.HCM)" selectedId={addressId} onSelect={setAddressId} />
-            <AddressOption id={102} label="Công ty (Q.3, TP.HCM)" selectedId={addressId} onSelect={setAddressId} />
-          </View>
+          {isLoadingAddresses ? (
+            <View className="mt-3">
+              <Text className="text-xs font-inter text-slate-500">Đang tải địa chỉ...</Text>
+            </View>
+          ) : isAddressError ? (
+            <View className="mt-3">
+              <Text className="text-xs font-inter text-slate-500">Không tải được địa chỉ.</Text>
+              <Pressable onPress={() => refetchAddresses()} className="mt-2 px-3 py-2 rounded-xl bg-slate-100 self-start">
+                <Text className="text-xs font-inter-bold text-slate-700">Thử lại</Text>
+              </Pressable>
+            </View>
+          ) : addresses.length === 0 ? (
+            <View className="mt-3">
+              <Text className="text-xs font-inter text-slate-500">Chưa có địa chỉ. Vui lòng tạo địa chỉ trên hệ thống.</Text>
+            </View>
+          ) : (
+            <View className="mt-3 gap-y-2">
+              {addresses.map((a) => (
+                <AddressOption
+                  key={a.id}
+                  address={a}
+                  activeId={addressId ?? defaultAddressId}
+                  onSelect={(id) => setAddressId(id)}
+                />
+              ))}
+            </View>
+          )}
         </Card>
 
         <Card className="p-4 border border-slate-100 mb-4">
@@ -88,7 +134,7 @@ export default function CheckoutScreen() {
           label="Xác nhận đặt hàng"
           onPress={handleConfirm}
           loading={isPlacingOrder}
-          disabled={items.length === 0}
+          disabled={items.length === 0 || isLoadingAddresses || (!addressId && !defaultAddressId)}
           hapticVariant="success"
         />
       </View>
@@ -106,25 +152,34 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
 }
 
 function AddressOption({
-  id,
-  label,
-  selectedId,
+  address,
+  activeId,
   onSelect,
 }: {
-  id: number;
-  label: string;
-  selectedId: number;
+  address: UserAddress;
+  activeId?: number;
   onSelect: (id: number) => void;
 }) {
-  const active = selectedId === id;
+  const active = activeId === address.id;
   return (
     <Pressable
-      onPress={() => onSelect(id)}
+      onPress={() => onSelect(address.id)}
       className={`px-3 py-3 rounded-xl border ${active ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}
       hitSlop={6}
     >
-      <Text className={`text-sm font-inter-bold ${active ? 'text-emerald-800' : 'text-slate-800'}`}>{label}</Text>
-      <Text className={`text-xs font-inter mt-1 ${active ? 'text-emerald-700' : 'text-slate-500'}`}>ID: {id}</Text>
+      <View className="flex-row items-center justify-between">
+        <Text className={`text-sm font-inter-bold ${active ? 'text-emerald-800' : 'text-slate-800'}`}>
+          {address.receiverName}
+        </Text>
+        {address.isDefault ? (
+          <View className="px-2 py-1 rounded-full bg-slate-100">
+            <Text className="text-[10px] font-inter-bold text-slate-600">Mặc định</Text>
+          </View>
+        ) : null}
+      </View>
+      <Text className={`text-xs font-inter mt-1 ${active ? 'text-emerald-700' : 'text-slate-500'}`}>
+        {address.streetAddress}, {address.ward}, {address.district}, {address.city}
+      </Text>
     </Pressable>
   );
 }

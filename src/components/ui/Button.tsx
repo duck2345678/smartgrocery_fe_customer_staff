@@ -91,6 +91,9 @@ const Button: React.FC<ButtonProps> = ({
           {icon && <View className={label ? 'mr-2' : ''}>{icon}</View>}
           {label ? (
             <Text 
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
               className={cn(
                 'text-lg font-outfit-bold text-center',
                 textVariantStyles[variant],

@@ -1,4 +1,4 @@
-import { View, Text, Pressable, Alert } from 'react-native';
+import { View, Text, Pressable, Alert, Switch } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
@@ -8,10 +8,13 @@ import Button from '../../src/components/ui/Button';
 import Card from '../../src/components/ui/Card';
 import { useCart } from '../../src/hooks/useCart';
 import { CartItem } from '../../src/types/cart';
+import { useSubstitutionStore } from '../../src/store/substitutionStore';
 
 export default function CartScreen() {
   const router = useRouter();
   const { items, subtotal, isLoading, isError, refetch, updateQuantity, removeItem, isUpdating } = useCart();
+  const isAllowed = useSubstitutionStore((s) => s.isAllowed);
+  const setAllowed = useSubstitutionStore((s) => s.setAllowed);
 
   const data = useMemo(() => items, [items]);
 
@@ -34,6 +37,21 @@ export default function CartScreen() {
           <Text className="text-xs font-inter text-slate-500 mt-1">
             {item.price.toLocaleString('vi-VN')}₫ / {item.unit}
           </Text>
+
+          <View className="flex-row items-center justify-between mt-3">
+            <View className="flex-1 pr-3">
+              <Text className="text-xs font-inter-bold text-slate-700">Cho phép thay thế tương đương</Text>
+              <Text className="text-[11px] font-inter text-slate-500 mt-0.5">
+                Bật cho mặt hàng bạn không quá khắt khe về thương hiệu/loại.
+              </Text>
+            </View>
+            <Switch
+              value={isAllowed(item.productId)}
+              onValueChange={(v) => setAllowed(item.productId, v)}
+              trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
+              thumbColor={isAllowed(item.productId) ? '#22C55E' : '#FFFFFF'}
+            />
+          </View>
 
           <View className="flex-row items-center justify-between mt-3">
             <View className="flex-row items-center bg-slate-100 rounded-xl p-1">

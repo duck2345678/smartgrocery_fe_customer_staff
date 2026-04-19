@@ -100,7 +100,7 @@ export function useCart() {
         if (!existing) {
           const nextItem: CartItem = {
             productId: input.product.id,
-            variantId: input.product.id,
+            variantId: input.product.variantId ?? input.product.id,
             name: input.product.name,
             price: input.product.price,
             unit: input.product.unit,

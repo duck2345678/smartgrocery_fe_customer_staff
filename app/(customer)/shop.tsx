@@ -1,16 +1,16 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { productApi, type Category } from '../../src/api/products';
-import { Product } from '../../src/types/product';
+import { type Product } from '../../src/types/product';
 import { clsx } from 'clsx';
 import CartButton from '../../src/components/customer/CartButton';
 import { Search, RefreshCw } from 'lucide-react-native';
 
-export default function CustomerHome() {
+export default function CustomerShop() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
 
@@ -20,12 +20,9 @@ export default function CustomerHome() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const categories: Category[] = useMemo(
-    () => categoriesQuery.data ?? [],
-    [categoriesQuery.data]
-  );
+  const categories: Category[] = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['products', { categoryId: selectedCategory }],
     queryFn: () => productApi.getProducts({ categoryId: selectedCategory }),
   });
@@ -83,16 +80,14 @@ export default function CustomerHome() {
 
   return (
     <View className="flex-1 bg-background">
-      {/* Header */}
       <View className="px-6 pt-6 pb-2 flex-row items-start justify-between">
         <View className="flex-1 pr-4">
-          <Text className="text-xs font-inter-bold text-slate-400 uppercase">SmartGrocery</Text>
-          <Text className="text-2xl font-outfit-bold text-slate-900">Hôm nay bạn cần gì?</Text>
+          <Text className="text-xs font-inter-bold text-slate-400 uppercase">Mua sắm</Text>
+          <Text className="text-2xl font-outfit-bold text-slate-900">Danh mục & Sản phẩm</Text>
         </View>
         <CartButton />
       </View>
 
-      {/* Search Bar (navigates to search screen) */}
       <Pressable
         onPress={() => router.push('/(customer)/search' as never)}
         className="mx-6 mb-3 flex-row items-center bg-slate-100 rounded-2xl px-4 py-3"
@@ -101,29 +96,17 @@ export default function CustomerHome() {
         <Text className="flex-1 ml-2 text-base font-inter text-slate-400">Tìm sản phẩm...</Text>
       </Pressable>
 
-      {/* Category Chips */}
       {categories.length > 0 && (
         <View className="px-6 mb-2">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             <Pressable
               onPress={() => setSelectedCategory(undefined)}
               className={clsx(
                 'px-4 py-2 rounded-full border',
-                selectedCategory === undefined
-                  ? 'bg-emerald-500 border-emerald-500'
-                  : 'bg-white border-slate-200'
+                selectedCategory === undefined ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-200'
               )}
             >
-              <Text
-                className={clsx(
-                  'text-sm font-inter-bold',
-                  selectedCategory === undefined ? 'text-white' : 'text-slate-700'
-                )}
-              >
+              <Text className={clsx('text-sm font-inter-bold', selectedCategory === undefined ? 'text-white' : 'text-slate-700')}>
                 Tất cả
               </Text>
             </Pressable>
@@ -135,19 +118,10 @@ export default function CustomerHome() {
                   onPress={() => handleCategoryPress(cat.id)}
                   className={clsx(
                     'px-4 py-2 rounded-full border',
-                    active
-                      ? 'bg-emerald-500 border-emerald-500'
-                      : 'bg-white border-slate-200'
+                    active ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-200'
                   )}
                 >
-                  <Text
-                    className={clsx(
-                      'text-sm font-inter-bold',
-                      active ? 'text-white' : 'text-slate-700'
-                    )}
-                  >
-                    {cat.name}
-                  </Text>
+                  <Text className={clsx('text-sm font-inter-bold', active ? 'text-white' : 'text-slate-700')}>{cat.name}</Text>
                 </Pressable>
               );
             })}
@@ -155,7 +129,6 @@ export default function CustomerHome() {
         </View>
       )}
 
-      {/* Product List */}
       <View className="flex-1 px-6">
         <FlashList
           data={products}
@@ -169,21 +142,14 @@ export default function CustomerHome() {
             <View className="flex-1 items-center justify-center pt-20">
               {isError ? (
                 <View className="items-center">
-                  <Text className="text-slate-500 font-inter mb-4">
-                    {error instanceof Error ? error.message : 'Không tải được sản phẩm.'}
-                  </Text>
-                  <Pressable
-                    onPress={() => refetch()}
-                    className="flex-row items-center px-5 py-3 bg-emerald-500 rounded-2xl"
-                  >
+                  <Text className="text-slate-500 font-inter mb-4">Không tải được sản phẩm.</Text>
+                  <Pressable onPress={() => refetch()} className="flex-row items-center px-5 py-3 bg-emerald-500 rounded-2xl">
                     <RefreshCw size={16} color="#FFF" />
                     <Text className="text-white font-inter-bold ml-2">Thử lại</Text>
                   </Pressable>
                 </View>
               ) : (
-                <Text className="text-slate-400 font-inter">
-                  Chưa có sản phẩm.
-                </Text>
+                <Text className="text-slate-400 font-inter">Chưa có sản phẩm.</Text>
               )}
             </View>
           }
@@ -192,3 +158,4 @@ export default function CustomerHome() {
     </View>
   );
 }
+

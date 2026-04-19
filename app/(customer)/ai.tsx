@@ -8,13 +8,18 @@ import { AIAction, AIResult } from '../../src/types/ai';
 import CartButton from '../../src/components/customer/CartButton';
 import { useCart } from '../../src/hooks/useCart';
 import { productApi } from '../../src/api/products';
+import { useMealPlanStore } from '../../src/store/aiMealPlanStore';
+import { useRouter } from 'expo-router';
 
 type Mode = 'BASKET_OPTIMIZER' | 'MEAL_PLANNER' | 'DISCOVER';
 
 export default function CustomerAIHub() {
+  const router = useRouter();
   const { items: cartItems, subtotal, addProduct, removeItem } = useCart();
   const [loadingMode, setLoadingMode] = useState<Mode | null>(null);
   const [result, setResult] = useState<AIResult | null>(null);
+  const setPlan = useMealPlanStore((s) => s.setPlan);
+  const [showReasons, setShowReasons] = useState(true);
 
   const cartItemIds = useMemo(() => cartItems.map((i) => i.productId), [cartItems]);
 
@@ -29,14 +34,17 @@ export default function CustomerAIHub() {
           targetNutrition: { protein: 60 },
         });
         setResult(response);
+        setShowReasons(true);
       }
       if (mode === 'MEAL_PLANNER') {
         const response = await aiApi.planMeals({ days: 7, budgetLimit: 500000 });
         setResult(response);
+        setShowReasons(false);
       }
       if (mode === 'DISCOVER') {
         const response = await aiApi.discoverProducts({ max: 5 });
         setResult(response);
+        setShowReasons(true);
       }
     } finally {
       setLoadingMode(null);
@@ -109,24 +117,46 @@ export default function CustomerAIHub() {
               ))}
             </View>
 
-            <View className="mt-4 gap-y-2">
-              {result.explanations.map((e, idx) => (
-                <Text key={`${result.mode}-exp-${idx}`} className="text-xs font-inter text-slate-500">
-                  • {e}
-                </Text>
-              ))}
-            </View>
+            {showReasons ? (
+              <View className="mt-4 gap-y-2">
+                {result.explanations.map((e, idx) => (
+                  <Text key={`${result.mode}-exp-${idx}`} className="text-xs font-inter text-slate-500">
+                    • {e}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
 
             <View className="mt-5 gap-y-2">
-              {result.actions.map((action, idx) => (
-                <Pressable
-                  key={`${result.mode}-action-${idx}`}
-                  onPress={() => void applyAction(action)}
-                  className="px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50"
-                >
-                  <Text className="text-emerald-700 font-inter-bold text-sm">{action.label}</Text>
-                </Pressable>
-              ))}
+              {result.mode === 'MEAL_PLANNER' ? (
+                <>
+                  <Pressable
+                    onPress={() => {
+                      setPlan({ title: result.title, items: result.items, actions: result.actions });
+                      router.push('/(customer)/ai-meal-review' as never);
+                    }}
+                    className="px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50"
+                  >
+                    <Text className="text-emerald-700 font-inter-bold text-sm">Áp dụng ngay</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setShowReasons((v) => !v)}
+                    className="px-4 py-3 rounded-xl border border-slate-200 bg-white"
+                  >
+                    <Text className="text-slate-700 font-inter-bold text-sm">Xem lý do</Text>
+                  </Pressable>
+                </>
+              ) : (
+                result.actions.map((action, idx) => (
+                  <Pressable
+                    key={`${result.mode}-action-${idx}`}
+                    onPress={() => void applyAction(action)}
+                    className="px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50"
+                  >
+                    <Text className="text-emerald-700 font-inter-bold text-sm">{action.label}</Text>
+                  </Pressable>
+                ))
+              )}
             </View>
           </Card>
         ) : null}

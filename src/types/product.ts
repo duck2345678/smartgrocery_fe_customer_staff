@@ -1,6 +1,7 @@
 export type Product = {
   id: number;
   name: string;
+  variantId?: number;
   price: number;
   unit: string;
   imageUrl: string;
@@ -9,4 +10,3 @@ export type Product = {
   rating?: number;
   description?: string;
 };
-

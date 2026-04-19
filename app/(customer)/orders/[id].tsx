@@ -42,7 +42,7 @@ export default function OrderDetail() {
         <View className="gap-y-3">
           <Card className="p-4 border border-slate-100">
             <Text className="text-xs font-inter-bold text-slate-400 uppercase">Mã đơn</Text>
-            <Text className="text-xl font-outfit-bold text-slate-900 mt-1">{order.code}</Text>
+            <Text className="text-xl font-outfit-bold text-slate-900 mt-1">{order.orderNumber}</Text>
             <Text className="text-sm font-inter text-slate-500 mt-2">
               {new Date(order.createdAt).toLocaleString('vi-VN')}
             </Text>
@@ -52,13 +52,16 @@ export default function OrderDetail() {
             <Text className="text-sm font-inter-bold text-slate-800">Sản phẩm</Text>
             <View className="mt-3 gap-y-2">
               {order.items.map((i) => (
-                <View key={i.productId} className="flex-row items-center justify-between">
-                  <Text className="text-sm font-inter text-slate-700" numberOfLines={1}>
-                    {i.name} × {i.quantity}
-                  </Text>
-                  <Text className="text-sm font-inter-bold text-slate-900">
-                    {(i.price * i.quantity).toLocaleString('vi-VN')}₫
-                  </Text>
+                <View key={i.id} className="flex-row items-start justify-between">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-sm font-inter text-slate-700" numberOfLines={1}>
+                      {i.productName} × {i.quantity}
+                    </Text>
+                    <Text className="text-[11px] font-inter text-slate-500 mt-1">
+                      {i.allowSubstitution ? 'Cho phép thay thế' : 'Không cho phép thay thế'}
+                    </Text>
+                  </View>
+                  <Text className="text-sm font-inter-bold text-slate-900">{i.totalPrice.toLocaleString('vi-VN')}₫</Text>
                 </View>
               ))}
             </View>
@@ -73,7 +76,7 @@ export default function OrderDetail() {
             </View>
             <View className="flex-row items-center justify-between mt-3">
               <Text className="text-sm font-inter-bold text-slate-700">Tổng</Text>
-              <Text className="text-lg font-outfit-bold text-slate-900">{order.total.toLocaleString('vi-VN')}₫</Text>
+              <Text className="text-lg font-outfit-bold text-slate-900">{order.totalAmount.toLocaleString('vi-VN')}₫</Text>
             </View>
           </Card>
         </View>

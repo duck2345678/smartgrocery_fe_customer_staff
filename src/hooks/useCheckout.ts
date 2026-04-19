@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderApi } from '../api/orders';
-import { type CartItem } from '../types/cart';
 
 export function useCheckout() {
   const queryClient = useQueryClient();
@@ -10,8 +9,7 @@ export function useCheckout() {
       addressId: number;
       paymentMethod: 'COD' | 'VNPAY';
       note?: string;
-      items?: CartItem[];
-      shippingFee?: number;
+      items: Array<{ variantId: number; quantity: number; allowSubstitution: boolean }>;
     }) => orderApi.createOrderFromCart(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });

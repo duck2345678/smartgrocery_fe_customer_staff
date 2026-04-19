@@ -37,14 +37,22 @@ export default function LoginScreen() {
     try {
       const response = await authApi.login(email, password);
       
+      if (!response || !response.token || !response.user) {
+        Alert.alert('Đăng nhập thất bại', 'Phản hồi từ máy chủ không hợp lệ.');
+        return;
+      }
+
       // Save to store
       setTokens(response.token, response.refreshToken);
       setUser(response.user);
       
-      // Navigation is handled by Auth Guard in root layout
-      // so we don't necessarily need to push here
-    } catch {
-      Alert.alert('Đăng nhập thất bại', 'Email hoặc mật khẩu không đúng. Vui lòng thử lại.');
+      // Navigation is handled by Auth Guard in auth layout
+    } catch (e) {
+      const message =
+        e instanceof Error
+          ? e.message
+          : 'Không thể đăng nhập. Vui lòng thử lại.';
+      Alert.alert('Đăng nhập thất bại', message);
     } finally {
       setLoading(false);
     }

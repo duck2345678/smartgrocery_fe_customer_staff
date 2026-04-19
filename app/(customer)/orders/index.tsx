@@ -8,9 +8,10 @@ import { RefreshCw, ShoppingBag } from 'lucide-react-native';
 import { clsx } from 'clsx';
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  CREATED: { label: 'Mới tạo', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
+  PENDING: { label: 'Mới tạo', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
   PROCESSING: { label: 'Đang xử lý', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
-  COMPLETED: { label: 'Hoàn thành', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+  SHIPPED: { label: 'Đang giao', color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-200' },
+  DELIVERED: { label: 'Đã giao', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
   CANCELLED: { label: 'Đã huỷ', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
 };
 
@@ -19,7 +20,7 @@ export default function OrdersScreen() {
   const { orders, isLoading, isError, refetch } = useOrders();
 
   const renderItem = ({ item }: { item: Order }) => {
-    const statusInfo = STATUS_LABELS[item.status] ?? STATUS_LABELS.CREATED;
+    const statusInfo = STATUS_LABELS[item.status] ?? STATUS_LABELS.PENDING;
     return (
       <Pressable onPress={() => router.push(`/(customer)/orders/${item.id}` as never)}>
         <Card className="mb-3 p-4 border border-slate-100">
@@ -31,10 +32,10 @@ export default function OrdersScreen() {
               </Text>
             </View>
           </View>
-          <Text className="text-lg font-outfit-bold text-slate-900 mt-1">{item.code}</Text>
+          <Text className="text-lg font-outfit-bold text-slate-900 mt-1">{item.orderNumber}</Text>
           <View className="flex-row items-center justify-between mt-3">
             <Text className="text-sm font-inter text-slate-500">{new Date(item.createdAt).toLocaleString('vi-VN')}</Text>
-            <Text className="text-sm font-inter-bold text-slate-900">{item.total.toLocaleString('vi-VN')}₫</Text>
+            <Text className="text-sm font-inter-bold text-slate-900">{item.totalAmount.toLocaleString('vi-VN')}₫</Text>
           </View>
         </Card>
       </Pressable>
