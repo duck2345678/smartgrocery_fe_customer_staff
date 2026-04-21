@@ -160,7 +160,7 @@ export default function PackingWorkspace({
       </View>
 
       <Button 
-        label="Hoàn tất & Gửi đi"
+        label="Đóng gói & Bàn giao Shipper"
         onPress={handleFinish}
         loading={isUploading || isUpdating}
         disabled={!photoUri}
@@ -171,7 +171,7 @@ export default function PackingWorkspace({
       <View className="mt-8 flex-row justify-center items-center">
         <CheckCircle2 size={16} color="#94A3B8" />
         <Text className="ml-2 text-slate-400 text-xs font-inter italic">
-          Sau khi gửi, đơn hàng sẽ chuyển sang trạng thái Sẵn sằng giao.
+          Hoàn tất đóng gói để bàn giao cho đơn vị vận chuyển.
         </Text>
       </View>
     </ScrollView>

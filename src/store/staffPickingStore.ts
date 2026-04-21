@@ -26,6 +26,7 @@ type StaffPickingState = {
 
   setPickedQuantity: (orderItemId: number, quantity: number) => void;
   setReason: (orderItemId: number, reason: string) => void;
+  setIssueReported: (orderItemId: number, reported: boolean) => void;
   setSubstitution: (orderItemId: number, enabled: boolean) => void;
   setSubstitutedVariantId: (orderItemId: number, variantId: number | null) => void;
 
@@ -66,6 +67,13 @@ export const useStaffPickingStore = create<StaffPickingState>()(
         set((s) => {
           if (!s.session) return s;
           const updated = updateItem(s.session, orderItemId, (prev) => ({ ...prev, reason }));
+          return { ...s, session: updated };
+        }),
+
+      setIssueReported: (orderItemId, reported) =>
+        set((s) => {
+          if (!s.session) return s;
+          const updated = updateItem(s.session, orderItemId, (prev) => ({ ...prev, issueReported: reported }));
           return { ...s, session: updated };
         }),
 
@@ -125,4 +133,3 @@ export const useStaffPickingStore = create<StaffPickingState>()(
     }
   )
 );
-

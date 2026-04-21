@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import React, { useEffect, memo } from 'react';
 import { Stack } from 'expo-router';
 import { QueryClient } from '@tanstack/react-query';
@@ -5,6 +6,7 @@ import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persi
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useFonts,
   Outfit_400Regular,
@@ -82,11 +84,13 @@ export default function RootLayout() {
   }
 
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={persistOptions}
-    >
-      <NavigatorShell />
-    </PersistQueryClientProvider>
+    <SafeAreaProvider>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={persistOptions}
+      >
+        <NavigatorShell />
+      </PersistQueryClientProvider>
+    </SafeAreaProvider>
   );
 }

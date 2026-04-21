@@ -12,6 +12,7 @@ type ApiEnvelope<T> = {
 
 type RetriableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
+  _meta?: { startAt: number };
 };
 
 const unwrap = <T>(value: unknown): T => {
@@ -62,6 +63,14 @@ const refreshAccessToken = async (): Promise<string> => {
 };
 
 apiClient.interceptors.request.use(async (config) => {
+  const startAt =
+    typeof globalThis !== 'undefined' &&
+    'performance' in globalThis &&
+    typeof (globalThis as { performance?: { now?: () => number } }).performance?.now === 'function'
+      ? (globalThis as { performance: { now: () => number } }).performance.now()
+      : Date.now();
+  (config as RetriableRequestConfig)._meta = { startAt };
+
   const token = useAuthStore.getState().token;
   if (token) {
     config.headers = config.headers ?? {};
@@ -72,6 +81,20 @@ apiClient.interceptors.request.use(async (config) => {
 
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
+    const cfg = response.config as RetriableRequestConfig;
+    if (typeof __DEV__ !== 'undefined' && __DEV__ && cfg._meta?.startAt != null) {
+      const endAt =
+        typeof globalThis !== 'undefined' &&
+        'performance' in globalThis &&
+        typeof (globalThis as { performance?: { now?: () => number } }).performance?.now === 'function'
+          ? (globalThis as { performance: { now: () => number } }).performance.now()
+          : Date.now();
+      const ms = Math.round(endAt - cfg._meta.startAt);
+      const method = String(cfg.method ?? 'GET').toUpperCase();
+      const url = cfg.url ?? '';
+      console.log(`[NET OK] ${method} ${url} ${ms}ms`);
+    }
+
     const payload = response.data;
     if (payload && typeof payload === 'object' && 'data' in payload) {
       response.data = (payload as ApiEnvelope<unknown>).data;
@@ -80,6 +103,19 @@ apiClient.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const originalRequest = (error.config ?? {}) as RetriableRequestConfig;
+    if (typeof __DEV__ !== 'undefined' && __DEV__ && originalRequest._meta?.startAt != null) {
+      const endAt =
+        typeof globalThis !== 'undefined' &&
+        'performance' in globalThis &&
+        typeof (globalThis as { performance?: { now?: () => number } }).performance?.now === 'function'
+          ? (globalThis as { performance: { now: () => number } }).performance.now()
+          : Date.now();
+      const ms = Math.round(endAt - originalRequest._meta.startAt);
+      const method = String(originalRequest.method ?? 'GET').toUpperCase();
+      const url = originalRequest.url ?? '';
+      const st = error.response?.status ?? 0;
+      console.log(`[NET ERR] ${method} ${url} ${st} ${ms}ms`);
+    }
 
     if (!error.response) {
       const message =

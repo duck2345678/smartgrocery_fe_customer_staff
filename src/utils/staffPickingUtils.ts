@@ -2,6 +2,7 @@ export type StaffPickItem = {
   orderItemId: number;
   variantId: number;
   sku: string;
+  barcode?: string | null;
   productName: string;
   variantName?: string | null;
   aisleLocation?: string | null;
@@ -28,6 +29,7 @@ export type PickItemState = {
   isSubstituted: boolean;
   substitutedVariantId: number | null;
   reason: string;
+  issueReported?: boolean;
 };
 
 export type StaffPickSession = {
@@ -67,6 +69,7 @@ export const buildInitialSession = (pickOrder: StaffPickOrder): StaffPickSession
       isSubstituted: false,
       substitutedVariantId: null,
       reason: '',
+      issueReported: false,
     };
   });
   return {
@@ -101,4 +104,3 @@ export const buildCompletePickingPayload = (session: StaffPickSession): Complete
 
   return { pickedItems };
 };
-

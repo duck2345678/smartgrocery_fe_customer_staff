@@ -74,6 +74,7 @@ const mapPickOrder = (x: unknown): StaffPickOrder => {
         orderItemId: toNumber(i.orderItemId),
         variantId: toNumber(i.variantId),
         sku: String(i.sku ?? ''),
+        barcode: typeof i.barcode === 'string' ? i.barcode : null,
         productName: String(i.productName ?? ''),
         variantName: typeof i.variantName === 'string' ? i.variantName : null,
         aisleLocation: typeof i.aisleLocation === 'string' ? i.aisleLocation : null,
