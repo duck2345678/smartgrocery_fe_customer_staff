@@ -59,10 +59,10 @@ export default function AiNudge() {
           </View>
         </View>
 
-        <View className="flex-row items-center justify-between mt-4">
+        <View className="mt-4">
           <View className="flex-row" style={{ gap: 8 }}>
             {nudges.map((p) => (
-              <View key={p.productId} className="px-3 py-2 rounded-2xl bg-white border border-slate-100">
+              <View key={p.productId} className="flex-1 min-w-0 px-3 py-2 rounded-2xl bg-white border border-slate-100">
                 <Text className="text-xs font-inter-bold text-slate-700" numberOfLines={1}>
                   {p.name}
                 </Text>
@@ -76,7 +76,7 @@ export default function AiNudge() {
             ))}
           </View>
 
-          <Pressable onPress={() => void handleAdd()} className="px-4 py-3 rounded-2xl bg-emerald-500" hitSlop={8}>
+          <Pressable onPress={() => void handleAdd()} className="mt-3 px-4 py-3 rounded-2xl bg-emerald-500 items-center" hitSlop={8}>
             <Text className="text-white font-inter-bold text-sm">Thêm ngay</Text>
           </Pressable>
         </View>

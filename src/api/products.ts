@@ -13,8 +13,13 @@ type ProductListParams = {
 type ProductVariantDto = {
   id: number;
   variantName?: string | null;
+  variant_name?: string | null;
   unit?: string | null;
+  unit_name?: string | null;
   netPrice?: number | string | null;
+  net_price?: number | string | null;
+  compareAtPrice?: number | string | null;
+  compare_at_price?: number | string | null;
   stock?: number | null;
 };
 
@@ -28,6 +33,12 @@ type ProductDto = {
   image?: string | null;
   category?: CategoryDto | null;
   variants?: ProductVariantDto[] | null;
+  soldCount?: number | string | null;
+  sold_count?: number | string | null;
+  purchaseCount?: number | string | null;
+  purchase_count?: number | string | null;
+  totalSold?: number | string | null;
+  total_sold?: number | string | null;
 };
 
 type PageDto<T> = { content?: T[] };
@@ -65,13 +76,23 @@ const resolveImageUrl = (input: unknown, fallbackName: string): string => {
 
 const mapProductDto = (dto: ProductDto): Product => {
   const v = getFirstVariant(dto);
+  const price = toNumber(v?.netPrice ?? v?.net_price);
+  const compareAtPrice = toNumber(v?.compareAtPrice ?? v?.compare_at_price);
+  const hasDiscount = compareAtPrice > price && price > 0;
+  const discountPercent = hasDiscount ? Math.round((1 - price / compareAtPrice) * 100) : undefined;
+  const purchaseCount = toNumber(
+    dto.purchaseCount ?? dto.purchase_count ?? dto.soldCount ?? dto.sold_count ?? dto.totalSold ?? dto.total_sold
+  );
   return {
     id: dto.id,
     name: dto.name,
     variantId: v?.id,
-    price: toNumber(v?.netPrice),
-    unit: (v?.unit ?? 'unit') as string,
+    price,
+    originalPrice: hasDiscount ? compareAtPrice : undefined,
+    discountPercent: hasDiscount ? discountPercent : undefined,
+    unit: (v?.unit ?? v?.unit_name ?? 'unit') as string,
     stock: typeof v?.stock === 'number' ? v.stock : 0,
+    purchaseCount,
     imageUrl: resolveImageUrl(dto.image, dto.name),
     category: dto.category?.name ?? 'Khác',
     description: dto.description ?? dto.shortDescription ?? undefined,
@@ -97,7 +118,8 @@ export const productApi = {
   getProducts: async (params?: ProductListParams): Promise<Product[]> => {
     const response = await apiClient.get('/products', { params });
     const dtos = coerceProductDtos(response.data);
-    return dtos.map(mapProductDto);
+    const mapped = dtos.map(mapProductDto);
+    return mapped.sort((a, b) => b.purchaseCount - a.purchaseCount);
   },
   getProductById: async (id: number): Promise<Product> => {
     const response = await apiClient.get(`/products/${id}`);

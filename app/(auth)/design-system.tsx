@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Animated, ScrollView, View, Text, SafeAreaView, Pressable, Switch, Modal } from 'react-native';
+import { Animated, ScrollView, View, Text, Pressable, Switch, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../src/components/ui/Button';
 import Card from '../../src/components/ui/Card';
 import Badge from '../../src/components/ui/Badge';
@@ -10,14 +11,14 @@ import { Stack } from 'expo-router';
 export default function DesignSystemScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <Stack.Screen options={{ headerShown: true, title: 'Design System Showcase' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'Design System (Demo)' }} />
       <ScrollView className="flex-1 p-6">
         
         {/* Colors & Theming */}
         <Section title="Colors & Theming">
           <View className="flex-row flex-wrap gap-4">
             <ColorBlock color="bg-primary" label="Primary (Customer/Staff)" />
-            <ColorBlock color="bg-success" label="Success" />
+            <ColorBlock color="bg-success" label="Thành công" />
             <ColorBlock color="bg-warning" label="Warning" />
             <ColorBlock color="bg-danger" label="Danger" />
           </View>
@@ -38,7 +39,7 @@ export default function DesignSystemScreen() {
             <Button label="Primary Solid" variant="solid" />
             <Button label="Primary Outline" variant="outline" />
             <Button label="Ghost Button" variant="ghost" />
-            <Button label="Loading State" loading />
+            <Button label="Trạng thái tải" loading />
             <Button label="Staff Mode Press" hapticVariant="medium" className="bg-blue-600" />
           </View>
         </Section>
@@ -741,7 +742,7 @@ function OptimisticSyncVisualizer() {
       <Card className="p-4 border border-slate-100">
         <View className="flex-row items-center justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-sm font-inter-bold text-slate-800">Outcome</Text>
+            <Text className="text-sm font-inter-bold text-slate-800">Kết quả</Text>
             <Text className="text-xs font-inter text-slate-500 mt-1">Chọn kết quả server để mô phỏng sync success vs rollback.</Text>
           </View>
           <View className="flex-row items-center gap-x-2">
@@ -750,14 +751,14 @@ function OptimisticSyncVisualizer() {
               className={`px-3 py-2 rounded-xl border ${outcome === 'success' ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}
               hitSlop={6}
             >
-              <Text className={`text-xs font-inter-bold ${outcome === 'success' ? 'text-green-800' : 'text-slate-700'}`}>Server Success</Text>
+              <Text className={`text-xs font-inter-bold ${outcome === 'success' ? 'text-green-800' : 'text-slate-700'}`}>Máy chủ: OK</Text>
             </Pressable>
             <Pressable
               onPress={() => setOutcome('error')}
               className={`px-3 py-2 rounded-xl border ${outcome === 'error' ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}
               hitSlop={6}
             >
-              <Text className={`text-xs font-inter-bold ${outcome === 'error' ? 'text-red-800' : 'text-slate-700'}`}>Server Error</Text>
+              <Text className={`text-xs font-inter-bold ${outcome === 'error' ? 'text-red-800' : 'text-slate-700'}`}>Máy chủ: Lỗi</Text>
             </Pressable>
           </View>
         </View>
@@ -794,11 +795,11 @@ function OptimisticSyncVisualizer() {
 
       <Card className="p-4 border border-slate-100">
         <View className="flex-row items-center justify-between">
-          <Text className="text-sm font-inter-bold text-slate-800">Sync Pipeline</Text>
+          <Text className="text-sm font-inter-bold text-slate-800">Luồng đồng bộ</Text>
           <View className="flex-row items-center">
             <View style={{ width: 8, height: 8, borderRadius: 8, backgroundColor: statusColor, marginRight: 6 }} />
             <Text className="text-xs font-inter-bold text-slate-700">
-              {phase === 'idle' ? 'Idle' : phase === 'syncing' ? 'Syncing...' : phase === 'success' ? 'Success' : 'Rollback'}
+              {phase === 'idle' ? 'Chờ' : phase === 'syncing' ? 'Đang đồng bộ…' : phase === 'success' ? 'Thành công' : 'Hoàn tác'}
             </Text>
           </View>
         </View>
@@ -822,7 +823,7 @@ function OptimisticSyncVisualizer() {
             }}
             className="px-3 py-2 rounded-xl bg-slate-100"
           >
-            <Text className="text-xs font-inter-bold text-slate-700">Reset</Text>
+            <Text className="text-xs font-inter-bold text-slate-700">Đặt lại</Text>
           </Pressable>
         </View>
       </Card>

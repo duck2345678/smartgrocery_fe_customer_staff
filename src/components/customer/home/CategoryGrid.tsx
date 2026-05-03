@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { productApi } from '../../../api/products';
@@ -22,6 +22,7 @@ export default function CategoryGrid() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const columns = width >= 768 ? 6 : 4;
+  const [expanded, setExpanded] = useState(false);
 
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
@@ -29,14 +30,20 @@ export default function CategoryGrid() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const categories = useMemo(() => pickCategoryGrid(categoriesQuery.data ?? [], 8), [categoriesQuery.data]);
+  const categories = useMemo(
+    () => {
+      const allCategories = categoriesQuery.data ?? [];
+      return expanded ? allCategories : pickCategoryGrid(allCategories, 8);
+    },
+    [categoriesQuery.data, expanded]
+  );
 
   return (
     <View className="px-6 pb-4">
       <View className="flex-row items-center justify-between mb-3">
         <Text className="text-base font-outfit-bold text-slate-900">Danh mục</Text>
-        <Pressable onPress={() => router.push('/(customer)/shop' as never)} hitSlop={8}>
-          <Text className="text-sm font-inter-bold text-emerald-700">Xem tất cả</Text>
+        <Pressable onPress={() => setExpanded((prev) => !prev)} hitSlop={8}>
+          <Text className="text-sm font-inter-bold text-emerald-700">{expanded ? 'Ẩn bớt' : 'Xem tất cả'}</Text>
         </Pressable>
       </View>
 

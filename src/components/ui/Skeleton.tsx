@@ -26,7 +26,7 @@ export default function Skeleton({
 
   return (
     <Animated.View style={[containerStyle, style as never]}>
-      <View className={clsx('bg-slate-200/70 rounded-xl', className)} />
+      <View className={clsx('bg-surface2 border border-border rounded-2xl', className)} />
     </Animated.View>
   );
 }

@@ -1,222 +1,167 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, View, Text, SafeAreaView } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import React, { useMemo } from 'react';
+import { Pressable, View, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/authStore';
-import { useSLAStore } from '../../src/store/slaStore';
-import { useFulfillment } from '../../src/hooks/useFulfillment';
-import { AssignmentStatus, OrderAssignment } from '../../src/types/fulfillment';
-import OrderCard from '../../src/components/staff/OrderCard';
 import Card from '../../src/components/ui/Card';
 import Button from '../../src/components/ui/Button';
-import { Bell, AlertTriangle, ClipboardList, RefreshCw } from 'lucide-react-native';
+import { Bell, ClipboardList, RefreshCw, Settings, Siren, UploadCloud } from 'lucide-react-native';
 import { clsx } from 'clsx';
 import { useRouter } from 'expo-router';
-
-type AssignmentFilter = 'ALL' | AssignmentStatus.PENDING | AssignmentStatus.IN_PROGRESS;
-
-const getRemainingMinutes = (assignedAt: string, now: number) => {
-  const assignedTime = new Date(assignedAt).getTime();
-  const expiryTime = assignedTime + 30 * 60 * 1000;
-  return Math.max(0, Math.floor((expiryTime - now) / 60000));
-};
+import { useQuery } from '@tanstack/react-query';
+import { staffIssuesApi } from '../../src/api/staffIssues';
+import { staffOrdersApi } from '../../src/api/staffOrders';
+import { useStaffPickingStore } from '../../src/store/staffPickingStore';
+import BrandMark from '../../src/components/ui/BrandMark';
 
 export default function StaffDashboard() {
   const { user } = useAuthStore();
-  const now = useSLAStore((s) => s.now);
-  const { assignments, isLoading, refetch } = useFulfillment();
   const router = useRouter();
-  const [filter, setFilter] = useState<AssignmentFilter>('ALL');
-  const [onlyUrgent, setOnlyUrgent] = useState(false);
+  const outboxCount = useStaffPickingStore((s) => s.outbox.length);
 
-  const stats = useMemo(() => {
-    const total = assignments.length;
-    const urgent = assignments.filter((o) => getRemainingMinutes(o.assignedAt, now) <= 5).length;
-    const pending = assignments.filter((o) => o.status === AssignmentStatus.PENDING).length;
-    return { total, urgent, pending };
-  }, [assignments, now]);
+  const queueQuery = useQuery({
+    queryKey: ['staff-order-queue'],
+    queryFn: () => staffOrdersApi.getQueue(),
+    enabled: user?.role === 'STAFF' || user?.role === 'ADMIN',
+    staleTime: 5000,
+  });
 
-  const filteredAssignments = useMemo(() => {
-    const base = assignments.filter((a) => {
-      if (filter !== 'ALL' && a.status !== filter) return false;
-      if (onlyUrgent && getRemainingMinutes(a.assignedAt, now) > 5) return false;
-      return true;
-    });
+  const issuesQuery = useQuery({
+    queryKey: ['staff-issues-my'],
+    queryFn: () => staffIssuesApi.my(),
+    staleTime: 5000,
+  });
 
-    const statusWeight = (s: AssignmentStatus) => {
-      if (s === AssignmentStatus.IN_PROGRESS) return 0;
-      if (s === AssignmentStatus.PENDING) return 1;
-      return 2;
-    };
+  const openIssuesCount = useMemo(() => {
+    const list = issuesQuery.data ?? [];
+    return list.filter((x) => (x.status ?? '').toUpperCase() === 'OPEN').length;
+  }, [issuesQuery.data]);
 
-    return [...base].sort((a, b) => {
-      const ra = getRemainingMinutes(a.assignedAt, now);
-      const rb = getRemainingMinutes(b.assignedAt, now);
-      if (ra !== rb) return ra - rb;
-      const wa = statusWeight(a.status);
-      const wb = statusWeight(b.status);
-      if (wa !== wb) return wa - wb;
-      return new Date(a.assignedAt).getTime() - new Date(b.assignedAt).getTime();
-    });
-  }, [assignments, filter, now, onlyUrgent]);
-
-  const handleOpenAssignment = useCallback(
-    (ord: OrderAssignment) => {
-      router.push(`/(staff)/orders/${ord.id}` as never);
-    },
-    [router]
-  );
-
-  const renderItem = useCallback(
-    ({ item }: { item: OrderAssignment }) => (
-      <OrderCard
-        order={item}
-        remainingMinutes={getRemainingMinutes(item.assignedAt, now)}
-        onAction={handleOpenAssignment}
-      />
-    ),
-    [handleOpenAssignment, now]
-  );
-
-  const keyExtractor = useCallback((item: OrderAssignment) => String(item.id), []);
+  const queueCount = queueQuery.data?.length ?? 0;
+  const queuePreview = useMemo(() => (queueQuery.data ?? []).slice(0, 3), [queueQuery.data]);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="p-6 pb-2 flex-row justify-between items-center">
         <View>
-          <Text className="text-slate-500 font-inter">Khu vực: Fulfillment Center A</Text>
-          <Text className="text-2xl font-outfit-bold text-slate-900">Chào, {user?.fullName}</Text>
+          <BrandMark size={34} />
+          <Text className="text-muted font-inter">Trung tâm vận hành</Text>
+          <Text className="text-2xl font-outfit-bold text-text">Chào, {user?.fullName}</Text>
         </View>
-        <Button 
-          label="" 
-          variant="ghost" 
-          onPress={() => refetch()} 
-          icon={<RefreshCw size={24} color="#64748B" />} 
-        />
+        <View className="flex-row" style={{ gap: 10 }}>
+          <Button
+            label=""
+            variant="ghost"
+            onPress={() => router.push('/(staff)/notifications' as never)}
+            icon={<Bell size={24} color="#64748B" />}
+          />
+          <Button
+            label=""
+            variant="ghost"
+            onPress={() => router.push('/(staff)/settings' as never)}
+            icon={<Settings size={24} color="#64748B" />}
+          />
+          <Button
+            label=""
+            variant="ghost"
+            onPress={() => {
+              void queueQuery.refetch();
+              void issuesQuery.refetch();
+            }}
+            icon={<RefreshCw size={24} color="#64748B" />}
+          />
+        </View>
       </View>
 
       <View className="px-6 pb-4">
-        <Card className="p-4 border border-slate-100 bg-white">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="font-outfit-bold text-slate-900">Lease Order Queue</Text>
-              <Text className="text-xs font-inter text-slate-500 mt-1">
-                Assign / Heartbeat / Release + Pick List offline-first
-              </Text>
+        <View className="mb-3 p-4 rounded-3xl border border-border bg-surface">
+          <Text className="text-sm font-inter text-muted">Tổng quan ca làm</Text>
+          <Text className="text-lg font-outfit-bold text-text mt-1">
+            {queueCount > 0 ? `${queueCount} đơn đang chờ xử lý` : 'Chưa có đơn cần xử lý'}
+          </Text>
+        </View>
+        <View style={{ gap: 12 }}>
+          <Card className="p-4">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1 pr-3">
+                <Text className="font-outfit-bold text-text">Hàng chờ nhận đơn</Text>
+                <Text className="text-xs font-inter text-muted mt-1">{queueCount} đơn sẵn sàng để nhận</Text>
+              </View>
+              <Pressable onPress={() => router.push('/(staff)/lease-queue' as never)} hitSlop={8}>
+                <Text className="text-sm font-inter-bold text-primary">Mở</Text>
+              </Pressable>
             </View>
-            <Pressable onPress={() => router.push('/(staff)/lease-queue' as never)} hitSlop={8}>
-              <Text className="text-sm font-inter-bold text-blue-600">Mở</Text>
-            </Pressable>
-          </View>
-        </Card>
+            {queueQuery.isError ? (
+              <Text className="text-xs font-inter text-danger mt-3">Không tải được hàng chờ.</Text>
+            ) : queuePreview.length > 0 ? (
+              <View className="mt-3" style={{ gap: 8 }}>
+                {queuePreview.map((o) => (
+                  <View key={o.id} className="flex-row items-center justify-between">
+                    <Text className="text-sm font-inter text-text" numberOfLines={1}>
+                      {o.orderNumber || `ID nội bộ #${o.id}`}
+                    </Text>
+                    <Text className="text-xs font-inter text-muted">
+                      {o.totalItems != null ? `${o.totalItems} món` : '—'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text className="text-xs font-inter text-muted mt-3">Chưa có đơn mới.</Text>
+            )}
+          </Card>
+
+          <Card className="p-4">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1 pr-3">
+                <Text className="font-outfit-bold text-text">Sự cố vận hành</Text>
+                <Text className="text-xs font-inter text-muted mt-1">{openIssuesCount > 0 ? `${openIssuesCount} sự cố đang mở` : 'Chưa có sự cố'}</Text>
+              </View>
+              <Pressable onPress={() => router.push('/(staff)/issues' as never)} hitSlop={8}>
+                <Text className="text-sm font-inter-bold text-primary">Xem</Text>
+              </Pressable>
+            </View>
+          </Card>
+
+          <Card className="p-4">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1 pr-3">
+                <Text className="font-outfit-bold text-text">Hàng chờ offline</Text>
+                <Text className="text-xs font-inter text-muted mt-1">
+                  {outboxCount > 0 ? `${outboxCount} bản ghi đang chờ đồng bộ` : 'Không có bản ghi chờ đồng bộ'}
+                </Text>
+              </View>
+              <Pressable onPress={() => router.push('/(staff)/settings' as never)} hitSlop={8}>
+                <Text className="text-sm font-inter-bold text-primary">Cài đặt</Text>
+              </Pressable>
+            </View>
+          </Card>
+
+        </View>
       </View>
 
-      {/* Metrics Row */}
       <View className="px-6 py-4 flex-row gap-x-3">
         <MetricCard 
           icon={<ClipboardList size={20} color="#2563EB" />} 
-          label="Cần xử lý" 
-          value={stats.pending} 
-          subLabel="Đơn mới gán"
+          label="Hàng chờ" 
+          value={queueCount} 
+          subLabel="Đơn sẵn sàng"
         />
         <MetricCard 
-          icon={<AlertTriangle size={20} color="#DC2626" />} 
-          label="Sắp trễ" 
-          value={stats.urgent} 
-          subLabel="Dưới 5 phút"
-          isDanger={stats.urgent > 0}
+          icon={<UploadCloud size={20} color="#F59E0B" />} 
+          label="Offline" 
+          value={outboxCount} 
+          subLabel="Chờ đồng bộ"
+          isWarning={outboxCount > 0}
         />
         <MetricCard 
-          icon={<Bell size={20} color="#F59E0B" />} 
-          label="Tổng gán" 
-          value={stats.total} 
-          subLabel="Đang quản lý"
-        />
-      </View>
-
-      <View className="px-6 pb-2">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row bg-slate-100 rounded-2xl p-1">
-            <FilterPill
-              label="Tất cả"
-              active={filter === 'ALL'}
-              onPress={() => setFilter('ALL')}
-            />
-            <FilterPill
-              label="Mới"
-              active={filter === AssignmentStatus.PENDING}
-              onPress={() => setFilter(AssignmentStatus.PENDING)}
-            />
-            <FilterPill
-              label="Đang làm"
-              active={filter === AssignmentStatus.IN_PROGRESS}
-              onPress={() => setFilter(AssignmentStatus.IN_PROGRESS)}
-            />
-          </View>
-
-          <Pressable
-            onPress={() => setOnlyUrgent((v) => !v)}
-            className={clsx(
-              'px-3 py-2 rounded-xl border',
-              onlyUrgent ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'
-            )}
-          >
-            <Text className={clsx('text-xs font-inter-bold', onlyUrgent ? 'text-red-700' : 'text-slate-600')}>
-              SLA ≤ 5p
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Priority Queue Section */}
-      <View className="flex-1 px-6">
-        <View className="flex-row justify-between items-center mb-4 mt-2">
-          <Text className="text-lg font-outfit-bold text-slate-800">Hàng đợi ưu tiên</Text>
-          <Text className="text-xs text-slate-400 font-inter italic">Cập nhật mỗi phút</Text>
-        </View>
-        
-        <FlashList
-          data={filteredAssignments}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          estimatedItemSize={210}
-          onRefresh={refetch}
-          refreshing={isLoading}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center pt-20">
-              <ClipboardList size={64} color="#CBD5E1" />
-              <Text className="text-slate-400 mt-4 font-inter">
-                {onlyUrgent || filter !== 'ALL' ? 'Không có đơn phù hợp bộ lọc' : 'Hiện chưa có đơn hàng nào được gán'}
-              </Text>
-            </View>
-          }
+          icon={<Siren size={20} color="#F43F5E" />} 
+          label="Sự cố" 
+          value={openIssuesCount} 
+          subLabel="Đang mở"
+          isWarning={openIssuesCount > 0}
         />
       </View>
     </SafeAreaView>
-  );
-}
-
-function FilterPill({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={clsx(
-        'px-3 py-2 rounded-xl',
-        active ? 'bg-white' : 'bg-transparent'
-      )}
-    >
-      <Text className={clsx('text-xs font-inter-bold', active ? 'text-slate-900' : 'text-slate-500')}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -238,19 +183,19 @@ function MetricCard({
   return (
     <Card 
       className={clsx(
-        'flex-1 p-3 border border-slate-100',
-        isDanger && 'bg-red-50 border-red-100',
-        isWarning && 'bg-amber-50 border-amber-100'
+        'flex-1 p-3 rounded-2xl',
+        isDanger && 'border border-danger bg-surface',
+        isWarning && 'border border-border bg-surface'
       )}
     >
       <View className="flex-row items-center mb-1">
         {icon}
-        <Text className="text-[10px] font-inter-bold text-slate-500 ml-1.5 uppercase">{label}</Text>
+        <Text className="text-[10px] font-inter-bold text-muted ml-1.5 uppercase">{label}</Text>
       </View>
-      <Text className={clsx('text-xl font-outfit-bold', isDanger ? 'text-danger' : 'text-slate-900')}>
+      <Text className={clsx('text-xl font-outfit-bold', isDanger ? 'text-danger' : 'text-text')}>
         {value}
       </Text>
-      <Text className="text-[9px] text-slate-400 font-inter">{subLabel}</Text>
+      <Text className="text-[9px] text-muted font-inter">{subLabel}</Text>
     </Card>
   );
 }

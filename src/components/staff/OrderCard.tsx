@@ -5,7 +5,7 @@ import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 import { Clock, MapPin, Package, Phone } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+import { safeNotification, NotificationFeedbackType } from '../../utils/safeHaptics';
 import { clsx } from 'clsx';
 
 interface OrderCardProps {
@@ -21,7 +21,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, remainingMinute
   // Trigger Haptics for critical orders on mount or when state changes
   React.useEffect(() => {
     if (isCritical) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      void safeNotification(NotificationFeedbackType.Error);
     }
   }, [isCritical]);
 

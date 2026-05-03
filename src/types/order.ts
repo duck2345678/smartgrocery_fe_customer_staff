@@ -38,3 +38,14 @@ export type Order = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type Voucher = {
+  id: number;
+  voucherCode: string;
+  description: string | null;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT' | string;
+  discountValue: number;
+  minOrderAmount: number | null;
+  maxDiscountAmount: number | null;
+  validUntil: string | null;
+};

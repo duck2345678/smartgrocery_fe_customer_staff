@@ -4,7 +4,7 @@ import { FulfillmentItem } from '../../types/fulfillment';
 import Card from '../ui/Card';
 import { Plus, Minus, Lock, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { clsx } from 'clsx';
-import * as Haptics from 'expo-haptics';
+import { safeImpact, ImpactFeedbackStyle } from '../../utils/safeHaptics';
 
 interface PickingItemCardProps {
   item: FulfillmentItem;
@@ -24,7 +24,7 @@ export default function PickingItemCard({
 
   const handleIncrement = () => {
     if (!isUnlocked) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void safeImpact(ImpactFeedbackStyle.Medium);
     onIncrement(item.id);
   };
 
@@ -32,7 +32,7 @@ export default function PickingItemCard({
     <Card 
       className={clsx(
         'mb-3 border-l-4 transition-all duration-300',
-        isCompleted ? 'border-l-success bg-green-50' : isUnlocked ? 'border-l-primary' : 'border-l-slate-300 opacity-60'
+        isCompleted ? 'border-l-success bg-surface' : isUnlocked ? 'border-l-primary bg-surface' : 'border-l-slate-300 opacity-60 bg-surface'
       )}
     >
       <View className="flex-row">
@@ -46,7 +46,7 @@ export default function PickingItemCard({
           <Text className="text-sm text-slate-500 font-inter mb-3">{item.variantName}</Text>
           
           <View className="flex-row items-center">
-            <Text className="text-slate-400 text-xs font-inter">Cần lấy: </Text>
+            <Text className="text-slate-400 text-xs font-inter">Số lượng cần lấy: </Text>
             <Text className="text-slate-900 font-inter-bold text-sm">{item.quantity}</Text>
           </View>
         </View>
@@ -54,13 +54,13 @@ export default function PickingItemCard({
         {/* Action / Count Area */}
         <View className="items-end justify-between ml-2">
           {!isUnlocked ? (
-            <View className="items-center justify-center bg-slate-100 w-24 h-24 rounded-2xl">
+            <View className="items-center justify-center bg-background border border-border w-24 h-24 rounded-2xl">
               <Lock size={20} color="#94A3B8" />
-              <Text className="text-[10px] text-slate-400 font-inter-bold mt-2 uppercase">Quét để mở</Text>
+              <Text className="text-[10px] text-slate-400 font-inter-bold mt-2 uppercase">Quét để mở khóa</Text>
             </View>
           ) : (
             <View className="items-center">
-              <View className="flex-row items-center bg-slate-100 rounded-xl p-1 mb-2">
+              <View className="flex-row items-center bg-background border border-border rounded-xl p-1 mb-2">
                 <TouchableOpacity 
                   onPress={() => onDecrement(item.id)}
                   disabled={item.pickedQuantity <= 0}

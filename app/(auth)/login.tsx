@@ -4,6 +4,7 @@ import { useAuthStore } from '../../src/store/authStore';
 import { authApi } from '../../src/api/auth';
 import Input from '../../src/components/ui/Input';
 import Button from '../../src/components/ui/Button';
+import BrandMark from '../../src/components/ui/BrandMark';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { getEmailError, getPasswordError, isLoginFormValid } from '../../src/utils/loginValidation';
 
@@ -38,7 +39,7 @@ export default function LoginScreen() {
       const response = await authApi.login(email, password);
       
       if (!response || !response.token || !response.user) {
-        Alert.alert('Đăng nhập thất bại', 'Phản hồi từ máy chủ không hợp lệ.');
+        Alert.alert('Đăng nhập thất bại', 'Phản hồi từ máy chủ không hợp lệ.', [{ text: 'Đóng' }]);
         return;
       }
 
@@ -52,7 +53,7 @@ export default function LoginScreen() {
         e instanceof Error
           ? e.message
           : 'Không thể đăng nhập. Vui lòng thử lại.';
-      Alert.alert('Đăng nhập thất bại', message);
+      Alert.alert('Đăng nhập thất bại', message, [{ text: 'Đóng' }]);
     } finally {
       setLoading(false);
     }
@@ -66,6 +67,7 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <View className="flex-1 justify-center p-6 mt-12">
           <View className="mb-10 items-center">
+            <BrandMark size={86} />
             <Text className="text-4xl font-outfit-bold text-primary">SmartGrocery</Text>
             <Text className="text-slate-500 font-inter mt-2">Chào mừng bạn quay trở lại!</Text>
           </View>

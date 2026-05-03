@@ -5,7 +5,7 @@ import { FulfillmentItem, AssignmentStatus } from '../../types/fulfillment';
 import PickingItemCard from './PickingItemCard';
 import BarcodeScanner from './BarcodeScanner';
 import { ScanBarcode, CheckCircle, PackageSearch } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+import { safeNotification, safeImpact, NotificationFeedbackType, ImpactFeedbackStyle } from '../../utils/safeHaptics';
 import { Audio } from 'expo-av';
 import { clsx } from 'clsx';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -114,7 +114,7 @@ export default function PickingWorkspace({
         const now = Date.now();
         if (now - lastFeedbackAtRef.current >= 500) {
           lastFeedbackAtRef.current = now;
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          void safeNotification(NotificationFeedbackType.Success);
           void successSoundRef.current?.replayAsync();
         }
         onIncrement(item.id);
@@ -122,7 +122,7 @@ export default function PickingWorkspace({
         const now = Date.now();
         if (now - lastFeedbackAtRef.current >= 500) {
           lastFeedbackAtRef.current = now;
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          void safeImpact(ImpactFeedbackStyle.Light);
           void successSoundRef.current?.replayAsync();
         }
       }
@@ -132,10 +132,10 @@ export default function PickingWorkspace({
       const now = Date.now();
       if (now - lastFeedbackAtRef.current >= 500) {
         lastFeedbackAtRef.current = now;
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        void safeNotification(NotificationFeedbackType.Error);
         void errorSoundRef.current?.replayAsync();
       }
-      Alert.alert('Lỗi', `Mã vạch ${barcode} không thuộc đơn hàng này.`);
+      Alert.alert('Lỗi', `Mã vạch ${barcode} không thuộc đơn hàng này.`, [{ text: 'Đóng' }]);
     }
   }, [items, onIncrement]);
 

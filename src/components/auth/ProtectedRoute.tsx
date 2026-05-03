@@ -5,7 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  role?: 'STAFF' | 'CUSTOMER';
+  role?: 'STAFF' | 'CUSTOMER' | 'ADMIN';
 }
 
 export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
@@ -15,6 +15,14 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
 
+  const roleSatisfied = React.useCallback((required: ProtectedRouteProps['role'], actual: ProtectedRouteProps['role']) => {
+    if (!required) return true;
+    if (!actual) return false;
+    if (required === actual) return true;
+    if (required === 'STAFF' && actual === 'ADMIN') return true;
+    return false;
+  }, []);
+
   React.useEffect(() => {
     if (!isHydrated) return;
 
@@ -22,8 +30,13 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
 
     if (!isAuthenticated || !user) {
       target = '/(auth)/login';
-    } else if (role && user.role !== role) {
-      target = user.role === 'STAFF' ? '/(staff)' : user.role === 'CUSTOMER' ? '/(customer)' : '/(auth)/login';
+    } else if (role && !roleSatisfied(role, user.role)) {
+      target =
+        user.role === 'STAFF' || user.role === 'ADMIN'
+            ? '/(staff)/lease-queue'
+            : user.role === 'CUSTOMER'
+              ? '/(customer)'
+              : '/(auth)/login';
     }
 
     if (!target) return;
@@ -32,7 +45,7 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
     if (isOnTarget) return;
 
     router.replace(target);
-  }, [isAuthenticated, isHydrated, pathname, role, router, user?.role]);
+  }, [isAuthenticated, isHydrated, pathname, role, roleSatisfied, router, user?.role]);
 
   if (!isHydrated) {
     return (
@@ -43,6 +56,6 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated || !user) return null;
-  if (role && user.role !== role) return null;
+  if (role && !roleSatisfied(role, user.role)) return null;
   return children;
 }

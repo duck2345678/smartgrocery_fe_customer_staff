@@ -6,8 +6,9 @@ import { fileApi } from '../../api/file';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import { Camera as CameraIcon, CheckCircle2, Package, X, RefreshCcw, Settings } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+import { safeNotification, NotificationFeedbackType } from '../../utils/safeHaptics';
 import { useIsFocused } from '@react-navigation/native';
+import { enqueuePendingProofUpload } from '../../utils/pendingUploads';
 
 interface PackingWorkspaceProps {
   assignment: OrderAssignment;
@@ -43,18 +44,18 @@ export default function PackingWorkspace({
         if (photo?.uri) {
           setPhotoUri(photo.uri);
           setShowCamera(false);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          void safeNotification(NotificationFeedbackType.Success);
         }
       } catch (e) {
         console.error('Photo capture error:', e);
-        Alert.alert('Lỗi', 'Không thể chụp ảnh. Vui lòng thử lại.');
+        Alert.alert('Lỗi', 'Không thể chụp ảnh. Vui lòng thử lại.', [{ text: 'Đóng' }]);
       }
     }
   };
 
   const handleFinish = async () => {
     if (!photoUri) {
-      Alert.alert('Yêu cầu', 'Bạn cần chụp ảnh bằng chứng đóng gói trước khi hoàn tất.');
+      Alert.alert('Yêu cầu', 'Bạn cần chụp ảnh bằng chứng đóng gói trước khi hoàn tất.', [{ text: 'Đóng' }]);
       return;
     }
     if (isUploading || isUpdating) return;
@@ -64,10 +65,11 @@ export default function PackingWorkspace({
       // Tech Lead's Rule: Use Multipart Upload
       const { url } = await fileApi.upload(photoUri);
       await onUpdateStatus(AssignmentStatus.COMPLETED, url);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void safeNotification(NotificationFeedbackType.Success);
     } catch (e) {
       console.error('Finalize error:', e);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra trong quá trình xác nhận đơn hàng.');
+      await enqueuePendingProofUpload({ assignmentId: assignment.id, fileUri: photoUri, createdAt: Date.now() });
+      Alert.alert('Đã lưu offline', 'Không thể tải ảnh lên. Ảnh đã được lưu vào hàng chờ, vào Cài đặt để đồng bộ lại.', [{ text: 'Đóng' }]);
     } finally {
       setIsUploading(false);
     }
@@ -116,12 +118,12 @@ export default function PackingWorkspace({
         <Text className="text-2xl font-outfit-bold text-slate-900">Xác nhận bằng chứng</Text>
       </View>
 
-      <Card className="mb-6 p-4 bg-blue-50 border border-blue-100">
+      <Card className="mb-6 p-4 bg-surface border border-border">
         <View className="flex-row items-center mb-3">
-          <Package size={20} color="#2563EB" />
-          <Text className="ml-2 font-inter-bold text-blue-800">Kiểm tra lần cuối</Text>
+          <Package size={20} color="#16A34A" />
+          <Text className="ml-2 font-inter-bold text-primary">Kiểm tra lần cuối</Text>
         </View>
-        <Text className="text-xs text-blue-600 font-inter">
+        <Text className="text-xs text-slate-600 font-inter">
           Đảm bảo toàn bộ {assignment.totalItems} sản phẩm đã được đặt vào túi/thùng và đóng gói kỹ càng.
         </Text>
       </Card>
@@ -151,7 +153,7 @@ export default function PackingWorkspace({
             className="w-full h-64 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 items-center justify-center"
           >
             <View className="bg-white p-4 rounded-full shadow-sm mb-4">
-              <CameraIcon size={32} color="#2563EB" />
+              <CameraIcon size={32} color="#16A34A" />
             </View>
             <Text className="text-slate-600 font-inter-bold">Chạm để chụp ảnh</Text>
             <Text className="text-slate-400 text-xs mt-1">Ảnh chụp kiện hàng thực tế</Text>

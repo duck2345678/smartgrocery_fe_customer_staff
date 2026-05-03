@@ -20,20 +20,24 @@ const Card: React.FC<CardProps> = ({
   ...props 
 }) => {
   const variantStyles = {
-    elevated: 'bg-surface shadow-sm shadow-slate-400',
+    elevated: 'bg-surface border border-border',
     outline: 'bg-transparent border border-border',
-    flat: 'bg-slate-100',
+    flat: 'bg-surface2 border border-border/60',
   };
 
   return (
     <View 
       className={cn(
-        'rounded-2xl p-4',
+        'rounded-3xl p-4',
         variantStyles[variant],
         className
       )}
       style={variant === 'elevated' ? {
-        elevation: 3, // For Android performance
+        elevation: 4,
+        shadowColor: '#0F172A',
+        shadowOpacity: 0.08,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 4 },
       } : {}}
       {...props}
     >

@@ -10,7 +10,7 @@ export default function CartButton({ color = '#0F172A' }: { color?: string }) {
   return (
     <Pressable
       onPress={() => router.push('/(customer)/cart' as never)}
-      className="relative w-10 h-10 rounded-full bg-white border border-slate-200 items-center justify-center"
+      className="relative w-10 h-10 rounded-full bg-surface border border-border items-center justify-center"
       hitSlop={10}
     >
       <ShoppingCart size={20} color={color} />

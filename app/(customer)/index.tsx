@@ -16,6 +16,45 @@ import { productApi } from '../../src/api/products';
 import { useRouter } from 'expo-router';
 import { type Product } from '../../src/types/product';
 
+function ProductTile({ item, onPress }: { item: Product; onPress: () => void }) {
+  const discountPercent = item.discountPercent ?? 0;
+  const hasDiscount = discountPercent > 0;
+  return (
+    <View className="bg-surface border border-border rounded-3xl overflow-hidden">
+      <View className="w-full h-28 bg-surface2">
+        <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="disk" transition={200} />
+        {hasDiscount ? (
+          <View className="absolute top-2 left-2 px-2 py-1 rounded-full bg-red-500">
+            <Text className="text-white text-[10px] font-inter-bold">-{discountPercent}%</Text>
+          </View>
+        ) : null}
+      </View>
+      <View className="p-3">
+        <Text className="text-sm font-inter-bold text-text" numberOfLines={1}>
+          {item.name}
+        </Text>
+        <Text className="text-[11px] font-inter text-muted mt-1" numberOfLines={1}>
+          {item.category}
+        </Text>
+        <View className="flex-row items-end justify-between mt-2">
+          <View>
+            <Text className={`text-base font-outfit-bold ${hasDiscount ? 'text-red-600' : 'text-text'}`}>{item.price.toLocaleString('vi-VN')}₫</Text>
+            {hasDiscount ? (
+              <Text className="text-[11px] font-inter text-muted line-through">
+                {(item.originalPrice ?? item.price).toLocaleString('vi-VN')}₫
+              </Text>
+            ) : null}
+          </View>
+          <Text className="text-[11px] font-inter-bold text-muted">{item.stock > 0 ? `Còn ${item.stock}` : 'Hết'}</Text>
+        </View>
+        <View className="mt-2">
+          <Button label="Xem" variant="outline" onPress={onPress} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function CustomerHome() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -73,8 +112,11 @@ export default function CustomerHome() {
       <AiNudge />
       <CategoryGrid />
       <DealsRow />
-      <View className="px-6 pb-3">
-        <Text className="text-base font-outfit-bold text-slate-900">Sản phẩm hàng ngày</Text>
+      <View className="px-6 pb-3 flex-row items-center justify-between">
+        <Text className="text-base font-outfit-bold text-text">Sản phẩm hằng ngày</Text>
+        <View className="px-3 py-1 rounded-full border border-border bg-surface">
+          <Text className="text-[11px] font-inter text-muted">{dailyProducts.length} sản phẩm</Text>
+        </View>
       </View>
     </View>
   );
@@ -82,7 +124,7 @@ export default function CustomerHome() {
   return (
     <View className="flex-1 bg-background">
       <HomeHeader />
-      <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      <Animated.View style={{ flex: 1, opacity, transform: [{ translateY }] }}>
         <FlashList
           data={dailyProducts}
           numColumns={columns}
@@ -102,42 +144,7 @@ export default function CustomerHome() {
             const marginRight = col === columns - 1 ? paddingX : gap;
             return (
               <View style={{ width: itemWidth, marginLeft, marginRight, marginBottom: gap }}>
-                <View
-                  className="bg-white border border-slate-100 rounded-2xl overflow-hidden"
-                >
-                  <View className="w-full h-28 bg-slate-100">
-                    <Image
-                      source={{ uri: item.imageUrl }}
-                      style={{ width: '100%', height: '100%' }}
-                      contentFit="cover"
-                      cachePolicy="disk"
-                      transition={200}
-                    />
-                  </View>
-                  <View className="p-3">
-                    <Text className="text-sm font-inter-bold text-slate-900" numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text className="text-[11px] font-inter text-slate-500 mt-1" numberOfLines={1}>
-                      {item.category}
-                    </Text>
-                    <View className="flex-row items-end justify-between mt-2">
-                      <Text className="text-base font-outfit-bold text-slate-900">
-                        {item.price.toLocaleString('vi-VN')}₫
-                      </Text>
-                      <Text className="text-[11px] font-inter-bold text-slate-600">
-                        {item.stock > 0 ? `Còn ${item.stock}` : 'Hết'}
-                      </Text>
-                    </View>
-                    <View className="mt-2">
-                      <Button
-                        label="Xem"
-                        variant="outline"
-                        onPress={() => router.push(`/(customer)/products/${item.id}` as never)}
-                      />
-                    </View>
-                  </View>
-                </View>
+                <ProductTile item={item} onPress={() => router.push(`/(customer)/products/${item.id}` as never)} />
               </View>
             );
           }}
@@ -152,8 +159,8 @@ export default function CustomerHome() {
               </View>
             ) : dailyQuery.isError ? (
               <View className="px-6">
-                <View className="bg-white border border-slate-100 rounded-2xl p-4">
-                  <Text className="text-sm font-inter text-slate-600">Không tải được sản phẩm.</Text>
+                <View className="bg-surface border border-border rounded-3xl p-4">
+                  <Text className="text-sm font-inter text-muted">Không tải được sản phẩm.</Text>
                   <View className="mt-3">
                     <Button label="Thử lại" onPress={() => void dailyQuery.refetch()} variant="outline" />
                   </View>
@@ -161,7 +168,7 @@ export default function CustomerHome() {
               </View>
             ) : (
               <View className="px-6">
-                <Text className="text-slate-400 font-inter">Chưa có sản phẩm.</Text>
+                <Text className="text-muted font-inter">Chưa có sản phẩm.</Text>
               </View>
             )
           }
@@ -180,7 +187,7 @@ export default function CustomerHome() {
               </View>
             ) : (
               <View className="px-6 mt-2 pb-6 items-center">
-                <Text className="text-xs font-inter text-slate-400">Bạn đã xem hết sản phẩm.</Text>
+                <Text className="text-xs font-inter text-muted">Bạn đã xem hết sản phẩm.</Text>
               </View>
             )
           }

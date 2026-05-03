@@ -1,19 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Modal, Pressable, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { FlashList } from '@shopify/flash-list';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput } from '@gorhom/bottom-sheet';
+// BottomSheet removed — incompatible with Expo Go (requires react-native-worklets TurboModule)
 import Button from '../../../src/components/ui/Button';
 import Card from '../../../src/components/ui/Card';
 import Skeleton from '../../../src/components/ui/Skeleton';
 import BarcodeScanner from '../../../src/components/staff/BarcodeScanner';
 import { staffOrdersApi } from '../../../src/api/staffOrders';
+import { staffIssuesApi } from '../../../src/api/staffIssues';
 import { useStaffPickingStore } from '../../../src/store/staffPickingStore';
 import { clampInt } from '../../../src/utils/staffPickingUtils';
-import * as Haptics from 'expo-haptics';
+import { safeNotification, safeImpact, NotificationFeedbackType, ImpactFeedbackStyle } from '../../../src/utils/safeHaptics';
 import { Audio } from 'expo-av';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const parseLease = (leaseExpiresAt: string | null): number | null => {
   if (!leaseExpiresAt) return null;
@@ -65,8 +66,8 @@ export default function StaffPickListScreen() {
   const lastFeedbackAtRef = useRef(0);
   const successSoundRef = useRef<Audio.Sound | null>(null);
   const errorSoundRef = useRef<Audio.Sound | null>(null);
-  const issueSheetRef = useRef<BottomSheetModal | null>(null);
-  const issueSnapPoints = useMemo(() => ['45%'], []);
+  const [issueSheetVisible, setIssueSheetVisible] = useState(false);
+  // issueSnapPoints removed — no longer needed with Modal
 
   const pickListQuery = useQuery({
     queryKey: ['staff-pick-list', orderId],
@@ -153,7 +154,7 @@ export default function StaffPickListScreen() {
     },
     onError: (e) => {
       const err = e as Error & { status?: number };
-      Alert.alert('Lease hết hạn', err.message || 'Lease đã hết hạn hoặc bạn không còn quyền với đơn này.');
+      Alert.alert('Lease hết hạn', err.message || 'Lease đã hết hạn hoặc bạn không còn quyền với đơn này.', [{ text: 'Đóng' }]);
       clearSession();
       router.replace('/(staff)/lease-queue' as never);
     },
@@ -177,7 +178,7 @@ export default function StaffPickListScreen() {
       clearSession();
       router.replace('/(staff)/lease-queue' as never);
     },
-    onError: (e) => Alert.alert('Lỗi', (e as Error).message),
+    onError: (e) => Alert.alert('Lỗi', (e as Error).message, [{ text: 'Đóng' }]),
   });
 
   const completeMutation = useMutation({
@@ -186,7 +187,7 @@ export default function StaffPickListScreen() {
       setDisableControls(true);
       clearSession();
       setPayloadOpen(false);
-      Alert.alert('Thành công', 'Đã chốt nhặt hàng.');
+      Alert.alert('Thành công', 'Đã chốt nhặt hàng.', [{ text: 'Đóng' }]);
       router.replace('/(staff)/lease-queue' as never);
     },
     onError: (e) => {
@@ -194,10 +195,10 @@ export default function StaffPickListScreen() {
       const out = enqueueComplete();
       setPayloadOpen(false);
       if (out) {
-        Alert.alert('Đã lưu offline', `Không gửi được lên server. Payload đã được lưu và sẽ sync lại từ Queue.\n\n${err.message}`);
+        Alert.alert('Đã lưu offline', `Không gửi được lên máy chủ. Dữ liệu đã được lưu và sẽ đồng bộ lại từ Hàng chờ.\n\n${err.message}`, [{ text: 'Đóng' }]);
         router.replace('/(staff)/lease-queue' as never);
       } else {
-        Alert.alert('Lỗi', err.message);
+        Alert.alert('Lỗi', err.message, [{ text: 'Đóng' }]);
       }
     },
   });
@@ -220,6 +221,25 @@ export default function StaffPickListScreen() {
     staleTime: 0,
   });
 
+  const issueMutation = useMutation({
+    mutationFn: (input: { orderItemId: number; reason: string }) =>
+      staffIssuesApi.create({
+        orderId,
+        orderItemId: input.orderItemId,
+        issueType: 'OUT_OF_STOCK',
+        details: { reason: input.reason },
+      }),
+    onSuccess: () => {
+      clearSession();
+      setIssueSheetVisible(false);
+      setIssueOpenFor(null);
+      setIssueDraftReason('');
+      Alert.alert('Đã gửi', 'Sự cố đã được ghi nhận. Đơn đã được chuyển sang ON_HOLD.', [{ text: 'Đóng' }]);
+      router.replace('/(staff)/lease-queue' as never);
+    },
+    onError: (e) => Alert.alert('Lỗi', (e as Error).message, [{ text: 'Đóng' }]),
+  });
+
   const bottomBarHeight = 92 + insets.bottom;
 
   const playFeedback = useCallback(
@@ -229,16 +249,16 @@ export default function StaffPickListScreen() {
       lastFeedbackAtRef.current = nowTs;
 
       if (kind === 'success') {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        void safeNotification(NotificationFeedbackType.Success);
         void successSoundRef.current?.replayAsync();
         return;
       }
       if (kind === 'error') {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        void safeNotification(NotificationFeedbackType.Error);
         void errorSoundRef.current?.replayAsync();
         return;
       }
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void safeImpact(ImpactFeedbackStyle.Light);
       void successSoundRef.current?.replayAsync();
     },
     []
@@ -249,7 +269,7 @@ export default function StaffPickListScreen() {
       const st = useStaffPickingStore.getState().session?.itemsById?.[orderItemId];
       setIssueOpenFor(orderItemId);
       setIssueDraftReason(st?.reason ?? '');
-      issueSheetRef.current?.present();
+      setIssueSheetVisible(true);
     },
     []
   );
@@ -267,7 +287,7 @@ export default function StaffPickListScreen() {
       const index = items.findIndex((it) => it.sku === clean || (it.barcode ? it.barcode === clean : false));
       if (index < 0) {
         playFeedback('error');
-        Alert.alert('Sai mã', `Mã ${clean} không thuộc pick-list.`);
+        Alert.alert('Sai mã', `Mã ${clean} không thuộc danh sách nhặt.`, [{ text: 'Đóng' }]);
         return;
       }
 
@@ -310,15 +330,15 @@ export default function StaffPickListScreen() {
 
   const handleComplete = useCallback(() => {
     if (!payload) {
-      Alert.alert('Thiếu dữ liệu', 'Không có payload để gửi.');
+      Alert.alert('Thiếu dữ liệu', 'Không có dữ liệu để gửi.', [{ text: 'Đóng' }]);
       return;
     }
     setPayloadOpen(true);
   }, [payload]);
 
   const handlePark = useCallback(() => {
-    Alert.alert('Tạm gác đơn', 'Thả lease để quay lại Queue nhận đơn khác?', [
-      { text: 'Huỷ', style: 'cancel' },
+    Alert.alert('Tạm gác đơn', 'Thả lease để quay lại Hàng chờ nhận đơn khác?', [
+      { text: 'Hủy', style: 'cancel' },
       { text: 'Tạm gác', style: 'destructive', onPress: () => releaseMutation.mutate() },
     ]);
   }, [releaseMutation]);
@@ -326,7 +346,7 @@ export default function StaffPickListScreen() {
   if (orderId === 0) {
     return (
       <SafeAreaView className="flex-1 bg-background justify-center items-center p-6">
-        <Text className="font-outfit-bold text-slate-900 text-lg">Order ID không hợp lệ</Text>
+        <Text className="font-outfit-bold text-slate-900 text-lg">ID đơn hàng không hợp lệ</Text>
         <View className="mt-4 w-full">
           <Button label="Quay lại" variant="outline" onPress={() => router.back()} />
         </View>
@@ -338,14 +358,14 @@ export default function StaffPickListScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <Stack.Screen
         options={{
-          title: `Pick List #${orderId}`,
+          title: `Danh sách nhặt #${orderId}`,
           headerRight: () => (
             <Button
-              label="Release"
+              label="Thả đơn"
               variant="ghost"
               onPress={() => {
                 Alert.alert('Thả đơn', 'Bạn muốn thả đơn này?', [
-                  { text: 'Huỷ', style: 'cancel' },
+                  { text: 'Hủy', style: 'cancel' },
                   { text: 'Thả', style: 'destructive', onPress: () => releaseMutation.mutate() },
                 ]);
               }}
@@ -451,13 +471,43 @@ export default function StaffPickListScreen() {
                         <Text className="font-outfit-bold text-white">+</Text>
                       </Pressable>
                     </View>
+
+                    <View className="mt-2 flex-row" style={{ gap: 8 }}>
+                      <Pressable
+                        disabled={disableControls}
+                        onPress={() => {
+                          setPickedQuantity(it.orderItemId, ordered);
+                          playFeedback('success');
+                        }}
+                        className="px-3 py-2 rounded-full bg-slate-100"
+                      >
+                        <Text className="text-[11px] font-inter-bold text-slate-700">Đủ</Text>
+                      </Pressable>
+                      <Pressable
+                        disabled={disableControls}
+                        onPress={() => {
+                          setPickedQuantity(it.orderItemId, 0);
+                          if (!st?.reason?.trim()) setReason(it.orderItemId, 'Hủy dòng');
+                          playFeedback('light');
+                        }}
+                        className="px-3 py-2 rounded-full bg-slate-100"
+                      >
+                        <Text className="text-[11px] font-inter-bold text-slate-700">0</Text>
+                      </Pressable>
+                    </View>
+
+                    {picked > 0 && picked < ordered ? (
+                      <Text className="mt-2 text-[11px] font-inter text-amber-700">Giao một phần</Text>
+                    ) : picked === 0 ? (
+                      <Text className="mt-2 text-[11px] font-inter text-slate-500">Nhập 0 để hủy dòng</Text>
+                    ) : null}
                   </View>
                 </View>
 
                 {showSubToggle ? (
                   <View className="mt-4">
                     <View className="flex-row items-center justify-between">
-                      <Text className="text-sm font-inter-bold text-slate-800">Substitute</Text>
+                      <Text className="text-sm font-inter-bold text-slate-800">Thay thế</Text>
                       <Pressable
                         disabled={disableControls || !canSub}
                         onPress={() => {
@@ -465,10 +515,10 @@ export default function StaffPickListScreen() {
                           setSubstitution(it.orderItemId, next);
                           if (next) setSubOpenFor(it.orderItemId);
                         }}
-                        className={`px-3 py-2 rounded-full ${isSub ? 'bg-emerald-500' : 'bg-slate-100'}`}
+                        className={`px-3 py-2 rounded-full ${isSub ? 'bg-primary' : 'bg-slate-100'}`}
                       >
                         <Text className={`text-xs font-inter-bold ${isSub ? 'text-white' : 'text-slate-700'}`}>
-                          {isSub ? 'ON' : 'OFF'}
+                          {isSub ? 'BẬT' : 'TẮT'}
                         </Text>
                       </Pressable>
                     </View>
@@ -490,7 +540,7 @@ export default function StaffPickListScreen() {
                           editable={!disableControls}
                           value={st?.reason ?? ''}
                           onChangeText={(v) => setReason(it.orderItemId, v)}
-                          placeholder="Reason"
+                          placeholder="Lý do"
                           placeholderTextColor="#94A3B8"
                           className="px-4 py-3 rounded-2xl border border-slate-200 bg-white font-inter text-slate-900"
                         />
@@ -500,9 +550,9 @@ export default function StaffPickListScreen() {
                         editable={!disableControls}
                         value={st?.reason ?? ''}
                         onChangeText={(v) => setReason(it.orderItemId, v)}
-                        placeholder="Reason (optional)"
+                        placeholder="Lý do (không bắt buộc)"
                         placeholderTextColor="#94A3B8"
-                        className="mt-3 px-4 py-3 rounded-2xl border border-slate-200 bg-white font-inter text-slate-900"
+                        className="mt-3 px-4 py-3 rounded-2xl border border-border bg-surface font-inter text-text"
                       />
                     )}
                   </View>
@@ -514,7 +564,7 @@ export default function StaffPickListScreen() {
       )}
 
       <View
-        className="absolute left-0 right-0 bottom-0 bg-white border-t border-slate-200"
+        className="absolute left-0 right-0 bottom-0 bg-surface border-t border-border"
         style={{ paddingBottom: Math.max(insets.bottom, 12) }}
       >
         <View className="px-4 pt-4 pb-4 flex-row" style={{ gap: 12 }}>
@@ -522,7 +572,7 @@ export default function StaffPickListScreen() {
             onPress={() => setIsScannerOpen(true)}
             className="flex-1 bg-primary py-4 rounded-2xl flex-row justify-center items-center"
           >
-            <Text className="text-white font-outfit-bold text-base">Quét Barcode</Text>
+            <Text className="text-white font-outfit-bold text-base">Quét mã vạch</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -533,7 +583,7 @@ export default function StaffPickListScreen() {
                 ? 'bg-slate-200'
                 : hasIssues
                   ? 'bg-amber-500'
-                  : 'bg-emerald-500'
+                  : 'bg-primary'
             }`}
           >
             <Text
@@ -541,22 +591,22 @@ export default function StaffPickListScreen() {
                 disableControls || completeMutation.isPending ? 'text-slate-500' : 'text-white'
               }`}
             >
-              {completeMutation.isPending ? 'Đang gửi...' : hasIssues ? 'Tạm gác (Park)' : 'Complete'}
+              {completeMutation.isPending ? 'Đang gửi…' : hasIssues ? 'Tạm gác' : 'Hoàn tất'}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View className="px-4 pb-2">
           <Button
-            label={hasIssues ? 'Hoàn tất (Override)' : 'Tạm gác (Release)'}
+            label={hasIssues ? 'Hoàn tất (override)' : 'Tạm gác (thả lease)'}
             variant="ghost"
             onPress={() => {
               if (hasIssues) {
                 handleComplete();
                 return;
               }
-              Alert.alert('Tạm gác đơn', 'Thả lease để quay lại Queue nhận đơn khác?', [
-                { text: 'Huỷ', style: 'cancel' },
+              Alert.alert('Tạm gác đơn', 'Thả lease để quay lại Hàng chờ nhận đơn khác?', [
+                { text: 'Hủy', style: 'cancel' },
                 { text: 'Thả', style: 'destructive', onPress: () => releaseMutation.mutate() },
               ]);
             }}
@@ -564,19 +614,24 @@ export default function StaffPickListScreen() {
         </View>
       </View>
 
-      <BottomSheetModal
-        ref={issueSheetRef}
-        snapPoints={issueSnapPoints}
-        backdropComponent={(p) => <BottomSheetBackdrop {...p} disappearsOnIndex={-1} appearsOnIndex={0} />}
-        enablePanDownToClose
-        onDismiss={() => {
+      <Modal
+        visible={issueSheetVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setIssueSheetVisible(false);
           setIssueOpenFor(null);
           setIssueDraftReason('');
         }}
       >
-        <View className="px-5 pt-2">
-          <Text className="font-outfit-bold text-slate-900 text-lg">Báo cáo thiếu hàng</Text>
-          <Text className="text-xs font-inter text-slate-500 mt-1">Ghi chú sẽ được gửi kèm khi Complete Picking.</Text>
+        <Pressable className="flex-1 bg-black/40" onPress={() => {
+          setIssueSheetVisible(false);
+          setIssueOpenFor(null);
+          setIssueDraftReason('');
+        }} />
+        <View className="bg-surface rounded-t-3xl px-5 pt-4 pb-8">
+          <Text className="font-outfit-bold text-text text-lg">Báo cáo thiếu hàng</Text>
+          <Text className="text-xs font-inter text-muted mt-1">Ghi chú sẽ được gửi kèm khi hoàn tất nhặt hàng.</Text>
 
           <View className="mt-4 flex-row flex-wrap" style={{ gap: 10 }}>
             {['Hết hàng', 'Hư hỏng', 'Sai kệ / Sai mã', 'Khác'].map((x) => (
@@ -591,7 +646,7 @@ export default function StaffPickListScreen() {
           </View>
 
           <View className="mt-4">
-            <BottomSheetTextInput
+            <TextInput
               value={issueDraftReason}
               onChangeText={setIssueDraftReason}
               placeholder="Mô tả nhanh (vd: hết hàng ở kệ A3, còn 0...)"
@@ -604,7 +659,11 @@ export default function StaffPickListScreen() {
 
           <View className="mt-4 flex-row" style={{ gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <Button label="Đóng" variant="outline" onPress={() => issueSheetRef.current?.dismiss()} />
+              <Button label="Đóng" variant="outline" onPress={() => {
+                setIssueSheetVisible(false);
+                setIssueOpenFor(null);
+                setIssueDraftReason('');
+              }} />
             </View>
             <View style={{ flex: 1 }}>
               <Button
@@ -615,10 +674,27 @@ export default function StaffPickListScreen() {
                     setIssueReported(issueOpenFor, Boolean(issueDraftReason.trim()));
                     playFeedback(issueDraftReason.trim() ? 'success' : 'light');
                   }
-                  issueSheetRef.current?.dismiss();
+                  setIssueSheetVisible(false);
+                  setIssueOpenFor(null);
+                  setIssueDraftReason('');
                 }}
               />
             </View>
+          </View>
+
+          <View className="mt-3">
+            <Button
+              label={issueMutation.isPending ? 'Đang gửi…' : 'Gửi báo cáo (ON_HOLD)'}
+              onPress={() => {
+                if (issueOpenFor == null) return;
+                if (!issueDraftReason.trim()) {
+                  Alert.alert('Thiếu thông tin', 'Vui lòng nhập lý do để gửi báo cáo.', [{ text: 'Đóng' }]);
+                  return;
+                }
+                issueMutation.mutate({ orderItemId: issueOpenFor, reason: issueDraftReason.trim() });
+              }}
+              disabled={issueMutation.isPending}
+            />
           </View>
 
           {issueOpenFor != null ? (
@@ -630,7 +706,8 @@ export default function StaffPickListScreen() {
                   setIssueReported(issueOpenFor, false);
                   setIssueDraftReason('');
                   playFeedback('light');
-                  issueSheetRef.current?.dismiss();
+                  setIssueSheetVisible(false);
+                  setIssueOpenFor(null);
                 }}
               />
             </View>
@@ -644,18 +721,19 @@ export default function StaffPickListScreen() {
                 if (issueOpenFor == null) return;
                 setSubstitution(issueOpenFor, true);
                 setSubOpenFor(issueOpenFor);
-                issueSheetRef.current?.dismiss();
+                setIssueSheetVisible(false);
+                setIssueOpenFor(null);
               }}
             />
           </View>
         </View>
-      </BottomSheetModal>
+      </Modal>
 
       <Modal visible={payloadOpen} transparent animationType="fade" onRequestClose={() => setPayloadOpen(false)}>
         <View className="flex-1 bg-black/40 items-center justify-center px-6">
           <View className="bg-white rounded-3xl w-full p-5">
-            <Text className="font-outfit-bold text-slate-900 text-lg">Batch Payload</Text>
-            <Text className="text-xs font-inter text-slate-500 mt-1">Đây là JSON sẽ gửi lên server khi chốt.</Text>
+            <Text className="font-outfit-bold text-slate-900 text-lg">Dữ liệu gửi lên</Text>
+            <Text className="text-xs font-inter text-slate-500 mt-1">Đây là dữ liệu sẽ gửi lên máy chủ khi chốt.</Text>
 
             <View className="mt-4 max-h-[320px] border border-slate-200 rounded-2xl p-3 bg-slate-50">
               <ScrollView>
@@ -665,7 +743,7 @@ export default function StaffPickListScreen() {
 
             <View className="mt-4 flex-row" style={{ gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <Button label="Huỷ" variant="outline" onPress={() => setPayloadOpen(false)} />
+                <Button label="Hủy" variant="outline" onPress={() => setPayloadOpen(false)} />
               </View>
               <View style={{ flex: 1 }}>
                 <Button

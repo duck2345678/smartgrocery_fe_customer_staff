@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, memo } from 'react';
 import { Tabs } from 'expo-router';
 import { AppState, type AppStateStatus } from 'react-native';
-import { LayoutDashboard, ClipboardList } from 'lucide-react-native';
+import { LayoutDashboard, ClipboardList, User } from 'lucide-react-native';
 import { useSLAStore } from '../../src/store/slaStore';
 
 import { ProtectedRoute } from '../../src/components/auth/ProtectedRoute';
@@ -10,11 +10,16 @@ const TAB_SCREEN_OPTIONS = {
   tabBarActiveTintColor: '#2563EB',
   headerShown: false,
   tabBarStyle: {
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    height: 60,
-    paddingBottom: 8,
-    paddingTop: 8,
+    borderTopWidth: 0,
+    height: 68,
+    paddingBottom: 10,
+    paddingTop: 10,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 12,
   },
   tabBarLabelStyle: {
     fontFamily: 'Inter',
@@ -47,6 +52,30 @@ const StaffTabs = memo(function StaffTabs() {
         }}
       />
       <Tabs.Screen
+        name="issues"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="scanner-test"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="lease-queue"
         options={{
           href: null,
@@ -56,6 +85,13 @@ const StaffTabs = memo(function StaffTabs() {
         name="lease-orders"
         options={{
           href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Hồ sơ',
+          tabBarIcon: ({ color }: { color: string }) => <User size={24} color={color} />,
         }}
       />
     </Tabs>

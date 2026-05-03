@@ -11,8 +11,8 @@ export type UserDto = {
   role: 'CUSTOMER' | 'STAFF' | 'ADMIN';
 };
 
-const isSupportedRole = (role: UserDto['role'] | undefined | null): role is 'CUSTOMER' | 'STAFF' =>
-  role === 'CUSTOMER' || role === 'STAFF';
+const isSupportedRole = (role: UserDto['role'] | undefined | null): role is 'CUSTOMER' | 'STAFF' | 'ADMIN' =>
+  role === 'CUSTOMER' || role === 'STAFF' || role === 'ADMIN';
 
 type AuthState = {
   token: string | null;

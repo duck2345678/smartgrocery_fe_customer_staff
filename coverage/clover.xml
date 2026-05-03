@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1776537280574" clover="3.2.0">
-  <project timestamp="1776537280574" name="All files">
+<coverage generated="1776968643305" clover="3.2.0">
+  <project timestamp="1776968643305" name="All files">
     <metrics statements="15" coveredstatements="15" conditionals="15" coveredconditionals="15" methods="4" coveredmethods="4" elements="34" coveredelements="34" complexity="0" loc="15" ncloc="15" packages="1" files="1" classes="1"/>
     <file name="loginValidation.ts" path="C:\Users\ACER\Documents\1\smartgrocery_fe_customer_staff\src\utils\loginValidation.ts">
       <metrics statements="15" coveredstatements="15" conditionals="15" coveredconditionals="15" methods="4" coveredmethods="4"/>

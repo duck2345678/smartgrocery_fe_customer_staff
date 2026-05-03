@@ -67,7 +67,7 @@ export default function AiMealReviewScreen() {
   const handleApply = async () => {
     const picked = ingredientRows.filter((r) => (selected[r.productId] ?? true));
     if (picked.length === 0) {
-      Alert.alert('Thông báo', 'Bạn chưa chọn nguyên liệu nào.');
+      Alert.alert('Thông báo', 'Bạn chưa chọn nguyên liệu nào.', [{ text: 'Đóng' }]);
       return;
     }
 
@@ -91,7 +91,7 @@ export default function AiMealReviewScreen() {
         onPress={() => setSelected((s) => ({ ...s, [item.productId]: !(s[item.productId] ?? true) }))}
         className="mb-3"
       >
-        <Card className={clsx('p-4 border', isChecked ? 'border-emerald-200 bg-emerald-50' : 'border-slate-100 bg-white')}>
+        <Card className={clsx('p-4 border', isChecked ? 'border-primary bg-surface' : 'border-border bg-surface')}>
           <View className="flex-row items-start">
             <View className="mt-0.5">
               {isChecked ? <CheckCircle2 size={20} color="#22C55E" /> : <Circle size={20} color="#94A3B8" />}
@@ -105,7 +105,7 @@ export default function AiMealReviewScreen() {
                 {item.unit ? ` • ${item.unit}` : ''}
               </Text>
               {typeof stock === 'number' ? (
-                <Text className={clsx('text-xs font-inter mt-1', isOut ? 'text-red-600' : 'text-emerald-700')}>
+                <Text className={clsx('text-xs font-inter mt-1', isOut ? 'text-red-600' : 'text-primary')}>
                   {isOut ? 'Hết hàng' : `Còn ${stock}`}
                 </Text>
               ) : null}

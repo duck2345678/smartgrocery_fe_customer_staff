@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Linking } from 'react-native';
-import { CameraView, Camera } from 'expo-camera';
+import { View, Text, TouchableOpacity, Linking, BackHandler, ActivityIndicator } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
 import { X, Zap, ZapOff, Settings } from 'lucide-react-native';
 
@@ -16,17 +16,35 @@ export default function BarcodeScanner({
   isActive = true 
 }: BarcodeScannerProps) {
   const isFocused = useIsFocused();
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [torch, setTorch] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [showReadyHint, setShowReadyHint] = useState(false);
 
   useEffect(() => {
-    const getCameraPermissions = async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    };
-    getCameraPermissions();
-  }, []);
+    if (!permission) return;
+    if (!permission.granted && permission.canAskAgain) {
+      void requestPermission();
+    }
+  }, [permission, requestPermission]);
+
+  useEffect(() => {
+    if (!isFocused || !isActive) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [isActive, isFocused, onClose]);
+
+  useEffect(() => {
+    if (!isFocused || !isActive) return;
+    setIsCameraReady(false);
+    setShowReadyHint(false);
+    const timer = setTimeout(() => setShowReadyHint(true), 1800);
+    return () => clearTimeout(timer);
+  }, [isActive, isFocused]);
 
   const handleBarcodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
@@ -38,14 +56,14 @@ export default function BarcodeScanner({
     setTimeout(() => setScanned(false), 1200);
   };
 
-  if (hasPermission === null || hasPermission === false) {
+  if (!permission || permission.granted === false) {
     return (
       <View className="flex-1 justify-center items-center bg-slate-900 p-8">
         <View className="bg-red-500/20 p-4 rounded-full mb-6">
           <Settings size={48} color="#EF4444" />
         </View>
         <Text className="text-white text-xl font-outfit-bold text-center mb-2">
-          {hasPermission === null ? 'Đang yêu cầu...' : 'Quyền truy cập bị từ chối'}
+          {!permission ? 'Đang yêu cầu...' : 'Quyền truy cập bị từ chối'}
         </Text>
         <Text className="text-slate-400 text-center font-inter mb-10 leading-6">
           Chúng tôi cần quyền truy cập Camera để quét mã vạch sản phẩm. Vui lòng bật quyền này trong Cài đặt để tiếp tục.
@@ -70,15 +88,28 @@ export default function BarcodeScanner({
     );
   }
 
-  // Tech Lead's Lifecycle Guard: Only render CameraView when screen is focused
-  // This prevents memory leaks and battery drain in background.
   if (!isFocused || !isActive) {
-    return <View className="flex-1 bg-black" />;
+    return (
+      <View className="flex-1 bg-black items-center justify-center px-8">
+        <Text className="text-white font-inter text-center">
+          Camera chưa sẵn sàng. Vui lòng đóng và mở lại scanner.
+        </Text>
+        <TouchableOpacity
+          onPress={onClose}
+          className="mt-6 bg-white/15 py-3 px-6 rounded-2xl"
+        >
+          <Text className="text-white font-inter-bold">Đóng</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
     <View className="flex-1 bg-black">
       <CameraView
+        facing="back"
+        active={isFocused && isActive}
+        onCameraReady={() => setIsCameraReady(true)}
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
         barcodeScannerSettings={{
           barcodeTypes: [
@@ -104,15 +135,20 @@ export default function BarcodeScanner({
           </Text>
         </View>
 
+        {!isCameraReady ? (
+          <View className="absolute inset-0 items-center justify-center">
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text className="text-white font-inter mt-3">Đang khởi động camera...</Text>
+            {showReadyHint ? (
+              <Text className="text-slate-300 font-inter text-xs mt-2 px-8 text-center">
+                Nếu vẫn thấy màn hình đen, hãy bấm Đóng rồi mở lại scanner.
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Controls Overlay */}
-        <View className="absolute top-12 left-6 right-6 flex-row justify-between items-center">
-          <TouchableOpacity 
-            onPress={onClose}
-            className="w-12 h-12 rounded-full bg-black/50 items-center justify-center"
-          >
-            <X size={24} color="#FFF" />
-          </TouchableOpacity>
-          
+        <View className="absolute top-12 right-6">
           <TouchableOpacity 
             onPress={() => setTorch(!torch)}
             className="w-12 h-12 rounded-full bg-black/50 items-center justify-center"
@@ -121,6 +157,24 @@ export default function BarcodeScanner({
           </TouchableOpacity>
         </View>
       </CameraView>
+
+      <View className="absolute top-12 left-6">
+        <TouchableOpacity
+          onPress={onClose}
+          className="w-12 h-12 rounded-full bg-black/60 items-center justify-center"
+        >
+          <X size={24} color="#FFF" />
+        </TouchableOpacity>
+      </View>
+
+      <View className="absolute bottom-10 left-6 right-6">
+        <TouchableOpacity
+          onPress={onClose}
+          className="bg-white/20 py-3 rounded-2xl items-center"
+        >
+          <Text className="text-white font-inter-bold">Đóng scanner</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

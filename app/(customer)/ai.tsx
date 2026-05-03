@@ -72,8 +72,8 @@ export default function CustomerAIHub() {
       <ScrollView className="flex-1 p-6" contentContainerStyle={{ paddingBottom: 24 }}>
         <View className="flex-row items-start justify-between">
           <View className="flex-1 pr-4">
-            <Text className="text-xs font-inter-bold text-slate-400 uppercase">Smart AI</Text>
-            <Text className="text-2xl font-outfit-bold text-slate-900">Trợ lý mua sắm thông minh</Text>
+            <Text className="text-xs font-inter-bold text-muted uppercase">Smart AI</Text>
+            <Text className="text-2xl font-outfit-bold text-text">Trợ lý mua sắm thông minh</Text>
           </View>
           <CartButton />
         </View>
@@ -106,14 +106,14 @@ export default function CustomerAIHub() {
         </View>
 
         {result ? (
-          <Card className="mt-6 p-4 border border-slate-100">
-            <Text className="text-lg font-outfit-bold text-slate-900">{result.title}</Text>
+          <Card className="mt-6 p-4 border border-border">
+            <Text className="text-lg font-outfit-bold text-text">{result.title}</Text>
 
             <View className="mt-4 gap-y-2">
               {result.items.map((i) => (
                 <View key={`${result.mode}-${i.productId}`} className="flex-row items-center justify-between">
-                  <Text className="text-sm font-inter text-slate-700">{i.name}</Text>
-                  <Text className="text-sm font-inter-bold text-slate-900">
+                  <Text className="text-sm font-inter text-text">{i.name}</Text>
+                  <Text className="text-sm font-inter-bold text-text">
                     {i.price.toLocaleString('vi-VN')}₫ / {i.unit}
                   </Text>
                 </View>
@@ -123,7 +123,7 @@ export default function CustomerAIHub() {
             {showReasons ? (
               <View className="mt-4 gap-y-2">
                 {result.explanations.map((e, idx) => (
-                  <Text key={`${result.mode}-exp-${idx}`} className="text-xs font-inter text-slate-500">
+                  <Text key={`${result.mode}-exp-${idx}`} className="text-xs font-inter text-muted">
                     • {e}
                   </Text>
                 ))}
@@ -144,9 +144,9 @@ export default function CustomerAIHub() {
                   </Pressable>
                   <Pressable
                     onPress={() => setShowReasons((v) => !v)}
-                    className="px-4 py-3 rounded-xl border border-slate-200 bg-white"
+                    className="px-4 py-3 rounded-xl border border-border bg-surface"
                   >
-                    <Text className="text-slate-700 font-inter-bold text-sm">Xem lý do</Text>
+                    <Text className="text-text font-inter-bold text-sm">Xem lý do</Text>
                   </Pressable>
                 </>
               ) : (
@@ -184,12 +184,12 @@ function InstructionCard({
   loading: boolean;
 }) {
   return (
-    <Card className="p-4 border border-slate-100">
+    <Card className="p-4 border border-border">
       <View className="flex-row items-center">
         <View className="w-9 h-9 rounded-xl bg-emerald-50 items-center justify-center">{icon}</View>
         <View className="ml-3 flex-1">
-          <Text className="text-base font-outfit-bold text-slate-900">{title}</Text>
-          <Text className="text-xs font-inter text-slate-500 mt-0.5">{subtitle}</Text>
+          <Text className="text-base font-outfit-bold text-text">{title}</Text>
+          <Text className="text-xs font-inter text-muted mt-0.5">{subtitle}</Text>
         </View>
       </View>
       <View className="mt-4">

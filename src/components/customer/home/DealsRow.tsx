@@ -16,7 +16,9 @@ export default function DealsRow() {
     staleTime: 2 * 60 * 1000,
   });
 
-  const deals = useMemo(() => pickTopDiscounted(productsQuery.data ?? [], 10), [productsQuery.data]);
+  const deals = useMemo(() => {
+    return pickTopDiscounted(productsQuery.data ?? [], 10);
+  }, [productsQuery.data]);
 
   return (
     <View className="pb-4">
@@ -37,6 +39,12 @@ export default function DealsRow() {
         <View className="px-6">
           <View className="bg-white border border-slate-100 rounded-2xl p-4">
             <Text className="text-sm font-inter text-slate-600">Không tải được sản phẩm giảm giá.</Text>
+          </View>
+        </View>
+      ) : deals.length === 0 ? (
+        <View className="px-6">
+          <View className="bg-white border border-slate-100 rounded-2xl p-4">
+            <Text className="text-sm font-inter text-slate-600">Hiện chưa có sản phẩm giảm giá.</Text>
           </View>
         </View>
       ) : (
@@ -72,9 +80,16 @@ export default function DealsRow() {
                   <Text className="text-[11px] font-inter text-slate-500 mt-1" numberOfLines={1}>
                     {item.category}
                   </Text>
-                  <Text className="text-base font-outfit-bold text-slate-900 mt-2">
-                    {item.price.toLocaleString('vi-VN')}₫
-                  </Text>
+                  <View className="mt-2">
+                    <Text className="text-base font-outfit-bold text-red-600">
+                      {item.price.toLocaleString('vi-VN')}₫
+                    </Text>
+                    {typeof item.originalPrice === 'number' ? (
+                      <Text className="text-[11px] font-inter text-slate-400 line-through">
+                        {item.originalPrice.toLocaleString('vi-VN')}₫
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
               </Pressable>
             )}

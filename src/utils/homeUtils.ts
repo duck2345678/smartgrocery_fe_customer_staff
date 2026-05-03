@@ -1,41 +1,42 @@
 import { type Category } from '../api/products';
 import { type Product } from '../types/product';
+import bannerFlashSale from '../assets/banners/banner-flash-sale.png';
+import bannerComboDeal from '../assets/banners/banner-combo-deal.png';
+import bannerFreeship from '../assets/banners/banner-freeship.png';
 
 export type PromoBanner = {
   id: string;
   title: string;
   subtitle: string;
-  imageUrl: string;
+  imageUrl?: string;
+  imageSource?: number;
 };
 
 export const defaultBanners: PromoBanner[] = [
   {
     id: 'b1',
-    title: 'Flash Sale cuối tuần',
-    subtitle: 'Giảm đến 40% cho hàng tươi sống',
-    imageUrl: 'https://dummyimage.com/1200x600/22c55e/ffffff&text=Flash+Sale',
+    title: 'Flash Sale',
+    subtitle: 'Giảm giá giờ vàng, lên đến 50%',
+    imageSource: bannerFlashSale,
   },
   {
     id: 'b2',
-    title: 'Miễn phí vận chuyển',
-    subtitle: 'Đơn từ 199k',
-    imageUrl: 'https://dummyimage.com/1200x600/14b8a6/ffffff&text=Free+Ship',
+    title: 'Siêu Combo Deal',
+    subtitle: 'Tiết kiệm đến 30% cho combo thịt bò cao cấp',
+    imageSource: bannerComboDeal,
   },
   {
     id: 'b3',
-    title: 'Mua nhiều tiết kiệm',
-    subtitle: 'Combo gia đình 3–4 người',
-    imageUrl: 'https://dummyimage.com/1200x600/0ea5e9/ffffff&text=Combo+Deal',
+    title: 'Freeship toàn quốc',
+    subtitle: 'Miễn phí giao hàng cho đơn từ 200.000đ',
+    imageSource: bannerFreeship,
   },
 ];
 
-export const computePseudoDiscountPercent = (productId: number): number => {
-  const base = Math.abs(productId * 37) % 45;
-  return Math.max(5, base);
-};
-
 export const pickTopDiscounted = (products: Product[], maxCount: number): Array<Product & { discountPercent: number }> => {
-  const ranked = products.map((p) => ({ ...p, discountPercent: computePseudoDiscountPercent(p.id) }));
+  const ranked = products
+    .filter((p): p is Product & { discountPercent: number } => typeof p.discountPercent === 'number' && p.discountPercent > 0)
+    .map((p) => ({ ...p, discountPercent: p.discountPercent }));
   ranked.sort((a, b) => b.discountPercent - a.discountPercent);
   return ranked.slice(0, Math.max(0, maxCount));
 };

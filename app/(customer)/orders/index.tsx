@@ -25,17 +25,17 @@ export default function OrdersScreen() {
       <Pressable onPress={() => router.push(`/(customer)/orders/${item.id}` as never)}>
         <Card className="mb-3 p-4 border border-slate-100">
           <View className="flex-row items-center justify-between">
-            <Text className="text-xs font-inter-bold text-slate-400 uppercase">Đơn hàng</Text>
+            <Text className="text-xs font-inter-bold text-muted uppercase">Đơn hàng</Text>
             <View className={clsx('px-2.5 py-1 rounded-full border', statusInfo.bg, statusInfo.border)}>
               <Text className={clsx('text-[10px] font-inter-bold', statusInfo.color)}>
                 {statusInfo.label}
               </Text>
             </View>
           </View>
-          <Text className="text-lg font-outfit-bold text-slate-900 mt-1">{item.orderNumber}</Text>
+          <Text className="text-lg font-outfit-bold text-text mt-1">{item.orderNumber}</Text>
           <View className="flex-row items-center justify-between mt-3">
-            <Text className="text-sm font-inter text-slate-500">{new Date(item.createdAt).toLocaleString('vi-VN')}</Text>
-            <Text className="text-sm font-inter-bold text-slate-900">{item.totalAmount.toLocaleString('vi-VN')}₫</Text>
+            <Text className="text-sm font-inter text-muted">{new Date(item.createdAt).toLocaleString('vi-VN')}</Text>
+            <Text className="text-sm font-inter-bold text-text">{item.totalAmount.toLocaleString('vi-VN')}₫</Text>
           </View>
         </Card>
       </Pressable>
@@ -48,7 +48,7 @@ export default function OrdersScreen() {
         options={{
           headerShown: true,
           title: 'Đơn hàng',
-          headerStyle: { backgroundColor: '#FFFFFF' },
+          headerStyle: { backgroundColor: '#F8FAFC' },
           headerTitleStyle: { fontFamily: 'Outfit-Bold', fontSize: 18 },
         }}
       />
@@ -65,7 +65,7 @@ export default function OrdersScreen() {
             <View className="flex-1 items-center justify-center pt-24">
               {isError ? (
                 <View className="items-center">
-                  <Text className="text-slate-500 font-inter mb-4">
+                  <Text className="text-muted font-inter mb-4">
                     Không tải được đơn hàng.
                   </Text>
                   <Pressable
@@ -79,7 +79,7 @@ export default function OrdersScreen() {
               ) : (
                 <View className="items-center">
                   <ShoppingBag size={48} color="#CBD5E1" />
-                  <Text className="text-slate-400 font-inter mt-4">Chưa có đơn hàng nào.</Text>
+                  <Text className="text-muted font-inter mt-4">Chưa có đơn hàng nào.</Text>
                 </View>
               )}
             </View>

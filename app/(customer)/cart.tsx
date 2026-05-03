@@ -17,9 +17,9 @@ export default function CartScreen() {
   const data = useMemo(() => items, [items]);
 
   const renderItem = ({ item }: { item: CartItem }) => (
-    <Card className="mb-3 p-4 border border-slate-100">
+    <Card className="mb-3 p-4 border border-border">
       <View className="flex-row">
-        <View className="w-20 h-20 rounded-2xl bg-slate-100 overflow-hidden">
+        <View className="w-20 h-20 rounded-2xl bg-surface2 overflow-hidden">
           <Image
             source={{ uri: item.imageUrl }}
             style={{ width: '100%', height: '100%' }}
@@ -32,14 +32,14 @@ export default function CartScreen() {
           <Text className="text-base font-outfit-bold text-slate-900" numberOfLines={1}>
             {item.name}
           </Text>
-          <Text className="text-xs font-inter text-slate-500 mt-1">
+          <Text className="text-xs font-inter text-muted mt-1">
             {item.price.toLocaleString('vi-VN')}₫ / {item.unit}
           </Text>
 
           <View className="flex-row items-center justify-between mt-3">
             <View className="flex-1 pr-3">
-              <Text className="text-xs font-inter-bold text-slate-700">Cho phép thay thế tương đương</Text>
-              <Text className="text-[11px] font-inter text-slate-500 mt-0.5">
+              <Text className="text-xs font-inter-bold text-text">Cho phép thay thế tương đương</Text>
+              <Text className="text-[11px] font-inter text-muted mt-0.5">
                 Bật cho mặt hàng bạn không quá khắt khe về thương hiệu/loại.
               </Text>
             </View>
@@ -49,7 +49,7 @@ export default function CartScreen() {
                 try {
                   await updateAllowSubstitution({ cartItemId: item.cartItemId as number, allowSubstitution: v });
                 } catch (e) {
-                  Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể cập nhật tuỳ chọn thay thế.');
+                  Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể cập nhật tuỳ chọn thay thế.', [{ text: 'Đóng' }]);
                 }
               }}
               trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
@@ -58,37 +58,37 @@ export default function CartScreen() {
           </View>
 
           <View className="flex-row items-center justify-between mt-3">
-            <View className="flex-row items-center bg-slate-100 rounded-xl p-1">
+            <View className="flex-row items-center bg-surface2 rounded-xl p-1">
               <Pressable
                 onPress={async () => {
                   try {
                     await updateQuantity({ cartItemId: item.cartItemId as number, quantity: item.quantity - 1 });
                   } catch (e) {
-                    Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể cập nhật giỏ hàng.');
+                    Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể cập nhật giỏ hàng.', [{ text: 'Đóng' }]);
                   }
                 }}
                 className="p-2"
                 disabled={item.quantity <= 1}
                 style={{ opacity: item.quantity <= 1 ? 0.3 : 1 }}
               >
-                <Minus size={18} color="#0F172A" />
+                <Minus size={18} color="#334155" />
               </Pressable>
               <View className="px-3 min-w-[42px] items-center">
-                <Text className="text-lg font-outfit-bold text-slate-900">{item.quantity}</Text>
+                <Text className="text-lg font-outfit-bold text-text">{item.quantity}</Text>
               </View>
               <Pressable
                 onPress={async () => {
                   try {
                     await updateQuantity({ cartItemId: item.cartItemId as number, quantity: item.quantity + 1 });
                   } catch (e) {
-                    Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể cập nhật giỏ hàng.');
+                    Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể cập nhật giỏ hàng.', [{ text: 'Đóng' }]);
                   }
                 }}
                 className="p-2"
                 disabled={item.quantity >= item.stock}
                 style={{ opacity: item.quantity >= item.stock ? 0.3 : 1 }}
               >
-                <Plus size={18} color="#0F172A" />
+                <Plus size={18} color="#334155" />
               </Pressable>
             </View>
 
@@ -97,7 +97,7 @@ export default function CartScreen() {
                 try {
                   await removeItem({ cartItemId: item.cartItemId as number });
                 } catch (e) {
-                  Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể xoá sản phẩm.');
+                  Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể xoá sản phẩm.', [{ text: 'Đóng' }]);
                 }
               }}
               className="p-2"
@@ -116,7 +116,7 @@ export default function CartScreen() {
         options={{
           headerShown: true,
           title: 'Giỏ hàng',
-          headerStyle: { backgroundColor: '#FFFFFF' },
+          headerStyle: { backgroundColor: '#F8FAFC' },
           headerTitleStyle: { fontFamily: 'Outfit-Bold', fontSize: 18 },
         }}
       />
@@ -143,10 +143,10 @@ export default function CartScreen() {
         ) : null}
       </View>
 
-      <View className="p-6 bg-white border-t border-slate-100">
+      <View className="p-6 bg-surface border-t border-border">
         <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-sm font-inter text-slate-500">Tạm tính</Text>
-          <Text className="text-lg font-outfit-bold text-slate-900">{subtotal.toLocaleString('vi-VN')}₫</Text>
+          <Text className="text-sm font-inter text-muted">Tạm tính</Text>
+          <Text className="text-lg font-outfit-bold text-text">{subtotal.toLocaleString('vi-VN')}₫</Text>
         </View>
         <Button
           label="Thanh toán"

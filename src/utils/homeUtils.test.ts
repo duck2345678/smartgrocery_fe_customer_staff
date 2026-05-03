@@ -1,23 +1,18 @@
 import { describe, expect, test } from 'vitest';
-import { computePseudoDiscountPercent, pickAiNudgeProducts, pickCategoryGrid, pickTopDiscounted } from './homeUtils';
+import { pickAiNudgeProducts, pickCategoryGrid, pickTopDiscounted } from './homeUtils';
 
 describe('homeUtils', () => {
-  test('computePseudoDiscountPercent returns 5..44', () => {
-    for (const id of [1, 2, 3, 10, 999, 123456]) {
-      const v = computePseudoDiscountPercent(id);
-      expect(v).toBeGreaterThanOrEqual(5);
-      expect(v).toBeLessThanOrEqual(44);
-    }
-  });
-
   test('pickTopDiscounted sorts by discount desc and limits', () => {
     const products = Array.from({ length: 20 }).map((_, i) => ({
       id: i + 1,
       name: `P${i + 1}`,
       price: 1,
+      originalPrice: i < 12 ? 2 : undefined,
+      discountPercent: i < 12 ? 10 + i : undefined,
       unit: 'unit',
       imageUrl: '',
       stock: 1,
+      purchaseCount: 0,
       category: 'X',
     }));
 
@@ -36,10 +31,10 @@ describe('homeUtils', () => {
 
   test('pickAiNudgeProducts prefers eggs/milk when available', () => {
     const products = [
-      { id: 1, name: 'Cà rốt', price: 1, unit: 'unit', imageUrl: '', stock: 10, category: 'Rau' },
-      { id: 2, name: 'Trứng gà', price: 1, unit: 'unit', imageUrl: '', stock: 10, category: 'Sữa & trứng' },
-      { id: 3, name: 'Sữa tươi', price: 1, unit: 'unit', imageUrl: '', stock: 10, category: 'Sữa & trứng' },
-      { id: 4, name: 'Gạo ST25', price: 1, unit: 'unit', imageUrl: '', stock: 10, category: 'Nhu yếu phẩm' },
+      { id: 1, name: 'Cà rốt', price: 1, unit: 'unit', imageUrl: '', stock: 10, purchaseCount: 0, category: 'Rau' },
+      { id: 2, name: 'Trứng gà', price: 1, unit: 'unit', imageUrl: '', stock: 10, purchaseCount: 0, category: 'Sữa & trứng' },
+      { id: 3, name: 'Sữa tươi', price: 1, unit: 'unit', imageUrl: '', stock: 10, purchaseCount: 0, category: 'Sữa & trứng' },
+      { id: 4, name: 'Gạo ST25', price: 1, unit: 'unit', imageUrl: '', stock: 10, purchaseCount: 0, category: 'Nhu yếu phẩm' },
     ];
 
     const picked = pickAiNudgeProducts(products, 2);

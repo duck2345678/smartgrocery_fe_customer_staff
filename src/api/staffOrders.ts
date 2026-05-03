@@ -94,6 +94,18 @@ export const staffOrdersApi = {
     return data.map(mapQueueItem);
   },
 
+  getMyActive: async (): Promise<StaffOrderQueueItem | null> => {
+    try {
+      const res = await apiClient.get('/staff/orders/my-active');
+      if (!res.data) return null;
+      return mapQueueItem(res.data);
+    } catch (error) {
+      const e = error as { response?: { status?: number } };
+      if (e.response?.status === 404) return null;
+      throw error;
+    }
+  },
+
   assign: async (orderId: number): Promise<AssignOrderResponse> => {
     const res = await apiClient.post(`/staff/orders/${orderId}/assign`);
     return mapAssign(res.data);

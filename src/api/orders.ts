@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { type Order } from '../types/order';
+import { type Order, type Voucher } from '../types/order';
 
 const coerceOrders = (value: unknown): Order[] => {
   if (!value) return [];
@@ -28,12 +28,24 @@ export const orderApi = {
     addressId: number;
     paymentMethod: 'COD' | 'VNPAY';
     note?: string;
+    voucherCode?: string;
   }): Promise<Order> => {
     const response = await apiClient.post('/orders/checkout', {
       addressId: input.addressId,
       paymentMethod: input.paymentMethod,
       customerNote: input.note,
+      voucherCode: input.voucherCode,
     });
     return response.data as Order;
+  },
+
+  getAvailableVouchers: async (): Promise<Voucher[]> => {
+    const response = await apiClient.get('/orders/vouchers/available');
+    const value = response.data;
+    if (Array.isArray(value)) return value as Voucher[];
+    if (value && typeof value === 'object' && Array.isArray((value as { data?: unknown }).data)) {
+      return (value as { data: Voucher[] }).data;
+    }
+    return [];
   },
 };

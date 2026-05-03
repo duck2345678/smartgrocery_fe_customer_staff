@@ -25,58 +25,58 @@ export default function OrderDetail() {
         options={{
           headerShown: true,
           title: 'Chi tiết đơn',
-          headerStyle: { backgroundColor: '#FFFFFF' },
+          headerStyle: { backgroundColor: '#F8FAFC' },
           headerTitleStyle: { fontFamily: 'Outfit-Bold', fontSize: 18 },
         }}
       />
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-slate-500 font-inter">Đang tải đơn hàng...</Text>
+          <Text className="text-muted font-inter">Đang tải đơn hàng...</Text>
         </View>
       ) : isError || !order ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-slate-500 font-inter">Không tìm thấy đơn hàng.</Text>
+          <Text className="text-muted font-inter">Không tìm thấy đơn hàng.</Text>
         </View>
       ) : (
         <View className="gap-y-3">
-          <Card className="p-4 border border-slate-100">
-            <Text className="text-xs font-inter-bold text-slate-400 uppercase">Mã đơn</Text>
-            <Text className="text-xl font-outfit-bold text-slate-900 mt-1">{order.orderNumber}</Text>
-            <Text className="text-sm font-inter text-slate-500 mt-2">
+          <Card className="p-4 border border-border">
+            <Text className="text-xs font-inter-bold text-muted uppercase">Mã đơn</Text>
+            <Text className="text-xl font-outfit-bold text-text mt-1">{order.orderNumber}</Text>
+            <Text className="text-sm font-inter text-muted mt-2">
               {new Date(order.createdAt).toLocaleString('vi-VN')}
             </Text>
           </Card>
 
-          <Card className="p-4 border border-slate-100">
-            <Text className="text-sm font-inter-bold text-slate-800">Sản phẩm</Text>
+          <Card className="p-4 border border-border">
+            <Text className="text-sm font-inter-bold text-text">Sản phẩm</Text>
             <View className="mt-3 gap-y-2">
               {order.items.map((i) => (
                 <View key={i.id} className="flex-row items-start justify-between">
                   <View className="flex-1 pr-3">
-                    <Text className="text-sm font-inter text-slate-700" numberOfLines={1}>
+                    <Text className="text-sm font-inter text-text" numberOfLines={1}>
                       {i.productName} × {i.quantity}
                     </Text>
-                    <Text className="text-[11px] font-inter text-slate-500 mt-1">
+                    <Text className="text-[11px] font-inter text-muted mt-1">
                       {i.allowSubstitution ? 'Cho phép thay thế' : 'Không cho phép thay thế'}
                     </Text>
                   </View>
-                  <Text className="text-sm font-inter-bold text-slate-900">{i.totalPrice.toLocaleString('vi-VN')}₫</Text>
+                  <Text className="text-sm font-inter-bold text-text">{i.totalPrice.toLocaleString('vi-VN')}₫</Text>
                 </View>
               ))}
             </View>
-            <View className="h-px bg-slate-100 my-4" />
+            <View className="h-px bg-border my-4" />
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-inter text-slate-500">Tạm tính</Text>
-              <Text className="text-sm font-inter-bold text-slate-900">{order.subtotal.toLocaleString('vi-VN')}₫</Text>
+              <Text className="text-sm font-inter text-muted">Tạm tính</Text>
+              <Text className="text-sm font-inter-bold text-text">{order.subtotal.toLocaleString('vi-VN')}₫</Text>
             </View>
             <View className="flex-row items-center justify-between mt-2">
-              <Text className="text-sm font-inter text-slate-500">Phí ship</Text>
-              <Text className="text-sm font-inter-bold text-slate-900">{order.shippingFee.toLocaleString('vi-VN')}₫</Text>
+              <Text className="text-sm font-inter text-muted">Phí ship</Text>
+              <Text className="text-sm font-inter-bold text-text">{order.shippingFee.toLocaleString('vi-VN')}₫</Text>
             </View>
             <View className="flex-row items-center justify-between mt-3">
-              <Text className="text-sm font-inter-bold text-slate-700">Tổng</Text>
-              <Text className="text-lg font-outfit-bold text-slate-900">{order.totalAmount.toLocaleString('vi-VN')}₫</Text>
+              <Text className="text-sm font-inter-bold text-text">Tổng</Text>
+              <Text className="text-lg font-outfit-bold text-text">{order.totalAmount.toLocaleString('vi-VN')}₫</Text>
             </View>
           </Card>
         </View>

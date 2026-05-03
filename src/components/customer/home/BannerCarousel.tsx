@@ -65,7 +65,7 @@ export default function BannerCarousel({
         renderItem={({ item }) => (
           <Pressable className={clsx('rounded-3xl overflow-hidden bg-slate-100', width > 560 ? 'w-[520px]' : 'w-full')} style={{ width: itemWidth }}>
             <Image
-              source={{ uri: item.imageUrl }}
+              source={item.imageSource ?? { uri: item.imageUrl }}
               style={{ width: '100%', height: 160 }}
               contentFit="cover"
               cachePolicy="disk"
