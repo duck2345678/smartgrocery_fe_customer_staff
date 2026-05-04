@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
+import logo from '../../assets/smartgrocery-logo.png';
 
 export default function BrandMark({ size = 36 }: { size?: number }) {
   return (
@@ -15,7 +16,7 @@ export default function BrandMark({ size = 36 }: { size?: number }) {
         padding: 4,
       }}
     >
-      <Image source={require('../../assets/smartgrocery-logo.png')} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+      <Image source={logo} style={{ width: '100%', height: '100%' }} contentFit="contain" />
     </View>
   );
 }

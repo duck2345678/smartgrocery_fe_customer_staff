@@ -33,7 +33,7 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
     } else if (role && !roleSatisfied(role, user.role)) {
       target =
         user.role === 'STAFF' || user.role === 'ADMIN'
-            ? '/(staff)/lease-queue'
+            ? '/(staff)'
             : user.role === 'CUSTOMER'
               ? '/(customer)'
               : '/(auth)/login';

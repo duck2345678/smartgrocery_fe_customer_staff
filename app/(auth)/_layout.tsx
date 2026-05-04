@@ -18,7 +18,7 @@ export default function AuthLayout() {
   if (isAuthenticated && user) {
     const target: Href =
       user.role === 'STAFF' || user.role === 'ADMIN'
-          ? '/(staff)/lease-queue'
+          ? '/(staff)'
           : '/(customer)';
     return <Redirect href={target} />;
   }

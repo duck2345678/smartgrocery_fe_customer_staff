@@ -17,6 +17,29 @@ export type StaffOrderQueueItem = {
   createdAt?: string | null;
 };
 
+export type StaffCompletedOrderItem = {
+  orderId: number;
+  orderNumber: string;
+  completedAt: string;
+  status: string;
+};
+
+export type StaffPerformanceDaily = {
+  date: string;
+  completedCount: number;
+  orders: StaffCompletedOrderItem[];
+};
+
+export type StaffPerformanceSummary = {
+  date: string;
+  weekFrom: string;
+  weekTo: string;
+  weekCompletedCount: number;
+  monthFrom: string;
+  monthTo: string;
+  monthCompletedCount: number;
+};
+
 export type AssignOrderResponse = {
   orderId: number;
   assigneeId: number | null;
@@ -144,5 +167,38 @@ export const staffOrdersApi = {
   completePicking: async (orderId: number, payload: CompletePickingPayload): Promise<StaffPickOrder> => {
     const res = await apiClient.post(`/staff/orders/${orderId}/complete-picking`, payload);
     return mapPickOrder(res.data);
+  },
+
+  getPerformanceDaily: async (dateIso: string): Promise<StaffPerformanceDaily> => {
+    const res = await apiClient.get('/staff/orders/performance/daily', { params: { date: dateIso } });
+    const o = (res.data ?? {}) as Record<string, unknown>;
+    const ordersRaw = Array.isArray(o.orders) ? o.orders : [];
+    return {
+      date: String(o.date ?? dateIso),
+      completedCount: toNumber(o.completedCount),
+      orders: ordersRaw.map((x) => {
+        const it = x as Record<string, unknown>;
+        return {
+          orderId: toNumber(it.orderId),
+          orderNumber: String(it.orderNumber ?? ''),
+          completedAt: String(it.completedAt ?? ''),
+          status: String(it.status ?? ''),
+        };
+      }),
+    };
+  },
+
+  getPerformanceSummary: async (dateIso: string): Promise<StaffPerformanceSummary> => {
+    const res = await apiClient.get('/staff/orders/performance/summary', { params: { date: dateIso } });
+    const o = (res.data ?? {}) as Record<string, unknown>;
+    return {
+      date: String(o.date ?? dateIso),
+      weekFrom: String(o.weekFrom ?? ''),
+      weekTo: String(o.weekTo ?? ''),
+      weekCompletedCount: toNumber(o.weekCompletedCount),
+      monthFrom: String(o.monthFrom ?? ''),
+      monthTo: String(o.monthTo ?? ''),
+      monthCompletedCount: toNumber(o.monthCompletedCount),
+    };
   },
 };

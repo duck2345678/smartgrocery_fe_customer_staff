@@ -10,9 +10,7 @@
     "orientation": "default",
     "plugins": [
       "expo-router",
-      "expo-font",
-      ["expo-camera", { "cameraPermission": "Cho phép SmartGrocery sử dụng Camera để quét mã vạch." }],
-      "expo-av"
+      "expo-font"
     ]
   }
 }

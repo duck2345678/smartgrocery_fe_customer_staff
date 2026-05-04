@@ -118,7 +118,8 @@ export default function RootLayout() {
           const body = n.request.content.body ?? '';
           setBanner({ title, body });
           queryClient.invalidateQueries({ queryKey: ['staff-notifications'] });
-          queryClient.invalidateQueries({ queryKey: ['assignments'] });
+          queryClient.invalidateQueries({ queryKey: ['staff-order-queue'] });
+          queryClient.invalidateQueries({ queryKey: ['staff-order-my-active'] });
           queryClient.invalidateQueries({ queryKey: ['staff-issues-my'] });
           setTimeout(() => setBanner(null), 3500);
         });
@@ -129,7 +130,7 @@ export default function RootLayout() {
             router.push(routeStr as never);
             return;
           }
-          router.push('/(staff)/notifications' as never);
+          router.push('/(staff)/orders' as never);
         });
       } catch {
         return;
@@ -170,7 +171,7 @@ export default function RootLayout() {
                 <Pressable
                   onPress={() => {
                     setBanner(null);
-                    router.push('/(staff)/notifications' as never);
+                    router.push('/(staff)/orders' as never);
                   }}
                   style={{
                     backgroundColor: '#0F172A',

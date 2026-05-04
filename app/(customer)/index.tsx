@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Animated, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import HomeHeader from '../../src/components/customer/home/HomeHeader';
@@ -13,7 +13,6 @@ import Button from '../../src/components/ui/Button';
 import Skeleton from '../../src/components/ui/Skeleton';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { productApi } from '../../src/api/products';
-import { useRouter } from 'expo-router';
 import { type Product } from '../../src/types/product';
 
 function ProductTile({ item, onPress }: { item: Product; onPress: () => void }) {

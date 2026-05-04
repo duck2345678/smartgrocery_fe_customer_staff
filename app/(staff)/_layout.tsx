@@ -1,16 +1,18 @@
-import React, { useEffect, useRef, memo } from 'react';
+import React, { memo } from 'react';
 import { Tabs } from 'expo-router';
-import { AppState, type AppStateStatus } from 'react-native';
-import { LayoutDashboard, ClipboardList, User } from 'lucide-react-native';
-import { useSLAStore } from '../../src/store/slaStore';
+import { Text, View } from 'react-native';
+import { ClipboardList, Clock, Home, Package, User } from 'lucide-react-native';
 
 import { ProtectedRoute } from '../../src/components/auth/ProtectedRoute';
+import BrandMark from '../../src/components/ui/BrandMark';
 
 const TAB_SCREEN_OPTIONS = {
-  tabBarActiveTintColor: '#2563EB',
+  tabBarActiveTintColor: '#16A34A',
+  tabBarInactiveTintColor: '#64748B',
   headerShown: false,
   tabBarStyle: {
-    borderTopWidth: 0,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
     height: 68,
     paddingBottom: 10,
     paddingTop: 10,
@@ -22,10 +24,46 @@ const TAB_SCREEN_OPTIONS = {
     elevation: 12,
   },
   tabBarLabelStyle: {
-    fontFamily: 'Inter',
-    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    fontSize: 11,
+  },
+  tabBarItemStyle: {
+    paddingHorizontal: 6,
   },
 } as const;
+
+function TabLabel({ title, color }: { title: string; color: string }) {
+  return (
+    <Text
+      style={{
+        color,
+        fontFamily: 'Inter-Medium',
+        fontSize: 11,
+        lineHeight: 14,
+      }}
+      numberOfLines={1}
+    >
+      {title}
+    </Text>
+  );
+}
+
+function TabIcon({
+  icon,
+  color,
+}: {
+  icon: (opts: { color: string }) => React.ReactNode;
+  color: string;
+}) {
+  return (
+    <View style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
+      {icon({ color })}
+      <View style={{ position: 'absolute', right: -4, bottom: -4 }}>
+        <BrandMark size={14} />
+      </View>
+    </View>
+  );
+}
 
 const StaffTabs = memo(function StaffTabs() {
   return (
@@ -33,65 +71,63 @@ const StaffTabs = memo(function StaffTabs() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }: { color: string }) => <LayoutDashboard size={24} color={color} />,
+          title: 'Trang chủ',
+          tabBarLabel: ({ color }) => <TabLabel title="Trang chủ" color={String(color)} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon icon={({ color: c }) => <Home size={22} color={c} />} color={String(color)} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="assignments"
+        name="products"
         options={{
-          title: 'Phân công',
-          tabBarIcon: ({ color }: { color: string }) => <ClipboardList size={24} color={color} />,
+          title: 'Sản phẩm',
+          tabBarLabel: ({ color }) => <TabLabel title="Sản phẩm" color={String(color)} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon icon={({ color: c }) => <Package size={22} color={c} />} color={String(color)} />
+          ),
         }}
       />
-      {/* Hidden from tab bar — accessed via router.push */}
       <Tabs.Screen
         name="orders"
         options={{
-          href: null,
+          title: 'Đơn hàng',
+          tabBarLabel: ({ color }) => <TabLabel title="Đơn hàng" color={String(color)} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon icon={({ color: c }) => <ClipboardList size={22} color={c} />} color={String(color)} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="issues"
+        name="attendance"
         options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="scanner-test"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="lease-queue"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="lease-orders"
-        options={{
-          href: null,
+          title: 'Chấm công',
+          tabBarLabel: ({ color }) => <TabLabel title="Chấm công" color={String(color)} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon icon={({ color: c }) => <Clock size={22} color={c} />} color={String(color)} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Hồ sơ',
-          tabBarIcon: ({ color }: { color: string }) => <User size={24} color={color} />,
+          title: 'Cá nhân',
+          tabBarLabel: ({ color }) => <TabLabel title="Cá nhân" color={String(color)} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon icon={({ color: c }) => <User size={22} color={c} />} color={String(color)} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="products/[id]"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="orders/[id]"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
@@ -99,32 +135,6 @@ const StaffTabs = memo(function StaffTabs() {
 });
 
 export default function StaffLayout() {
-  const setNow = useSLAStore((s) => s.setNow);
-  const appState = useRef(AppState.currentState);
-
-  useEffect(() => {
-    setNow(Date.now());
-
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 60000);
-
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        setNow(Date.now());
-      }
-      appState.current = nextAppState;
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      clearInterval(interval);
-      subscription.remove();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <ProtectedRoute role="STAFF">
       <StaffTabs />
