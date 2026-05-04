@@ -4,7 +4,6 @@ import { Text, View } from 'react-native';
 import { ClipboardList, Clock, Home, Package, User } from 'lucide-react-native';
 
 import { ProtectedRoute } from '../../src/components/auth/ProtectedRoute';
-import BrandMark from '../../src/components/ui/BrandMark';
 
 const TAB_SCREEN_OPTIONS = {
   tabBarActiveTintColor: '#16A34A',
@@ -58,16 +57,16 @@ function TabIcon({
   return (
     <View style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
       {icon({ color })}
-      <View style={{ position: 'absolute', right: -4, bottom: -4 }}>
-        <BrandMark size={14} />
-      </View>
     </View>
   );
 }
 
 const StaffTabs = memo(function StaffTabs() {
   return (
-    <Tabs screenOptions={TAB_SCREEN_OPTIONS}>
+    <Tabs
+      screenOptions={TAB_SCREEN_OPTIONS}
+      backBehavior="initialRoute"
+    >
       <Tabs.Screen
         name="index"
         options={{
@@ -118,18 +117,16 @@ const StaffTabs = memo(function StaffTabs() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="products/[id]"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="orders/[id]"
-        options={{
-          href: null,
-        }}
-      />
+      {/* Hide all non-tab routes from tab bar */}
+      <Tabs.Screen name="products/scan" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="products/[id]" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="orders/[id]" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="admin-issues" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="admin-queue" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="handbook" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="performance" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="issues" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="notifications" options={{ href: null, headerShown: false }} />
     </Tabs>
   );
 });

@@ -39,41 +39,29 @@ vi.mock('expo-router', () => ({
 }));
 
 vi.mock('../src/store/staffAttendanceStore', () => ({
-  useStaffAttendanceStore: (
-    selector: (s: {
-      checkInAt: number | null;
-      checkOutAt: number | null;
-      note: string;
-      setNote: (v: string) => void;
-      checkIn: (at: number) => void;
-      checkOut: (at: number) => void;
-      resetToday: () => void;
-    }) => unknown
-  ) =>
-    selector({
-      checkInAt: null,
-      checkOutAt: null,
-      note: '',
-      setNote: vi.fn(),
-      checkIn: vi.fn(),
-      checkOut: vi.fn(),
-      resetToday: vi.fn(),
-    }),
+  useStaffAttendanceStore: () => ({
+    todayShift: 'S',
+    todayRecords: [],
+    isLoading: false,
+    error: null,
+    calendarData: new Map(),
+    calendarMonth: 5,
+    calendarYear: 2026,
+    fetchTodayStatus: vi.fn(),
+    fetchCalendar: vi.fn(),
+    performCheckIn: vi.fn(),
+    performCheckOut: vi.fn(),
+  })
+}));
+
+vi.mock('lucide-react-native', () => ({
+  ChevronLeft: () => null,
+  ChevronRight: () => null,
 }));
 
 vi.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
-
-const collectText = (node: unknown, out: string[] = []): string[] => {
-  if (node == null) return out;
-  if (typeof node === 'string') out.push(node);
-  if (Array.isArray(node)) node.forEach((x) => collectText(x, out));
-  if (typeof node === 'object' && node && 'children' in (node as { children?: unknown })) {
-    collectText((node as { children?: unknown }).children, out);
-  }
-  return out;
-};
 
 const collectTextFromInstance = (node: renderer.ReactTestInstance | string, out: string[] = []): string[] => {
   if (typeof node === 'string') out.push(node);
@@ -83,7 +71,7 @@ const collectTextFromInstance = (node: renderer.ReactTestInstance | string, out:
 
 describe('StaffAttendanceScreen', () => {
   test('renders title and actions', () => {
-    let inst: renderer.ReactTestRenderer;
+    let inst!: renderer.ReactTestRenderer;
     renderer.act(() => {
       inst = renderer.create(<StaffAttendanceScreen />);
     });

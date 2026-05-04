@@ -80,7 +80,7 @@ const collectTextFromInstance = (node: renderer.ReactTestInstance | string, out:
 
 describe('StaffProfileScreen', () => {
   test('renders user info', () => {
-    let inst: renderer.ReactTestRenderer;
+    let inst!: renderer.ReactTestRenderer;
     renderer.act(() => {
       inst = renderer.create(<StaffProfileScreen />);
     });

@@ -85,7 +85,7 @@ const collectTextFromInstance = (node: renderer.ReactTestInstance | string, out:
 
 describe('StaffOrdersScreen', () => {
   test('renders tabs and empty state', () => {
-    let inst: renderer.ReactTestRenderer;
+    let inst!: renderer.ReactTestRenderer;
     renderer.act(() => {
       inst = renderer.create(<StaffOrdersScreen />);
     });

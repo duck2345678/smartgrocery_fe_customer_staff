@@ -1,13 +1,10 @@
 import React from 'react';
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi, beforeEach } from 'vitest';
 import renderer from 'react-test-renderer';
 
 import StaffHomeScreen from '../app/(staff)/index';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-
-const setSelectedDateIsoMock = vi.fn();
-const toggleHandbookCategoryMock = vi.fn();
 
 vi.mock('expo-haptics', () => ({
   impactAsync: vi.fn(),
@@ -31,6 +28,7 @@ vi.mock('lucide-react-native', () => {
     ChevronRight: Icon,
     BookOpen: Icon,
     CalendarDays: Icon,
+    Bell: Icon,
   };
 });
 
@@ -68,8 +66,9 @@ vi.mock('react-native', async () => {
   };
 });
 
+const pushMock = vi.fn();
 vi.mock('expo-router', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -78,15 +77,7 @@ vi.mock('@tanstack/react-query', () => ({
     if (key === 'staff-order-queue') return { data: [], isLoading: false, isError: false, refetch: vi.fn() };
     if (key === 'staff-order-my-active') return { data: null, isLoading: false, isError: false, refetch: vi.fn() };
     if (key === 'staff-issues-my') return { data: [], isLoading: false, isError: false, refetch: vi.fn() };
-    if (key === 'staff-performance-daily')
-      return { data: { date: '2026-01-01', completedCount: 0, orders: [] }, isLoading: false, isError: false, refetch: vi.fn() };
-    if (key === 'staff-performance-summary')
-      return {
-        data: { date: '2026-01-01', weekFrom: '2025-12-29', weekTo: '2026-01-04', weekCompletedCount: 0, monthFrom: '2026-01-01', monthTo: '2026-01-31', monthCompletedCount: 0 },
-        isLoading: false,
-        isError: false,
-        refetch: vi.fn(),
-      };
+    if (key === 'staff-notifications') return { data: [], isLoading: false, isError: false, refetch: vi.fn() };
     return { data: null, isLoading: false, isError: false, refetch: vi.fn() };
   },
 }));
@@ -100,35 +91,26 @@ vi.mock('../src/store/staffHomeStore', () => ({
     selector: (s: {
       promoIndex: number;
       setPromoIndex: (v: number) => void;
-      selectedDateIso: string;
-      setSelectedDateIso: (v: string) => void;
-      handbookOpenCategoryIds: string[];
-      toggleHandbookCategory: (id: string) => void;
     }) => unknown
   ) =>
     selector({
       promoIndex: 0,
       setPromoIndex: vi.fn(),
-      selectedDateIso: '2026-01-01',
-      setSelectedDateIso: setSelectedDateIsoMock,
-      handbookOpenCategoryIds: ['getting-started'],
-      toggleHandbookCategory: toggleHandbookCategoryMock,
     }),
+}));
+
+const setViewMock = vi.fn();
+vi.mock('../src/store/staffOrdersStore', () => ({
+  useStaffOrdersStore: {
+    getState: () => ({
+      setView: setViewMock,
+    }),
+  },
 }));
 
 vi.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
-
-const collectText = (node: unknown, out: string[] = []): string[] => {
-  if (node == null) return out;
-  if (typeof node === 'string') out.push(node);
-  if (Array.isArray(node)) node.forEach((x) => collectText(x, out));
-  if (typeof node === 'object' && node && 'children' in (node as { children?: unknown })) {
-    collectText((node as { children?: unknown }).children, out);
-  }
-  return out;
-};
 
 const collectTextFromInstance = (node: renderer.ReactTestInstance | string, out: string[] = []): string[] => {
   if (typeof node === 'string') out.push(node);
@@ -137,8 +119,13 @@ const collectTextFromInstance = (node: renderer.ReactTestInstance | string, out:
 };
 
 describe('StaffHomeScreen', () => {
+  beforeEach(() => {
+    pushMock.mockClear();
+    setViewMock.mockClear();
+  });
+
   test('renders key sections', () => {
-    let inst: renderer.ReactTestRenderer;
+    let inst!: renderer.ReactTestRenderer;
     renderer.act(() => {
       inst = renderer.create(<StaffHomeScreen />);
     });
@@ -152,25 +139,65 @@ describe('StaffHomeScreen', () => {
     expect(text).toContain('Hiệu suất công việc');
   });
 
-  test('toggles handbook category', () => {
-    toggleHandbookCategoryMock.mockClear();
-    let inst: renderer.ReactTestRenderer;
+  test('navigates to notifications', () => {
+    let inst!: renderer.ReactTestRenderer;
     renderer.act(() => {
       inst = renderer.create(<StaffHomeScreen />);
     });
-    const btn = inst.root.findByProps({ testID: 'handbook-toggle-orders' });
+    const btn = inst.root.findByProps({ testID: 'btn-notifications' });
     btn.props.onPress();
-    expect(toggleHandbookCategoryMock).toHaveBeenCalledWith('orders');
+    expect(pushMock).toHaveBeenCalledWith('/(staff)/notifications');
   });
 
-  test('selects date from calendar', () => {
-    setSelectedDateIsoMock.mockClear();
-    let inst: renderer.ReactTestRenderer;
+  test('navigates to queue', () => {
+    let inst!: renderer.ReactTestRenderer;
     renderer.act(() => {
       inst = renderer.create(<StaffHomeScreen />);
     });
-    const day = inst.root.findByProps({ testID: 'calendar-day-2026-01-02' });
-    day.props.onPress();
-    expect(setSelectedDateIsoMock).toHaveBeenCalledWith('2026-01-02');
+    const btn = inst.root.findByProps({ testID: 'stat-queue' });
+    btn.props.onPress();
+    expect(setViewMock).toHaveBeenCalledWith('QUEUE');
+    expect(pushMock).toHaveBeenCalledWith('/(staff)/orders');
+  });
+
+  test('navigates to active orders', () => {
+    let inst!: renderer.ReactTestRenderer;
+    renderer.act(() => {
+      inst = renderer.create(<StaffHomeScreen />);
+    });
+    const btn = inst.root.findByProps({ testID: 'stat-active' });
+    btn.props.onPress();
+    expect(setViewMock).toHaveBeenCalledWith('MY_ACTIVE');
+    expect(pushMock).toHaveBeenCalledWith('/(staff)/orders');
+  });
+
+  test('navigates to issues', () => {
+    let inst!: renderer.ReactTestRenderer;
+    renderer.act(() => {
+      inst = renderer.create(<StaffHomeScreen />);
+    });
+    const btn = inst.root.findByProps({ testID: 'stat-issues' });
+    btn.props.onPress();
+    expect(pushMock).toHaveBeenCalledWith('/(staff)/issues');
+  });
+
+  test('navigates to handbook', () => {
+    let inst!: renderer.ReactTestRenderer;
+    renderer.act(() => {
+      inst = renderer.create(<StaffHomeScreen />);
+    });
+    const btn = inst.root.findByProps({ testID: 'btn-handbook' });
+    btn.props.onPress();
+    expect(pushMock).toHaveBeenCalledWith('/(staff)/handbook');
+  });
+
+  test('navigates to performance', () => {
+    let inst!: renderer.ReactTestRenderer;
+    renderer.act(() => {
+      inst = renderer.create(<StaffHomeScreen />);
+    });
+    const btn = inst.root.findByProps({ testID: 'btn-performance' });
+    btn.props.onPress();
+    expect(pushMock).toHaveBeenCalledWith('/(staff)/performance');
   });
 });

@@ -16,10 +16,11 @@
   }
 
   .theme-staff {
-    --color-primary: 2 132 199;
+    --color-primary: 22 163 74;
     --color-primary-fg: 255 255 255;
-    --color-background: 241 247 252;
-    --color-surface-2: 233 242 250;
+    --color-background: 241 248 242;
+    --color-surface-2: 233 244 235;
+    --color-border: 198 226 203;
     --color-ring: var(--color-primary);
   }
 

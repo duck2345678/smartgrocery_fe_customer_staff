@@ -16,7 +16,7 @@ vi.mock('expo-haptics', () => ({
 
 vi.mock('lucide-react-native', () => {
   const Icon = () => null;
-  return { Search: Icon };
+  return { Search: Icon, ScanLine: Icon };
 });
 
 vi.mock('../src/api/products', () => ({
@@ -91,7 +91,7 @@ const collectTextFromInstance = (node: renderer.ReactTestInstance | string, out:
 
 describe('StaffProductsScreen', () => {
   test('renders list with category chips', () => {
-    let inst: renderer.ReactTestRenderer;
+    let inst!: renderer.ReactTestRenderer;
     renderer.act(() => {
       inst = renderer.create(<StaffProductsScreen />);
     });

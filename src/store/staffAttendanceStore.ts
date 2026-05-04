@@ -1,31 +1,107 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { ShiftType, AttendanceRecord, AttendanceDayDto } from '../types/attendance';
+import * as api from '../api/staffAttendance';
 
 type StaffAttendanceState = {
-  checkInAt: number | null;
-  checkOutAt: number | null;
+  // Today state
+  todayShift: ShiftType | null;
+  todayRecords: AttendanceRecord[];
   note: string;
-  setNote: (value: string) => void;
-  checkIn: (at: number) => void;
-  checkOut: (at: number) => void;
-  resetToday: () => void;
+  isLoading: boolean;
+  error: string | null;
+
+  // Calendar state
+  calendarData: Map<string, AttendanceDayDto>;
+  calendarMonth: number;
+  calendarYear: number;
+
+  // Actions
+  setNote: (note: string) => void;
+  fetchTodayStatus: () => Promise<void>;
+  performCheckIn: () => Promise<void>;
+  performCheckOut: () => Promise<void>;
+  fetchCalendar: (year: number, month: number) => Promise<void>;
 };
 
-export const useStaffAttendanceStore = create<StaffAttendanceState>()(
-  persist(
-    (set) => ({
-      checkInAt: null,
-      checkOutAt: null,
-      note: '',
-      setNote: (value) => set({ note: value }),
-      checkIn: (at) => set({ checkInAt: at, checkOutAt: null }),
-      checkOut: (at) => set({ checkOutAt: at }),
-      resetToday: () => set({ checkInAt: null, checkOutAt: null, note: '' }),
-    }),
-    {
-      name: 'sg_staff_attendance_v1',
-      storage: createJSONStorage(() => AsyncStorage),
+export const useStaffAttendanceStore = create<StaffAttendanceState>((set, get) => ({
+  todayShift: null,
+  todayRecords: [],
+  note: '',
+  isLoading: false,
+  error: null,
+
+  calendarData: new Map(),
+  calendarMonth: new Date().getMonth() + 1,
+  calendarYear: new Date().getFullYear(),
+
+  setNote: (note) => set({ note }),
+
+  fetchTodayStatus: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await api.getTodayStatus();
+      set({ 
+        todayShift: data.shiftType, 
+        todayRecords: data.records,
+      });
+    } catch (err: any) {
+      set({ error: err.message || 'Lỗi tải trạng thái hôm nay' });
+    } finally {
+      set({ isLoading: false });
     }
-  )
-);
+  },
+
+  performCheckIn: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const { note } = get();
+      const req = {
+        timestamp: new Date().toISOString(),
+        note: note.trim() || undefined,
+      };
+      await api.checkIn(req);
+      await get().fetchTodayStatus();
+      set({ note: '' }); // Clear note after success
+    } catch (err: any) {
+      set({ error: err.message || 'Lỗi khi vào ca' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  performCheckOut: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const { note } = get();
+      const req = {
+        timestamp: new Date().toISOString(),
+        note: note.trim() || undefined,
+      };
+      await api.checkOut(req);
+      await get().fetchTodayStatus();
+      set({ note: '' }); // Clear note after success
+    } catch (err: any) {
+      set({ error: err.message || 'Lỗi khi ra ca' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchCalendar: async (year: number, month: number) => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await api.getMonthlyCalendar(year, month);
+      const map = new Map<string, AttendanceDayDto>();
+      data.forEach(d => map.set(d.date, d));
+      set({ 
+        calendarData: map,
+        calendarMonth: month,
+        calendarYear: year,
+      });
+    } catch (err: any) {
+      set({ error: err.message || 'Lỗi tải lịch chấm công' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+}));
