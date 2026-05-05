@@ -158,11 +158,18 @@ apiClient.interceptors.response.use(
 
     const status = error.response?.status;
     const reqInfo = originalRequest?.url ? ` (${String(originalRequest.method ?? 'GET').toUpperCase()} ${originalRequest.url})` : '';
-    const message =
+    let message =
       extractMessage(error.response?.data) ??
       (typeof status === 'number' && status >= 500
         ? `Máy chủ đang gặp lỗi. Vui lòng thử lại sau.${reqInfo}`
         : 'Đã có lỗi xảy ra');
+
+    if (status === 403) {
+      message = 'Bạn không có quyền thực hiện thao tác này';
+    } else if (status === 401) {
+      message = 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại';
+    }
+
     const apiError = new Error(message) as Error & { status?: number };
     apiError.status = status;
     return Promise.reject(apiError);

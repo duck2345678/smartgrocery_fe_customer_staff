@@ -22,6 +22,16 @@ vi.mock('react-native', async () => {
     __esModule: true,
     Alert: { alert: vi.fn() },
     ActivityIndicator: create('div'),
+    Animated: {
+      View: create('div'),
+      Value: vi.fn().mockImplementation(() => ({
+        setValue: vi.fn(),
+      })),
+      parallel: vi.fn().mockReturnValue({ start: vi.fn() }),
+      spring: vi.fn().mockReturnValue({ start: vi.fn() }),
+      timing: vi.fn().mockReturnValue({ start: vi.fn((cb?: () => void) => cb?.()) }),
+    },
+    Modal: create('div'),
     Pressable: ({ children, onPress, ...props }: { children?: React.ReactNode; onPress?: () => void }) =>
       ReactActual.createElement('button', { ...props, onClick: onPress }, children),
     ScrollView: create('div'),
@@ -47,16 +57,24 @@ vi.mock('../src/store/staffAttendanceStore', () => ({
     calendarData: new Map(),
     calendarMonth: 5,
     calendarYear: 2026,
+    selectedDate: '2026-05-10',
     fetchTodayStatus: vi.fn(),
     fetchCalendar: vi.fn(),
-    performCheckIn: vi.fn(),
-    performCheckOut: vi.fn(),
-  })
+    performCheckIn: vi.fn().mockResolvedValue({ success: true, message: 'OK' }),
+    performCheckOut: vi.fn().mockResolvedValue({ success: true, message: 'OK' }),
+    requestShift: vi.fn(),
+    cancelShiftRequest: vi.fn(),
+    setSelectedDate: vi.fn(),
+    clearError: vi.fn(),
+  }),
 }));
 
 vi.mock('lucide-react-native', () => ({
   ChevronLeft: () => null,
   ChevronRight: () => null,
+  LogIn: () => null,
+  LogOut: () => null,
+  Clock: () => null,
 }));
 
 vi.mock('react-native-safe-area-context', () => ({
@@ -70,7 +88,7 @@ const collectTextFromInstance = (node: renderer.ReactTestInstance | string, out:
 };
 
 describe('StaffAttendanceScreen', () => {
-  test('renders title and actions', () => {
+  test('renders title and action buttons', () => {
     let inst!: renderer.ReactTestRenderer;
     renderer.act(() => {
       inst = renderer.create(<StaffAttendanceScreen />);
@@ -79,5 +97,35 @@ describe('StaffAttendanceScreen', () => {
     expect(text).toContain('Chấm công');
     expect(text).toContain('Vào ca');
     expect(text).toContain('Ra ca');
+  });
+
+  test('renders dynamic detail card for selected date', () => {
+    let inst!: renderer.ReactTestRenderer;
+    renderer.act(() => {
+      inst = renderer.create(<StaffAttendanceScreen />);
+    });
+    const text = collectTextFromInstance(inst.root).join(' ');
+    expect(text).toContain('Chi tiết ngày');
+  });
+
+  test('shows shift request buttons for future day without schedule', () => {
+    let inst!: renderer.ReactTestRenderer;
+    renderer.act(() => {
+      inst = renderer.create(<StaffAttendanceScreen />);
+    });
+    const text = collectTextFromInstance(inst.root).join(' ');
+    expect(text).toContain('Ca S');
+    expect(text).toContain('Ca C');
+    expect(text).toContain('Ca G');
+  });
+
+  test('renders weekday headers in Vietnamese', () => {
+    let inst!: renderer.ReactTestRenderer;
+    renderer.act(() => {
+      inst = renderer.create(<StaffAttendanceScreen />);
+    });
+    const text = collectTextFromInstance(inst.root).join(' ');
+    expect(text).toContain('T2');
+    expect(text).toContain('CN');
   });
 });
