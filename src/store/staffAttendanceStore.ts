@@ -20,7 +20,7 @@ const toLocalISO = (d: Date): string => {
 export type CheckResult = {
   success: boolean;
   message: string;
-  status?: 'ON_TIME' | 'LATE' | 'EARLY' | null;
+  status?: 'ON_TIME' | 'LATE' | 'EARLY' | 'AUTO_CLOSED' | null;
 };
 
 type StaffAttendanceState = {

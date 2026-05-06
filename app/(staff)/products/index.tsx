@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { ScanLine, Search } from 'lucide-react-native';
@@ -8,6 +8,8 @@ import Card from '../../../src/components/ui/Card';
 import { productApi } from '../../../src/api/products';
 import { useStaffProductsStore } from '../../../src/store/staffProductsStore';
 import type { Product } from '../../../src/types/product';
+
+const LOW_STOCK_THRESHOLD = 5;
 
 export default function StaffProductsScreen() {
   const router = useRouter();
@@ -33,21 +35,22 @@ export default function StaffProductsScreen() {
   });
 
   const categories = categoriesQuery.data ?? [];
+  const products = productsQuery.data ?? [];
 
-  const title = useMemo(() => (search.trim() ? `Kết quả cho “${search.trim()}”` : 'Tất cả sản phẩm'), [search]);
+  const title = useMemo(() => (search.trim() ? `Kết quả cho "${search.trim()}"` : 'Tất cả sản phẩm'), [search]);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
+      {/* Decorative background bubbles */}
       <View className="absolute -top-40 left-0 right-0 h-96 bg-background">
         <View className="absolute -top-2 left-[-72px] w-[240px] h-[240px] rounded-full bg-primary/12" />
         <View className="absolute top-10 right-[-96px] w-[320px] h-[320px] rounded-full bg-primary/10" />
         <View className="absolute top-56 left-10 w-[220px] h-[220px] rounded-full bg-primary/8" />
       </View>
 
+      {/* Search bar */}
       <View className="px-4 pt-4 pb-3">
-        <Text className="text-3xl font-outfit-bold text-text">Sản phẩm</Text>
-
-        <View className="mt-4 flex-row items-center bg-surface border border-border rounded-3xl pl-4 pr-2 py-2">
+        <View className="flex-row items-center bg-surface border border-border rounded-3xl pl-4 pr-2 py-2">
           <Search size={18} color="#64748B" />
           <TextInput
             value={search}
@@ -67,6 +70,7 @@ export default function StaffProductsScreen() {
           </Pressable>
         </View>
 
+        {/* Category chips */}
         <View className="mt-3">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 2 }}>
             <Chip active={categoryId == null} label="Tất cả" onPress={() => setCategoryId(null)} />
@@ -77,8 +81,9 @@ export default function StaffProductsScreen() {
         </View>
       </View>
 
+      {/* Product list */}
       <View className="flex-1 px-4 pb-4">
-        <Text className="text-[11px] font-inter text-muted">{title}</Text>
+        <Text className="text-[11px] font-inter text-muted mb-1">{title}</Text>
 
         {productsQuery.isLoading ? (
           <View className="flex-1 items-center justify-center">
@@ -93,13 +98,13 @@ export default function StaffProductsScreen() {
               <Text className="font-outfit-bold text-primary-fg">Thử lại</Text>
             </Pressable>
           </Card>
-        ) : (productsQuery.data ?? []).length === 0 ? (
+        ) : products.length === 0 ? (
           <View className="flex-1 items-center justify-center">
             <Text className="text-sm font-inter text-muted">Không có sản phẩm phù hợp.</Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: 18, gap: 12 }}>
-            {(productsQuery.data ?? []).map((p) => (
+          <ScrollView contentContainerStyle={{ paddingTop: 8, paddingBottom: 18, gap: 10 }} showsVerticalScrollIndicator={false}>
+            {products.map((p) => (
               <ProductRow key={p.id} product={p} onPress={() => router.push(`/(staff)/products/${p.id}` as never)} />
             ))}
           </ScrollView>
@@ -109,6 +114,7 @@ export default function StaffProductsScreen() {
   );
 }
 
+/* ── Category chip ─────────────────────────────────────── */
 function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
     <Pressable
@@ -123,23 +129,60 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
   );
 }
 
+/* ── Product row (matches reference design) ────────────── */
 function ProductRow({ product, onPress }: { product: Product; onPress: () => void }) {
+  const isLowStock = typeof product.stock === 'number' && product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD;
+  const isOutOfStock = typeof product.stock === 'number' && product.stock <= 0;
+
+  const stockLabel = isOutOfStock
+    ? 'Hết hàng'
+    : isLowStock
+      ? `Low Stock: ${product.stock}`
+      : `In Stock: ${product.stock}`;
+
+  const stockColor = isOutOfStock ? '#EF4444' : isLowStock ? '#F59E0B' : '#16A34A';
+
   return (
-    <Pressable onPress={onPress}>
-      <Card className="px-4 py-3">
-        <View className="flex-row items-center justify-between">
-          <View style={{ flex: 1, paddingRight: 14 }}>
-            <Text className="text-base font-outfit-bold text-text" numberOfLines={1}>
+    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}>
+      <Card className="px-3 py-3">
+        <View className="flex-row items-center">
+          {/* Product image */}
+          <View
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 14,
+              overflow: 'hidden',
+              backgroundColor: '#F1F5F9',
+              marginRight: 12,
+            }}
+          >
+            <Image
+              source={{ uri: product.imageUrl }}
+              style={{ width: 64, height: 64 }}
+              resizeMode="cover"
+            />
+          </View>
+
+          {/* Name + category/unit */}
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text className="text-[15px] font-outfit-bold text-text" numberOfLines={1}>
               {product.name}
             </Text>
             <Text className="text-xs font-inter text-muted mt-1" numberOfLines={1}>
               {product.category} • {String(product.unit ?? '').toUpperCase()}
             </Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text className="text-base font-outfit-bold text-text">{formatMoney(product.price)}</Text>
-            <Text className="text-xs font-inter text-muted mt-1">
-              {typeof product.stock === 'number' ? `In Stock: ${product.stock}` : 'In Stock: —'}
+
+          {/* Price + stock */}
+          <View style={{ alignItems: 'flex-end', minWidth: 80 }}>
+            <Text className="text-[15px] font-outfit-bold text-text">{formatMoney(product.price)}</Text>
+            <Text
+              className="text-[11px] font-inter-bold mt-1"
+              style={{ color: stockColor }}
+              numberOfLines={1}
+            >
+              {stockLabel}
             </Text>
           </View>
         </View>
@@ -148,6 +191,7 @@ function ProductRow({ product, onPress }: { product: Product; onPress: () => voi
   );
 }
 
+/* ── Helpers ────────────────────────────────────────────── */
 function formatMoney(v: number) {
   if (!Number.isFinite(v)) return '—';
   return v.toLocaleString('vi-VN') + ' ₫';

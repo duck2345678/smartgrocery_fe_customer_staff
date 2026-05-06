@@ -47,6 +47,22 @@ export type AssignOrderResponse = {
   leaseExpiresAt: string | null;
 };
 
+export type StaffPickItem = {
+  orderItemId: number;
+  variantId: number;
+  sku: string;
+  barcode?: string | null;
+  productName: string;
+  variantName?: string | null;
+  aisleLocation?: string | null;
+  orderedQuantity: number;
+  pickedQuantity?: number | null;
+  allowSubstitution: boolean;
+  unitPrice: number;
+  imageUrl?: string | null;
+  stockQuantity?: number | null;
+};
+
 const toNumber = (v: unknown): number => {
   if (typeof v === 'number') return v;
   const n = Number(v);
@@ -105,6 +121,8 @@ const mapPickOrder = (x: unknown): StaffPickOrder => {
         pickedQuantity: i.pickedQuantity != null ? toNumber(i.pickedQuantity) : null,
         allowSubstitution: Boolean(i.allowSubstitution),
         unitPrice: toNumber(i.unitPrice),
+        imageUrl: typeof i.imageUrl === 'string' ? i.imageUrl : null,
+        stockQuantity: i.stockQuantity != null ? toNumber(i.stockQuantity) : null,
       };
     }),
   };

@@ -95,6 +95,48 @@ npm run test:coverage
 
 - Report coverage nằm trong thư mục `coverage/` sau khi chạy `npm run test:coverage`.
 
+## PhotoCaptureFlow
+
+- Component: [PhotoCaptureFlow.tsx](file:///c:/Users/ACER/Documents/1/smartgrocery_fe_customer_staff/src/components/ui/PhotoCaptureFlow.tsx)
+- Mục tiêu: chuyển đổi mượt giữa 2 trạng thái:
+  - `intro`: màn giới thiệu (nút “Chụp ảnh”)
+  - `camera`: camera preview + overlay + capture/library/switch/flash
+
+### Usage
+
+```tsx
+<PhotoCaptureFlow
+  visible={isOpen}
+  mode="delivery"
+  introTitle="Chụp ảnh giao hàng"
+  cameraTitle="Chụp ảnh xác nhận giao hàng"
+  primaryColor="#16A34A"
+  onClose={() => setOpen(false)}
+  onCaptured={(uri) => setDeliveryPhotoUrl(uri)}
+  allowLibrary
+  allowTorch
+  allowSwitchCamera
+/>
+```
+
+### Props
+
+- `visible`: mở/đóng modal.
+- `mode`: giá trị để hiển thị copy phù hợp (`packing` | `delivery` | string).
+- `introTitle`: tiêu đề trạng thái intro.
+- `cameraTitle`: tiêu đề trạng thái camera.
+- `primaryColor`: màu accent (default `#16A34A`).
+- `onClose`: callback khi đóng.
+- `onCaptured(uri)`: callback khi có ảnh hợp lệ (camera hoặc thư viện).
+- `onStateChange(state)`: callback khi chuyển `intro` ↔ `camera`.
+- `allowLibrary`/`allowTorch`/`allowSwitchCamera`: bật/tắt các control tương ứng.
+
+### Behavior
+
+- `intro → camera`: tự request camera permission; nếu thiếu quyền sẽ hiển thị error state.
+- `camera`: chụp ảnh qua `expo-camera` và trả `uri` qua `onCaptured`, sau đó gọi `onClose`.
+- Web: không mở camera preview, ưu tiên chọn ảnh từ thư viện.
+
 ## Performance notes
 
 - Các màn Staff được tách theo route (Expo Router), tương đương lazy-loading theo module ở mức màn hình.

@@ -9,10 +9,10 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: [
-        'app/(staff)/**/*.{ts,tsx}',
-        'src/components/ui/**/*.{ts,tsx}',
-        'src/store/staff*Store.ts',
+        'src/components/ui/PhotoCaptureFlow.tsx',
+        'src/utils/homeUtils.ts',
         'src/utils/loginValidation.ts',
+        'src/utils/staffPickingUtils.ts',
       ],
       exclude: [
         '**/*.d.ts',

@@ -33,6 +33,7 @@ vi.mock('react-native', async () => {
   return {
     Alert: { alert: vi.fn() },
     ActivityIndicator: create('div'),
+    Image: create('img'),
     Pressable: ({ children, onPress, ...props }: { children?: React.ReactNode; onPress?: () => void }) =>
       ReactActual.createElement('button', { ...props, onClick: onPress }, children),
     ScrollView: create('div'),
@@ -96,7 +97,7 @@ describe('StaffProductsScreen', () => {
       inst = renderer.create(<StaffProductsScreen />);
     });
     const text = collectTextFromInstance(inst.root).join(' ');
-    expect(text).toContain('Sản phẩm');
+    expect(text).toContain('Tất cả sản phẩm');
     expect(text).toContain('Tất cả');
     expect(text).toContain('Rau củ');
     expect(text).toContain('Cải bó xôi');
