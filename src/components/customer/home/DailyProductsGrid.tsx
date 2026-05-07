@@ -36,7 +36,7 @@ export default function DailyProductsGrid() {
       <View className="flex-row items-center justify-between mb-3">
         <Text className="text-base font-outfit-bold text-slate-900">Sản phẩm hàng ngày</Text>
         <Pressable onPress={() => router.push('/(customer)/shop' as never)} hitSlop={8}>
-          <Text className="text-sm font-inter-bold text-emerald-700">Mua sắm</Text>
+          <Text className="text-sm font-inter-bold text-primary">Mua sắm</Text>
         </Pressable>
       </View>
 

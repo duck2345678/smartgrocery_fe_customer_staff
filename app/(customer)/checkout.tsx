@@ -206,9 +206,9 @@ export default function CheckoutScreen() {
             </View>
             <Pressable
               onPress={handleApplyVoucherCode}
-              className="px-3 py-3 rounded-xl border border-blue-200 bg-blue-50"
+              className="px-3 py-3 rounded-xl border border-primary/20 bg-primary/5"
             >
-              <Text className="text-xs font-inter-bold text-blue-800">Áp dụng</Text>
+              <Text className="text-xs font-inter-bold text-primary">Áp dụng</Text>
             </Pressable>
           </View>
           {voucherApplyError ? (
@@ -230,7 +230,7 @@ export default function CheckoutScreen() {
                   setVoucherInput('');
                   setVoucherApplyError(null);
                 }}
-                className={`px-3 py-3 rounded-xl border ${selectedVoucherCode === '' ? 'bg-emerald-50 border-emerald-200' : 'bg-surface border-border'}`}
+                className={`px-3 py-3 rounded-xl border ${selectedVoucherCode === '' ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border'}`}
               >
                 <Text className="text-sm font-inter-bold text-text">Không áp dụng voucher</Text>
               </Pressable>
@@ -242,7 +242,7 @@ export default function CheckoutScreen() {
                     setVoucherInput(v.voucherCode);
                     setVoucherApplyError(null);
                   }}
-                  className={`px-3 py-3 rounded-xl border ${selectedVoucherCode === v.voucherCode ? 'bg-emerald-50 border-emerald-200' : 'bg-surface border-border'}`}
+                  className={`px-3 py-3 rounded-xl border ${selectedVoucherCode === v.voucherCode ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border'}`}
                 >
                   <Text className="text-sm font-inter-bold text-text">{v.voucherCode}</Text>
                   <Text className="text-xs font-inter text-muted mt-1">{v.description ?? 'Giảm giá đơn hàng'}</Text>
@@ -309,11 +309,11 @@ function AddressOption({
   return (
     <Pressable
       onPress={() => onSelect(address.id)}
-      className={`px-3 py-3 rounded-xl border ${active ? 'bg-emerald-50 border-emerald-200' : 'bg-surface border-border'}`}
+      className={`px-3 py-3 rounded-xl border ${active ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border'}`}
       hitSlop={6}
     >
       <View className="flex-row items-center justify-between">
-        <Text className={`text-sm font-inter-bold ${active ? 'text-emerald-800' : 'text-text'}`}>
+        <Text className={`text-sm font-inter-bold ${active ? 'text-primary' : 'text-text'}`}>
           {address.receiverName}
         </Text>
         {address.isDefault ? (
@@ -322,7 +322,7 @@ function AddressOption({
           </View>
         ) : null}
       </View>
-      <Text className={`text-xs font-inter mt-1 ${active ? 'text-emerald-700' : 'text-muted'}`}>
+      <Text className={`text-xs font-inter mt-1 ${active ? 'text-primary' : 'text-muted'}`}>
         {address.streetAddress}, {address.ward}, {address.district}, {address.city}
       </Text>
     </Pressable>
@@ -344,11 +344,11 @@ function PaymentOption({
   return (
     <Pressable
       onPress={() => onSelect(method)}
-      className={`px-3 py-3 rounded-xl border ${active ? 'bg-blue-50 border-blue-200' : 'bg-surface border-border'}`}
+      className={`px-3 py-3 rounded-xl border ${active ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border'}`}
       hitSlop={6}
     >
-      <Text className={`text-sm font-inter-bold ${active ? 'text-blue-800' : 'text-text'}`}>{label}</Text>
-      <Text className={`text-xs font-inter mt-1 ${active ? 'text-blue-700' : 'text-muted'}`}>Method: {method}</Text>
+      <Text className={`text-sm font-inter-bold ${active ? 'text-primary' : 'text-text'}`}>{label}</Text>
+      <Text className={`text-xs font-inter mt-1 ${active ? 'text-primary' : 'text-muted'}`}>Method: {method}</Text>
     </Pressable>
   );
 }

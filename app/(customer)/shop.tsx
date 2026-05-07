@@ -65,8 +65,8 @@ export default function CustomerShop() {
               </Text>
               <Text className="text-xs text-muted font-inter mt-1">{item.category}</Text>
             </View>
-            <View className={clsx('px-2.5 py-1 rounded-full border', isOut ? 'bg-slate-100 border-slate-200' : 'bg-emerald-50 border-emerald-200')}>
-              <Text className={clsx('text-[10px] font-inter-bold', isOut ? 'text-slate-500' : 'text-emerald-700')}>
+            <View className={clsx('px-2.5 py-1 rounded-full border', isOut ? 'bg-slate-100 border-slate-200' : 'bg-primary/5 border-primary/20')}>
+              <Text className={clsx('text-[10px] font-inter-bold', isOut ? 'text-slate-500' : 'text-primary')}>
                 {isOut ? 'HẾT HÀNG' : `CÒN ${item.stock}`}
               </Text>
             </View>
@@ -111,7 +111,7 @@ export default function CustomerShop() {
               onPress={() => setCategoryOverride(null)}
               className={clsx(
                 'px-4 py-2 rounded-full border',
-                selectedCategory === undefined ? 'bg-emerald-500 border-emerald-500' : 'bg-surface border-border'
+                selectedCategory === undefined ? 'bg-primary border-primary' : 'bg-surface border-border'
               )}
             >
               <Text className={clsx('text-sm font-inter-bold', selectedCategory === undefined ? 'text-white' : 'text-text')}>
@@ -126,7 +126,7 @@ export default function CustomerShop() {
                   onPress={() => handleCategoryPress(cat.id)}
                   className={clsx(
                     'px-4 py-2 rounded-full border',
-                    active ? 'bg-emerald-500 border-emerald-500' : 'bg-surface border-border'
+                    active ? 'bg-primary border-primary' : 'bg-surface border-border'
                   )}
                 >
                   <Text className={clsx('text-sm font-inter-bold', active ? 'text-white' : 'text-text')}>{cat.name}</Text>
@@ -151,7 +151,7 @@ export default function CustomerShop() {
               {isError ? (
                 <View className="items-center">
                   <Text className="text-muted font-inter mb-4">Không tải được sản phẩm.</Text>
-                  <Pressable onPress={() => refetch()} className="flex-row items-center px-5 py-3 bg-emerald-500 rounded-2xl">
+                  <Pressable onPress={() => refetch()} className="flex-row items-center px-5 py-3 bg-primary rounded-2xl">
                     <RefreshCw size={16} color="#FFF" />
                     <Text className="text-white font-inter-bold ml-2">Thử lại</Text>
                   </Pressable>

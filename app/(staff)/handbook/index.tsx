@@ -45,8 +45,8 @@ export default function StaffHandbookScreen() {
             isOpen={handbookOpenCategoryIds.includes('orders')}
             onToggle={() => toggleHandbookCategory('orders')}
             items={[
-              'Vào tab Đơn hàng để xem hàng chờ và đơn đang xử lý.',
-              'Nhận đơn từ hàng chờ, sau đó mở chi tiết để xem danh sách mặt hàng.',
+              'Vào tab Đơn hàng để xem đơn được phân công và đơn đang xử lý (nếu có).',
+              'Nhận đơn được phân công, sau đó mở chi tiết để xem danh sách mặt hàng.',
               'Hoàn tất đơn: kiểm tra đủ số lượng, tránh nhầm SKU và kệ.',
             ]}
           />
@@ -81,7 +81,7 @@ export default function StaffHandbookScreen() {
             isOpen={handbookOpenCategoryIds.includes('troubleshooting')}
             onToggle={() => toggleHandbookCategory('troubleshooting')}
             items={[
-              'Nếu không thấy đơn: thử chuyển qua lại Hàng chờ/Đang xử lý và tải lại.',
+              'Nếu không thấy đơn: kéo xuống để tải lại danh sách.',
               'Nếu API báo lỗi: chụp màn hình và báo quản trị.',
               'Nếu bị đăng xuất: đăng nhập lại và kiểm tra quyền tài khoản.',
             ]}

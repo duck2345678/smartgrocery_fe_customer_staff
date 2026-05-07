@@ -39,10 +39,16 @@ const getStatusTextColor = (status?: string) =>
   STATUS_TEXT_COLORS[status ?? ''] ?? STATUS_TEXT_COLORS.OFF;
 
 const SHIFT_LABELS: Record<string, string> = {
-  S: 'Ca Sáng (06:30 – 14:30)',
-  C: 'Ca Chiều (14:30 – 22:30)',
+  S: 'Ca Sáng',
+  C: 'Ca Chiều',
   G: 'Ca Gãy',
 };
+
+const SHIFT_REQUEST_OPTIONS = [
+  { shiftType: 'S' as const, label: 'Ca Sáng', detail: '06:30 – 14:30' },
+  { shiftType: 'C' as const, label: 'Ca Chiều', detail: '14:30 – 22:30' },
+  { shiftType: 'G' as const, label: 'Ca Gãy', detail: 'Chọn 2 block không liền kề' },
+];
 
 const SHIFT_BLOCKS = [
   { blockNumber: 1, label: 'G1: 06:30 – 10:30' },
@@ -81,6 +87,16 @@ const formatDateVi = (isoDate: string) => {
   const [y, m, d] = String(isoDate).split('-');
   if (!y || !m || !d) return isoDate;
   return `${d}/${m}/${y}`;
+};
+
+const formatRequestBlocks = (value: string | null) => {
+  if (!value) return '';
+  const blocks = value
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (blocks.length === 0) return '';
+  return blocks.map((block) => `G${block}`).join(' + ');
 };
 
 export default function StaffAttendanceScreen() {
@@ -160,7 +176,7 @@ export default function StaffAttendanceScreen() {
     if (selectedDate !== todayStrLocal) {
       return { canCheckIn: false, canCheckOut: false, currentBlockLabel: '' };
     }
-    if (!todayShift || todayShift === 'OFF' || todayShift === 'P' || todayShift === 'F') {
+    if (!todayShift || todayShift === 'OFF' || todayShift === 'P') {
       return { canCheckIn: false, canCheckOut: false, currentBlockLabel: '' };
     }
 
@@ -310,6 +326,7 @@ export default function StaffAttendanceScreen() {
               ) : (
                 <Text className="text-[14px] font-inter text-slate-500 mt-1">
                   {SHIFT_LABELS[String(selectedShiftType)] ?? String(selectedShiftType)}
+                  {selectedShiftType === 'G' && selectedData?.selectedBlocks ? ` (${formatRequestBlocks(selectedData.selectedBlocks)})` : ''}
                 </Text>
               )}
 
@@ -330,6 +347,9 @@ export default function StaffAttendanceScreen() {
                       {r.checkOutStatus === 'EARLY' && (
                         <Text className="text-[14px] text-amber-500"> (Sớm)</Text>
                       )}
+                      {r.checkOutStatus === 'LATE' && (
+                        <Text className="text-[14px] text-red-500"> (Về trễ)</Text>
+                      )}
                     </Text>
                   </View>
                 ))
@@ -338,8 +358,8 @@ export default function StaffAttendanceScreen() {
           ) : isSelectedToday ? (
             <>
               <Text className="text-[14px] font-inter text-slate-500 mt-1">
-                {todayShift && todayShift !== 'OFF' && todayShift !== 'P' && todayShift !== 'F'
-                  ? (SHIFT_LABELS[String(todayShift)] ?? String(todayShift))
+                {todayShift && todayShift !== 'OFF' && todayShift !== 'P'
+                  ? `${SHIFT_LABELS[String(todayShift)] ?? String(todayShift)}${todayShift === 'G' && selectedData?.selectedBlocks ? ` (${formatRequestBlocks(selectedData.selectedBlocks)})` : ''}`
                   : 'Không có ca hôm nay.'}
               </Text>
 
@@ -360,6 +380,9 @@ export default function StaffAttendanceScreen() {
                       {r.checkOutStatus === 'EARLY' && (
                         <Text className="text-[14px] text-amber-500"> (Sớm)</Text>
                       )}
+                      {r.checkOutStatus === 'LATE' && (
+                        <Text className="text-[14px] text-red-500"> (Về trễ)</Text>
+                      )}
                     </Text>
                   </View>
                 ))
@@ -376,11 +399,11 @@ export default function StaffAttendanceScreen() {
               ) : selectedRequestStatus === 'PENDING' ? (
                 <>
                   <Text className="text-[14px] font-inter text-amber-600 mt-1">
-                    ⏳ Đang chờ Admin duyệt đăng ký Ca {String(selectedRequestShiftType ?? '')}
+                    ⏳ Đang chờ Admin duyệt đăng ký {SHIFT_LABELS[String(selectedRequestShiftType ?? '')] ?? String(selectedRequestShiftType ?? '')}
                   </Text>
                   {selectedRequestBlocks ? (
                     <Text className="text-[14px] font-inter text-slate-500 mt-1">
-                      Block đã chọn: {selectedRequestBlocks}
+                      Block đã chọn: {formatRequestBlocks(selectedRequestBlocks)}
                     </Text>
                   ) : null}
                   <Pressable
@@ -407,15 +430,18 @@ export default function StaffAttendanceScreen() {
                     Ngày này chưa được phân lịch. Hãy thực hiện đăng ký ca.
                   </Text>
                   <View className="flex-row gap-2 mt-3">
-                    {(['S', 'C', 'G'] as const).map((st) => (
+                    {SHIFT_REQUEST_OPTIONS.map((option) => (
                       <Pressable
-                        key={st}
+                        key={option.shiftType}
                         disabled={isLoading || !isSelectedFuture}
-                        onPress={() => openShiftRequestModal(st)}
+                        onPress={() => openShiftRequestModal(option.shiftType)}
                         className="flex-1 py-2 rounded-xl bg-white border border-[#16A34A] items-center"
                         style={{ opacity: isSelectedFuture ? 1 : 0.4 }}
                       >
-                        <Text className="text-[15px] font-inter-bold text-[#16A34A]">Ca {st}</Text>
+                        <Text className="text-[15px] font-inter-bold text-[#16A34A]">{option.label}</Text>
+                        <Text className="text-[11px] font-inter text-[#64748B] mt-0.5" numberOfLines={1}>
+                          {option.detail}
+                        </Text>
                       </Pressable>
                     ))}
                   </View>
@@ -436,15 +462,18 @@ export default function StaffAttendanceScreen() {
                     Chưa có lịch. Bạn có thể đăng ký ca cho ngày này:
                   </Text>
                   <View className="flex-row gap-2 mt-3">
-                    {(['S', 'C', 'G'] as const).map((st) => (
+                    {SHIFT_REQUEST_OPTIONS.map((option) => (
                       <Pressable
-                        key={st}
+                        key={option.shiftType}
                         disabled={isLoading || !isSelectedFuture}
-                        onPress={() => openShiftRequestModal(st)}
+                        onPress={() => openShiftRequestModal(option.shiftType)}
                         className="flex-1 py-2 rounded-xl bg-white border border-[#16A34A] items-center"
                         style={{ opacity: isSelectedFuture ? 1 : 0.4 }}
                       >
-                        <Text className="text-[13px] font-inter-bold text-[#16A34A]">Ca {st}</Text>
+                        <Text className="text-[13px] font-inter-bold text-[#16A34A]">{option.label}</Text>
+                        <Text className="text-[11px] font-inter text-[#64748B] mt-0.5" numberOfLines={1}>
+                          {option.detail}
+                        </Text>
                       </Pressable>
                     ))}
                   </View>
@@ -490,7 +519,7 @@ export default function StaffAttendanceScreen() {
               const isSelected = dateStr === selectedDate;
               const isOffOutline = status === 'OFF' || status === 'NO_SCHEDULE';
               const isAbsent = status === 'ABSENT';
-              const isBlueScheduled = status === 'SCHEDULED' && shiftType !== 'OFF' && shiftType !== 'P' && shiftType !== 'F';
+              const isBlueScheduled = status === 'SCHEDULED' && shiftType !== 'OFF' && shiftType !== 'P';
               const bgColor = isOffOutline ? '#FFFFFF' : isBlueScheduled ? '#3B82F6' : getStatusColor(status);
               const textColor = isOffOutline ? '#94A3B8' : getStatusTextColor(status);
               const borderColor = isSelected ? '#0F172A' : isOffOutline ? '#E2E8F0' : isAbsent ? '#EF4444' : bgColor;
@@ -524,6 +553,14 @@ export default function StaffAttendanceScreen() {
                     >
                       {isOffOutline ? 'Off' : shiftType}
                     </Text>
+                    {shiftType === 'G' && data?.selectedBlocks && !isOffOutline ? (
+                      <Text
+                        className="text-[9px] font-inter leading-none"
+                        style={{ color: textColor, opacity: 0.8 }}
+                      >
+                        {formatRequestBlocks(data.selectedBlocks).replace(/\s\+\s/g, '+')}
+                      </Text>
+                    ) : null}
                   </Pressable>
                 </View>
               );
@@ -562,7 +599,7 @@ export default function StaffAttendanceScreen() {
           <Text className="w-1/3 text-[13px] font-inter text-slate-800 mb-2">C: Ca Chiều</Text>
           <Text className="w-1/3 text-[13px] font-inter text-slate-800 mb-2">G: Ca Gãy</Text>
           <Text className="w-1/3 text-[13px] font-inter text-slate-800">P: Phép/Công tác</Text>
-          <Text className="w-2/3 text-[13px] font-inter text-slate-800">F: Flex/Fle2/Fle3</Text>
+          <Text className="w-2/3 text-[13px] font-inter text-slate-800">Gãy: chọn các block linh hoạt theo lịch</Text>
         </View>
 
         {/* Action buttons */}

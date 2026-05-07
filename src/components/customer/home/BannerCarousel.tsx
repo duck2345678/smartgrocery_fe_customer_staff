@@ -84,7 +84,7 @@ export default function BannerCarousel({
           {safeBanners.map((b, i) => (
             <View
               key={b.id}
-              className={clsx('h-2 rounded-full', i === index ? 'w-5 bg-emerald-500' : 'w-2 bg-slate-300')}
+              className={clsx('h-2 rounded-full', i === index ? 'w-5 bg-primary' : 'w-2 bg-border')}
             />
           ))}
         </View>

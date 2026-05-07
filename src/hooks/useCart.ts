@@ -77,35 +77,6 @@ export function useCart() {
     },
   });
 
-  const updateAllowSubstitution = useMutation({
-    mutationFn: (input: { cartItemId: number; allowSubstitution: boolean }) =>
-      cartApi.updateAllowSubstitution({ cartItemId: input.cartItemId, allowSubstitution: input.allowSubstitution }),
-    onMutate: async (input) => {
-      await queryClient.cancelQueries({ queryKey: ['cart'] });
-      const previous = queryClient.getQueryData<Cart>(['cart']);
-
-      queryClient.setQueryData<Cart>(['cart'], (current) => {
-        const base = current?.items ?? [];
-        const nextItems = base.map((it) => {
-          if (it.cartItemId !== input.cartItemId) return it;
-          return { ...it, allowSubstitution: input.allowSubstitution };
-        });
-        return { items: nextItems };
-      });
-
-      return { previous };
-    },
-    onError: (err, _input, context) => {
-      if (context?.previous) queryClient.setQueryData(['cart'], context.previous);
-      throw err;
-    },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['cart'], data);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['cart'] });
-    },
-  });
 
   const addProduct = useMutation({
     mutationFn: (input: { product: Product; quantity?: number }) =>
@@ -168,8 +139,7 @@ export function useCart() {
     refetch: cartQuery.refetch,
     updateQuantity: updateQuantity.mutateAsync,
     removeItem: removeItem.mutateAsync,
-    updateAllowSubstitution: updateAllowSubstitution.mutateAsync,
     addProduct: addProduct.mutateAsync,
-    isUpdating: updateQuantity.isPending || removeItem.isPending || updateAllowSubstitution.isPending || addProduct.isPending,
+    isUpdating: updateQuantity.isPending || removeItem.isPending || addProduct.isPending,
   };
 }

@@ -114,9 +114,9 @@ describe('StaffAttendanceScreen', () => {
       inst = renderer.create(<StaffAttendanceScreen />);
     });
     const text = collectTextFromInstance(inst.root).join(' ');
-    expect(text).toContain('Ca S');
-    expect(text).toContain('Ca C');
-    expect(text).toContain('Ca G');
+    expect(text).toContain('Ca Sáng');
+    expect(text).toContain('Ca Chiều');
+    expect(text).toContain('Ca Gãy');
   });
 
   test('renders weekday headers in Vietnamese', () => {

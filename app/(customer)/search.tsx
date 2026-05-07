@@ -104,13 +104,13 @@ export default function CustomerSearch() {
               <View
                 className={clsx(
                   'px-2 py-0.5 rounded-full border',
-                  isOut ? 'bg-slate-100 border-slate-200' : 'bg-emerald-50 border-emerald-200'
+                  isOut ? 'bg-slate-100 border-slate-200' : 'bg-primary/5 border-primary/20'
                 )}
               >
                 <Text
                   className={clsx(
                     'text-[10px] font-inter-bold',
-                    isOut ? 'text-slate-500' : 'text-emerald-700'
+                    isOut ? 'text-slate-500' : 'text-primary'
                   )}
                 >
                   {isOut ? 'HẾT' : `${item.stock}`}
@@ -171,7 +171,7 @@ export default function CustomerSearch() {
                   className={clsx(
                     'px-4 py-2 rounded-full border',
                     active
-                      ? 'bg-emerald-500 border-emerald-500'
+                      ? 'bg-primary border-primary'
                       : 'bg-surface border-border'
                   )}
                 >
@@ -203,7 +203,7 @@ export default function CustomerSearch() {
         ) : isSearching && products.length === 0 ? (
           /* Loading */
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#22C55E" />
+            <ActivityIndicator size="large" color="#16A34A" />
             <Text className="text-muted font-inter mt-4">Đang tìm kiếm...</Text>
           </View>
         ) : searchQuery.isError ? (
@@ -214,7 +214,7 @@ export default function CustomerSearch() {
             </Text>
             <Pressable
               onPress={() => searchQuery.refetch()}
-              className="flex-row items-center px-5 py-3 bg-emerald-500 rounded-2xl"
+              className="flex-row items-center px-5 py-3 bg-primary rounded-2xl"
             >
               <RefreshCw size={16} color="#FFF" />
               <Text className="text-white font-inter-bold ml-2">Thử lại</Text>

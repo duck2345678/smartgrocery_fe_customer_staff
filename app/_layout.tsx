@@ -25,6 +25,7 @@ import type * as NotificationsType from 'expo-notifications';
 import "../src/styles/global.css";
 import { useAuthStore } from '../src/store/authStore';
 import { registerDeviceForPush } from '../src/notifications/push';
+import { NotificationBanner } from '../src/components/ui/NotificationBanner';
 
 // ── Singleton instances (never re-created) ──────────────────────────
 const queryClient = new QueryClient({
@@ -68,13 +69,15 @@ const NavigatorShell = memo(function NavigatorShell() {
 export default function RootLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
-  const [banner, setBanner] = useState<{ title: string; body: string } | null>(null);
+  const authNotice = useAuthStore((s) => s.authNotice);
+  const setAuthNotice = useAuthStore((s) => s.setAuthNotice);
+  const [banner, setBanner] = useState<{ title: string; body: string; variant?: 'info' | 'error' } | null>(null);
   const themeClass = React.useMemo(() => {
-    if (!isAuthenticated || !user || !user.role) return '';
+    if (!isAuthenticated || !user || !user.role) return 'theme-customer';
     if (user.role === 'STAFF') return 'theme-staff';
     if (user.role === 'ADMIN') return 'theme-admin';
     if (user.role === 'CUSTOMER') return 'theme-customer';
-    return '';
+    return 'theme-customer';
   }, [isAuthenticated, user]);
 
   const [fontsLoaded, fontError] = useFonts({
@@ -116,12 +119,15 @@ export default function RootLayout() {
         sub1 = Notifications.addNotificationReceivedListener((n) => {
           const title = n.request.content.title ?? 'Thông báo';
           const body = n.request.content.body ?? '';
-          setBanner({ title, body });
-          queryClient.invalidateQueries({ queryKey: ['staff-notifications'] });
+          const isSessionIssue = /thiết bị|đăng nhập|đăng nhập lại/i.test(`${title} ${body}`);
+          setBanner({
+            title,
+            body,
+            variant: isSessionIssue ? 'error' : 'info',
+          });
           queryClient.invalidateQueries({ queryKey: ['staff-order-queue'] });
           queryClient.invalidateQueries({ queryKey: ['staff-order-my-active'] });
-          queryClient.invalidateQueries({ queryKey: ['staff-issues-my'] });
-          setTimeout(() => setBanner(null), 3500);
+          setTimeout(() => setBanner(null), 4500);
         });
 
         sub2 = Notifications.addNotificationResponseReceivedListener((resp) => {
@@ -145,9 +151,22 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    if (authNotice) {
+      setBanner({
+        title: 'Phiên đăng nhập bị thay thế',
+        body: authNotice,
+        variant: 'error',
+      });
+      setAuthNotice(null);
+    }
+  }, [authNotice, setAuthNotice]);
+
+  useEffect(() => {
     if (!isAuthenticated || !user || user.role !== 'STAFF') return;
     void registerDeviceForPush(Platform.OS);
   }, [isAuthenticated, user]);
+
+
 
   if (!fontsLoaded && !fontError) {
     return (
@@ -171,21 +190,34 @@ export default function RootLayout() {
                 <Pressable
                   onPress={() => {
                     setBanner(null);
-                    router.push('/(staff)/orders' as never);
+                    if (banner.variant === 'error') {
+                      router.replace('/(auth)/login' as never);
+                    } else {
+                      router.push('/(staff)/orders' as never);
+                    }
                   }}
                   style={{
-                    backgroundColor: '#0F172A',
-                    borderRadius: 16,
-                    paddingVertical: 12,
+                    backgroundColor: banner.variant === 'error' ? '#7F1D1D' : '#0F172A',
+                    borderRadius: 18,
+                    paddingVertical: 14,
                     paddingHorizontal: 14,
+                    borderWidth: 1,
+                    borderColor: banner.variant === 'error' ? '#FCA5A5' : 'transparent',
+                    shadowColor: '#000',
+                    shadowOpacity: 0.18,
+                    shadowRadius: 14,
+                    shadowOffset: { width: 0, height: 8 },
+                    elevation: 8,
                   }}
                 >
-                  <Text style={{ color: '#FFFFFF', fontFamily: 'Outfit-Bold', fontSize: 14 }}>{banner.title}</Text>
-                  {banner.body ? (
-                    <Text style={{ color: '#E2E8F0', fontFamily: 'Inter-Regular', fontSize: 12, marginTop: 4 }} numberOfLines={2}>
-                      {banner.body}
-                    </Text>
-                  ) : null}
+                  <Text style={{ color: '#FFFFFF', fontFamily: 'Outfit-Bold', fontSize: 14 }}>
+                    {banner.variant === 'error' ? 'Phiên đăng nhập bị thay thế' : banner.title}
+                  </Text>
+                  <Text style={{ color: banner.variant === 'error' ? '#FEE2E2' : '#E2E8F0', fontFamily: 'Inter-Regular', fontSize: 12, marginTop: 4 }} numberOfLines={3}>
+                    {banner.variant === 'error'
+                      ? 'Tài khoản của bạn đã đăng nhập ở thiết bị khác. Bạn sẽ được chuyển về màn hình đăng nhập.'
+                      : banner.body}
+                  </Text>
                 </Pressable>
               </View>
             ) : null}

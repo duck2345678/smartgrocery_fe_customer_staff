@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { getDeviceFingerprint } from '../utils/deviceFingerprint';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8080/api/v1';
 
@@ -52,11 +53,20 @@ const flushQueue = (err: unknown | null, token?: string) => {
   });
 };
 
+const setAuthInvalidationNotice = (message: string) => {
+  useAuthStore.getState().setAuthNotice(message);
+};
+
 const refreshAccessToken = async (): Promise<string> => {
   const refreshToken = useAuthStore.getState().refreshToken;
   if (!refreshToken) throw new Error('Phiên đăng nhập hết hạn');
 
-  const response = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
+  const deviceFingerprint = await getDeviceFingerprint();
+  const response = await axios.post(
+    `${BASE_URL}/auth/refresh`,
+    { refreshToken },
+    { headers: { 'X-Device-Fingerprint': deviceFingerprint } },
+  );
   const tokens = unwrap<{ token: string; refreshToken: string }>(response.data);
   useAuthStore.getState().setTokens(tokens.token, tokens.refreshToken);
   return tokens.token;
@@ -76,6 +86,10 @@ apiClient.interceptors.request.use(async (config) => {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  const deviceFingerprint = await getDeviceFingerprint();
+  config.headers = config.headers ?? {};
+  config.headers['X-Device-Fingerprint'] = deviceFingerprint;
   return config;
 });
 
@@ -151,6 +165,7 @@ apiClient.interceptors.response.use(
       } catch (e) {
         isRefreshing = false;
         flushQueue(e);
+        setAuthInvalidationNotice(e instanceof Error ? e.message : 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.');
         useAuthStore.getState().logout();
         return Promise.reject(e);
       }
@@ -168,6 +183,11 @@ apiClient.interceptors.response.use(
       message = 'Bạn không có quyền thực hiện thao tác này';
     } else if (status === 401) {
       message = 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại';
+    }
+
+    if (status === 401 && /thiết bị|đăng nhập ở thiết bị khác|phiên đăng nhập/i.test(message)) {
+      setAuthInvalidationNotice(message);
+      useAuthStore.getState().logout();
     }
 
     const apiError = new Error(message) as Error & { status?: number };

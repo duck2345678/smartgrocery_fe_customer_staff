@@ -81,11 +81,9 @@ describe('StaffNavigation', () => {
       'products/scan',
       'products/[id]',
       'orders/[id]',
-      'admin-issues',
       'admin-queue',
       'handbook',
       'performance',
-      'issues',
       'notifications',
     ];
 

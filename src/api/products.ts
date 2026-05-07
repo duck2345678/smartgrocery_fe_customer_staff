@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { Product } from '../types/product';
+import { resolveImageUrl } from '../utils/imageUtils';
 
 export type Category = { id: number; name: string };
 
@@ -57,22 +58,7 @@ const toNumber = (v: unknown): number => {
   return 0;
 };
 
-const buildImageUrl = (name: string): string =>
-  `https://dummyimage.com/800x600/22c55e/ffffff&text=${encodeURIComponent(name)}`;
 
-const getOrigin = (): string => {
-  const base = (process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8080/api/v1').replace(/\/+$/, '');
-  return base.replace(/\/api\/v1$/i, '');
-};
-
-const resolveImageUrl = (input: unknown, fallbackName: string): string => {
-  const raw = typeof input === 'string' ? input.trim() : '';
-  if (!raw) return buildImageUrl(fallbackName);
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  const origin = getOrigin();
-  if (raw.startsWith('/')) return `${origin}${raw}`;
-  return `${origin}/${raw}`;
-};
 
 const mapProductDto = (dto: ProductDto): Product => {
   const v = getFirstVariant(dto);

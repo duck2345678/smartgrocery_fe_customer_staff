@@ -17,11 +17,18 @@ vi.mock('expo-haptics', () => ({
 vi.mock('lucide-react-native', () => {
   const Icon = () => null;
   return {
-    FlipHorizontal: Icon,
+    ChevronLeft: Icon,
+    Zap: Icon,
+    Image: Icon,
+    RefreshCw: Icon,
+    Scan: Icon,
+    CheckCircle2: Icon,
+    ShoppingBag: Icon,
+    Sun: Icon,
+    ChevronRight: Icon,
     Flashlight: Icon,
     FlashlightOff: Icon,
     X: Icon,
-    Image: Icon,
   };
 });
 
@@ -70,6 +77,20 @@ vi.mock('react-native', async () => {
     Platform: { OS: 'ios', select: (v: Record<string, unknown>) => v.ios },
     useWindowDimensions: () => ({ width: 390, height: 844, scale: 3, fontScale: 1 }),
     ActivityIndicator: create('div'),
+    Animated: {
+      View: create('div'),
+      Value: vi.fn().mockImplementation((v: number) => ({
+        setValue: vi.fn(),
+        interpolate: vi.fn(() => v),
+      })),
+      timing: vi.fn().mockReturnValue({ start: vi.fn() }),
+      sequence: vi.fn((xs: any[]) => ({ start: vi.fn(), _items: xs })),
+      loop: vi.fn((x: any) => ({ start: vi.fn() })),
+    },
+    Easing: {
+      quad: vi.fn(),
+      inOut: vi.fn((x: any) => x),
+    },
     Pressable: ({ children, onPress, ...props }: { children?: React.ReactNode; onPress?: () => void }) =>
       ReactActual.createElement('button', { ...props, onClick: onPress }, children),
     Text: create('span'),

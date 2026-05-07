@@ -11,7 +11,7 @@ import { CartItem } from '../../src/types/cart';
 
 export default function CartScreen() {
   const router = useRouter();
-  const { items, subtotal, isLoading, isError, refetch, updateQuantity, removeItem, updateAllowSubstitution, isUpdating } =
+  const { items, subtotal, isLoading, isError, refetch, updateQuantity, removeItem, isUpdating } =
     useCart();
 
   const data = useMemo(() => items, [items]);
@@ -35,27 +35,6 @@ export default function CartScreen() {
           <Text className="text-xs font-inter text-muted mt-1">
             {item.price.toLocaleString('vi-VN')}₫ / {item.unit}
           </Text>
-
-          <View className="flex-row items-center justify-between mt-3">
-            <View className="flex-1 pr-3">
-              <Text className="text-xs font-inter-bold text-text">Cho phép thay thế tương đương</Text>
-              <Text className="text-[11px] font-inter text-muted mt-0.5">
-                Bật cho mặt hàng bạn không quá khắt khe về thương hiệu/loại.
-              </Text>
-            </View>
-            <Switch
-              value={Boolean(item.allowSubstitution)}
-              onValueChange={async (v) => {
-                try {
-                  await updateAllowSubstitution({ cartItemId: item.cartItemId as number, allowSubstitution: v });
-                } catch (e) {
-                  Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể cập nhật tuỳ chọn thay thế.', [{ text: 'Đóng' }]);
-                }
-              }}
-              trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
-              thumbColor={item.allowSubstitution ? '#22C55E' : '#FFFFFF'}
-            />
-          </View>
 
           <View className="flex-row items-center justify-between mt-3">
             <View className="flex-row items-center bg-surface2 rounded-xl p-1">

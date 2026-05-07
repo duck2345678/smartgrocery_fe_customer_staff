@@ -80,7 +80,7 @@ export default function CustomerAIHub() {
 
         <View className="mt-6 gap-y-3">
           <InstructionCard
-            icon={<Wand2 size={20} color="#22C55E" />}
+            icon={<Wand2 size={20} color="#16A34A" />}
             title="Basket Optimizer"
             subtitle="Tối ưu giỏ hàng theo ngân sách và nhu cầu dinh dưỡng."
             actionLabel="Phân tích giỏ hàng"
@@ -88,7 +88,7 @@ export default function CustomerAIHub() {
             onPress={() => runMode('BASKET_OPTIMIZER')}
           />
           <InstructionCard
-            icon={<Brain size={20} color="#22C55E" />}
+            icon={<Brain size={20} color="#16A34A" />}
             title="Meal Planner"
             subtitle="Lên thực đơn tự động trong 7 ngày."
             actionLabel="Tạo thực đơn tuần"
@@ -96,7 +96,7 @@ export default function CustomerAIHub() {
             onPress={() => runMode('MEAL_PLANNER')}
           />
           <InstructionCard
-            icon={<Sparkles size={20} color="#22C55E" />}
+            icon={<Sparkles size={20} color="#16A34A" />}
             title="Discover"
             subtitle="Khám phá sản phẩm mới theo xu hướng."
             actionLabel="Khám phá ngay"
@@ -138,9 +138,9 @@ export default function CustomerAIHub() {
                       setPlan({ title: result.title, items: result.items, actions: result.actions });
                       router.push('/(customer)/ai-meal-review' as never);
                     }}
-                    className="px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50"
+                    className="px-4 py-3 rounded-xl border border-primary/20 bg-primary/5"
                   >
-                    <Text className="text-emerald-700 font-inter-bold text-sm">Áp dụng ngay</Text>
+                    <Text className="text-primary font-inter-bold text-sm">Áp dụng ngay</Text>
                   </Pressable>
                   <Pressable
                     onPress={() => setShowReasons((v) => !v)}
@@ -154,9 +154,9 @@ export default function CustomerAIHub() {
                   <Pressable
                     key={`${result.mode}-action-${idx}`}
                     onPress={() => void applyAction(action)}
-                    className="px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50"
+                    className="px-4 py-3 rounded-xl border border-primary/20 bg-primary/5"
                   >
-                    <Text className="text-emerald-700 font-inter-bold text-sm">{action.label}</Text>
+                    <Text className="text-primary font-inter-bold text-sm">{action.label}</Text>
                   </Pressable>
                 ))
               )}
@@ -186,7 +186,7 @@ function InstructionCard({
   return (
     <Card className="p-4 border border-border">
       <View className="flex-row items-center">
-        <View className="w-9 h-9 rounded-xl bg-emerald-50 items-center justify-center">{icon}</View>
+        <View className="w-9 h-9 rounded-xl bg-primary/5 items-center justify-center">{icon}</View>
         <View className="ml-3 flex-1">
           <Text className="text-base font-outfit-bold text-text">{title}</Text>
           <Text className="text-xs font-inter text-muted mt-0.5">{subtitle}</Text>

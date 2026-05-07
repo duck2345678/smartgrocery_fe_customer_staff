@@ -1,22 +1,21 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShoppingBag } from 'lucide-react-native';
 import { useCameraPermissions } from 'expo-camera';
 import Card from '../../../src/components/ui/Card';
 import PackingPhotoCapture from '../../../src/components/ui/PackingPhotoCapture';
+import { useStaffHomeStore } from '../../../src/store/staffHomeStore';
 import { staffOrdersApi, type StaffPickItem } from '../../../src/api/staffOrders';
 
 /* ─── 3-step stepper ─────────────────────────────────────── */
@@ -26,10 +25,12 @@ const getCurrentStep = (status?: string): number => {
   switch (status) {
     case 'ASSIGNED':
     case 'PICKING':
+    case 'PICKED':
       return 0;
     case 'READY_TO_SHIP':
-    case 'DELIVERING':
       return 1;
+    case 'DELIVERING':
+      return 2;
     case 'DELIVERED':
       return 2;
     default:
@@ -37,34 +38,29 @@ const getCurrentStep = (status?: string): number => {
   }
 };
 
-const getActionLabel = (step: number): string => {
+const getActionLabel = (step: number, status: string): string => {
+  if (status === 'READY_TO_SHIP') return 'Chụp ảnh giao hàng';
+  if (status === 'DELIVERING') return 'Xác nhận hoàn tất';
   switch (step) {
     case 0:
       return 'Xác nhận đóng gói';
     case 1:
-      return 'Xác nhận giao hàng';
+      return 'Chụp ảnh giao hàng';
     case 2:
       return 'Xác nhận hoàn tất';
     default:
-      return 'Xác nhận';
+      return 'Tiếp tục';
   }
 };
-
-
 
 /* ─── Main screen ─────────────────────────────────────────── */
 export default function StaffOrderDetailScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ id?: string }>();
   const [checkedIds, setCheckedIds] = useState<Record<number, boolean>>({});
-  const [issueModalVisible, setIssueModalVisible] = useState(false);
-  const [missingItemIds, setMissingItemIds] = useState<Record<number, boolean>>({});
   const [packingCameraVisible, setPackingCameraVisible] = useState(false);
   const [deliveryCameraVisible, setDeliveryCameraVisible] = useState(false);
-  const [isPacked, setIsPacked] = useState(false);
-  const [isDelivered, setIsDelivered] = useState(false);
-  const [capturedPackingPhoto, setCapturedPackingPhoto] = useState<string | null>(null);
-  const [capturedDeliveryPhoto, setCapturedDeliveryPhoto] = useState<string | null>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   /* Pre-request camera permission so it's ready when needed */
@@ -89,27 +85,119 @@ export default function StaffOrderDetailScreen() {
 
   const order = pickListQuery.data;
   const status = order?.status ?? '';
-  const serverStep = getCurrentStep(status);
+  const currentStep = getCurrentStep(status);
+  const isPacked = currentStep >= 1;
+  const leaseExpiresAt = order?.leaseExpiresAt ?? null;
+  const expiryAlertShown = useRef(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   
-  // Override step locally
-  const currentStep = isDelivered ? 2 : isPacked ? 1 : serverStep;
-  
-  const canPack = !isPacked && !isDelivered && (status === 'ASSIGNED' || status === 'PICKING');
+  const canPack = status === 'ASSIGNED' || status === 'PICKING' || status === 'PICKED';
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const leaseRemainingMs = useMemo(() => {
+    if (!leaseExpiresAt) return null;
+    const expires = new Date(leaseExpiresAt).getTime();
+    if (!Number.isFinite(expires)) return null;
+    return expires - nowMs;
+  }, [leaseExpiresAt, nowMs]);
+
+  const leaseExpired = leaseRemainingMs != null && leaseRemainingMs <= 0;
+  const leaseRemainingLabel = useMemo(() => {
+    if (leaseRemainingMs == null) return null;
+    const safeMs = Math.max(0, leaseRemainingMs);
+    const totalSeconds = Math.floor(safeMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }, [leaseRemainingMs]);
+
+  useEffect(() => {
+    if (!leaseExpired || expiryAlertShown.current) return;
+    expiryAlertShown.current = true;
+    Alert.alert(
+      'Đơn hàng đã hết hạn',
+      'Đơn hàng đã quá hạn xử lý và được chuyển lại vào hàng chờ chung.',
+      [{ text: 'Đã hiểu' }],
+    );
+  }, [leaseExpired]);
 
   const items = order?.items ?? [];
+  
+  // Sync local checkedIds with server pickedQuantity if available
+  useEffect(() => {
+    if (items.length > 0) {
+      const initial: Record<number, boolean> = {};
+      items.forEach(it => {
+        if ((it.pickedQuantity ?? 0) >= it.orderedQuantity) {
+          initial[it.orderItemId] = true;
+        }
+      });
+      setCheckedIds(prev => ({ ...initial, ...prev }));
+    }
+  }, [items]);
+
   const allPicked =
     items.length > 0 &&
     items.every((it) => checkedIds[it.orderItemId] || it.orderedQuantity <= 0);
 
-  const toggleMissing = (id: number) => {
-    setMissingItemIds((prev) => ({
+  const completePickingMutation = useMutation({
+    mutationFn: (payload: any) => staffOrdersApi.completePicking(orderId, payload),
+    onSuccess: async () => {
+      const selectedDateIso = useStaffHomeStore.getState().selectedDateIso;
+      await queryClient.invalidateQueries({ queryKey: ['staff-performance-daily', selectedDateIso] });
+      await queryClient.invalidateQueries({ queryKey: ['staff-performance-summary', selectedDateIso] });
+      await queryClient.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+      await queryClient.invalidateQueries({ queryKey: ['staff-order-queue'] });
+      await pickListQuery.refetch();
+    },
+  });
+
+  const packMutation = useMutation({
+    mutationFn: (photoUrl: string) => staffOrdersApi.pack(orderId, photoUrl),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['staff-order-pick-list', orderId] });
+      void queryClient.invalidateQueries({ queryKey: ['staff-orders-active'] });
+    },
+  });
+
+  const deliverMutation = useMutation({
+    mutationFn: (photoUrl: string) => staffOrdersApi.deliver(orderId, photoUrl),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['staff-order-pick-list', orderId] });
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: () => staffOrdersApi.complete(orderId),
+    onSuccess: async () => {
+      const selectedDateIso = useStaffHomeStore.getState().selectedDateIso;
+      await queryClient.invalidateQueries({ queryKey: ['staff-performance-daily', selectedDateIso] });
+      await queryClient.invalidateQueries({ queryKey: ['staff-performance-summary', selectedDateIso] });
+      await queryClient.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+      await queryClient.invalidateQueries({ queryKey: ['staff-order-queue'] });
+      await pickListQuery.refetch();
+      router.push('/(staff)/orders/complete-success' as never);
+    },
+  });
+
+  const togglePicked = (item: StaffPickItem) => {
+    setCheckedIds((prev) => ({
       ...prev,
-      [id]: !prev[id],
+      [item.orderItemId]: !prev[item.orderItemId],
     }));
   };
 
   /* ── Action: validate → open packing camera or go to next step ── */
   const onAction = async () => {
+    if (leaseExpired) {
+      Alert.alert('Đơn hàng đã hết hạn', 'Đơn hàng đã quá hạn xử lý và được chuyển lại vào hàng chờ chung.');
+      return;
+    }
+
     if (canPack) {
       // Step 0: Đóng gói → open camera to take packing photo
       if (!allPicked) {
@@ -131,9 +219,8 @@ export default function StaffOrderDetailScreen() {
       return;
     }
     
-    // Step 1: Giao hàng → Open delivery camera
-    if (currentStep === 1) {
-      // Ensure camera permission
+    // Step 1: READY_TO_SHIP -> Open delivery camera first, then call deliver
+    if (status === 'READY_TO_SHIP') {
       if (!cameraPermission?.granted) {
         const result = await requestCameraPermission();
         if (!result.granted) {
@@ -145,32 +232,67 @@ export default function StaffOrderDetailScreen() {
       return;
     }
     
-    // Step 2: Hoàn tất
-    if (currentStep === 2) {
-      router.push('/(staff)/orders/complete-success' as never);
+    // Step 2: DELIVERING -> Confirm complete (no photo needed, already captured)
+    if (status === 'DELIVERING') {
+      try {
+        await completeMutation.mutateAsync();
+      } catch (err: any) {
+        Alert.alert('Lỗi', err.message || 'Không thể hoàn tất giao hàng');
+      }
       return;
     }
     
-    // Default
-    router.push('/(staff)/orders/complete-success' as never);
+    // Final state
+    if (status === 'DELIVERED') {
+      router.push('/(staff)/orders/complete-success' as never);
+      return;
+    }
   };
 
-  /* ── After packing photo captured → transition to step 2 locally ── */
-  const handlePackingPhotoCaptured = (uri: string) => {
+  /* ── After packing photo captured ── */
+  const handlePackingPhotoCaptured = async (uri: string) => {
     setPackingCameraVisible(false);
-    setCapturedPackingPhoto(uri);
-    setIsPacked(true);
+    try {
+      // 1. Complete picking (skip if already in PICKED state, e.g. retry)
+      if (status !== 'PICKED') {
+        const payload = {
+          pickedItems: items.map(it => ({
+            originalOrderItemId: it.orderItemId,
+            actualQuantity: checkedIds[it.orderItemId] ? it.orderedQuantity : 0,
+            isSubstituted: false
+          }))
+        };
+        await completePickingMutation.mutateAsync(payload);
+      }
+      
+      // 2. Pack (READY_TO_SHIP)
+      await packMutation.mutateAsync(uri);
+    } catch (err: any) {
+      // Refetch to get latest status in case completePicking succeeded but pack failed
+      void pickListQuery.refetch();
+      Alert.alert('Lỗi', err.message || 'Không thể xác nhận đóng gói');
+    }
   };
 
-  /* ── After delivery photo captured → transition to step 3 locally ── */
-  const handleDeliveryPhotoCaptured = (uri: string) => {
+  /* ── After delivery photo captured ── */
+  const handleDeliveryPhotoCaptured = async (uri: string) => {
     setDeliveryCameraVisible(false);
-    setCapturedDeliveryPhoto(uri);
-    setIsDelivered(true);
+    try {
+      await deliverMutation.mutateAsync(uri);
+    } catch (err: any) {
+      Alert.alert('Lỗi', err.message || 'Không thể xác nhận giao hàng');
+    }
   };
 
   const stepLabel = `Bước ${currentStep + 1}: ${STEPS[currentStep]}`;
-  const actionLabel = getActionLabel(currentStep);
+  const actionLabel = getActionLabel(currentStep, status);
+  const leaseTimerColor = leaseRemainingMs == null
+    ? '#64748B'
+    : leaseRemainingMs <= 5 * 60 * 1000
+      ? '#EF4444'
+      : leaseRemainingMs <= 15 * 60 * 1000
+        ? '#F59E0B'
+        : '#16A34A';
 
   /* ────────────────────── render ────────────────────── */
   return (
@@ -241,6 +363,18 @@ export default function StaffOrderDetailScreen() {
                 </View>
               </View>
 
+              {leaseRemainingLabel ? (
+                <View className="mt-4 rounded-[22px] bg-white/15 px-4 py-3">
+                  <Text className="text-[12px] font-inter text-white/80">Thời gian giữ chỗ</Text>
+                  <Text className="mt-1 text-[24px] font-outfit-bold" style={{ color: leaseTimerColor }}>
+                    {leaseExpired ? '00:00' : leaseRemainingLabel}
+                  </Text>
+                  <Text className="text-[11px] font-inter text-white/80">
+                    {leaseExpired ? 'Đơn đã quá hạn và sẽ được trả về hàng chờ.' : 'Đơn sẽ tự động thu hồi khi hết thời gian.'}
+                  </Text>
+                </View>
+              ) : null}
+
               {/* 3-step stepper */}
               <View
                 className="mt-5 bg-white rounded-[24px] px-5 py-5"
@@ -298,17 +432,6 @@ export default function StaffOrderDetailScreen() {
                 <Text className="font-inter-bold text-text text-[21px]">
                   Danh sách mặt hàng
                 </Text>
-                {!isPacked && (
-                  <Pressable
-                    onPress={() => setIssueModalVisible(true)}
-                    className="px-6 py-3 rounded-full bg-white border-2 border-[#F97316]"
-                    style={{ elevation: 2 }}
-                  >
-                    <Text className="text-[14px] font-outfit-bold text-[#F97316]">
-                      Báo cáo
-                    </Text>
-                  </Pressable>
-                )}
               </View>
 
               <View className="mt-3" style={{ gap: 10 }}>
@@ -388,7 +511,7 @@ export default function StaffOrderDetailScreen() {
             </Card>
 
             {/* ───── Packing photo display card (Step 2) ───── */}
-            {capturedPackingPhoto && (
+            {order.packingPhotoUrl && (
               <View 
                 className="rounded-[30px] p-5 bg-[#EDF7F1] border border-[#D1EAD9] overflow-hidden"
               >
@@ -402,22 +525,22 @@ export default function StaffOrderDetailScreen() {
                 <View className="absolute right-4 bottom-4 opacity-40">
                   <Text className="text-[20px]">✨</Text>
                 </View>
-
+ 
                 <Text className="font-inter-bold text-[#111827] text-[18px] mb-4">
                   Ảnh đóng gói
                 </Text>
                 <View className="w-full aspect-[4/3] rounded-[24px] bg-white overflow-hidden shadow-sm">
                   <Image 
-                    source={{ uri: capturedPackingPhoto }}
+                    source={{ uri: order.packingPhotoUrl }}
                     className="w-full h-full"
                     resizeMode="cover"
                   />
                 </View>
               </View>
             )}
-
+ 
             {/* ───── Delivery photo display card (Step 3) ───── */}
-            {capturedDeliveryPhoto && (
+            {order.deliveryPhotoUrl && (
               <View 
                 className="rounded-[30px] p-5 bg-[#EDF7F1] border border-[#D1EAD9] overflow-hidden"
               >
@@ -434,7 +557,7 @@ export default function StaffOrderDetailScreen() {
                 </Text>
                 <View className="w-full aspect-[4/3] rounded-[24px] bg-white overflow-hidden shadow-sm">
                   <Image 
-                    source={{ uri: capturedDeliveryPhoto }}
+                    source={{ uri: order.deliveryPhotoUrl }}
                     className="w-full h-full"
                     resizeMode="cover"
                   />
@@ -451,10 +574,16 @@ export default function StaffOrderDetailScreen() {
             <Text className="font-outfit-bold text-text text-[18px] mb-4">
               {stepLabel}
             </Text>
+            {leaseRemainingLabel ? (
+              <Text className="text-[12px] font-inter mb-3" style={{ color: leaseTimerColor }}>
+                {leaseExpired ? 'Đơn đã hết hạn.' : `Còn ${leaseRemainingLabel} để xử lý đơn này.`}
+              </Text>
+            ) : null}
             <Pressable
               onPress={onAction}
+              disabled={leaseExpired}
               className="w-full py-5 rounded-[22px] items-center justify-center"
-              style={{ backgroundColor: '#16A34A' }}
+              style={{ backgroundColor: '#16A34A', opacity: leaseExpired ? 0.45 : 1 }}
             >
               <Text className="font-outfit-bold text-white text-[18px]">
                 {actionLabel}
@@ -485,94 +614,6 @@ export default function StaffOrderDetailScreen() {
             onCaptured={handleDeliveryPhotoCaptured}
           />
 
-          {/* ───── Issue report modal ───── */}
-          <Modal
-            visible={issueModalVisible}
-            animationType="slide"
-            transparent
-            onRequestClose={() => setIssueModalVisible(false)}
-          >
-            <View className="flex-1 bg-black/40 justify-end">
-              <View className="rounded-t-[28px] bg-white p-5">
-                <View className="items-center mb-4">
-                  <View className="w-12 h-1.5 rounded-full bg-slate-200" />
-                </View>
-                <Text className="text-[20px] font-outfit-bold text-text">
-                  Báo cáo thiếu hàng
-                </Text>
-                <Text className="text-[13px] font-inter text-slate-500 mt-1">
-                  Chọn các sản phẩm bị thiếu trong kho để thông báo cho khách hàng.
-                </Text>
-
-                <View className="mt-4 max-h-[300px]">
-                  <ScrollView showsVerticalScrollIndicator={false}>
-                    <View style={{ gap: 8 }}>
-                      {items.map((it) => {
-                        const isMissing = !!missingItemIds[it.orderItemId];
-                        return (
-                          <Pressable
-                            key={it.orderItemId}
-                            onPress={() => toggleMissing(it.orderItemId)}
-                            className="flex-row items-center p-3 rounded-2xl border"
-                            style={{
-                              backgroundColor: isMissing ? '#FFF7ED' : '#F8FAFC',
-                              borderColor: isMissing ? '#F97316' : '#F1F5F9',
-                            }}
-                          >
-                            <View className="w-12 h-12 rounded-xl bg-slate-200 mr-3 overflow-hidden">
-                              {it.imageUrl && (
-                                <Image source={{ uri: it.imageUrl }} className="w-full h-full" />
-                              )}
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text className="font-inter-bold text-[14px] text-text" numberOfLines={1}>
-                                {it.productName}
-                              </Text>
-                              <Text className="text-[11px] text-slate-500">Đặt: {it.orderedQuantity}</Text>
-                            </View>
-                            <View 
-                              className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                                isMissing ? 'bg-[#F97316] border-[#F97316]' : 'border-slate-300'
-                              }`}
-                            >
-                              {isMissing && <Text className="text-white text-[10px]">✓</Text>}
-                            </View>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  </ScrollView>
-                </View>
-
-                <Pressable
-                  onPress={() => {
-                    const count = Object.values(missingItemIds).filter(Boolean).length;
-                    if (count === 0) {
-                      Alert.alert('Thông báo', 'Vui lòng chọn ít nhất 1 sản phẩm bị thiếu.');
-                      return;
-                    }
-                    Alert.alert(
-                      'Đã báo cáo',
-                      `Đã báo cáo ${count} sản phẩm bị thiếu cho khách hàng.`,
-                    );
-                    setIssueModalVisible(false);
-                    setMissingItemIds({});
-                  }}
-                  className="mt-5 px-4 py-4 rounded-2xl items-center"
-                  style={{ backgroundColor: '#F97316' }}
-                >
-                  <Text className="font-outfit-bold text-white text-[16px]">Gửi báo cáo</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setIssueModalVisible(false)}
-                  className="mt-3 px-4 py-3 rounded-2xl items-center bg-slate-100"
-                >
-                  <Text className="font-outfit-bold text-slate-700">Đóng</Text>
-                </Pressable>
-              </View>
-            </View>
-          </Modal>
         </>
       )}
     </SafeAreaView>

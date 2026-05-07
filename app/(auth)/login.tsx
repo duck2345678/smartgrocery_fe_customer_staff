@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuthStore } from '../../src/store/authStore';
 import { authApi } from '../../src/api/auth';
@@ -9,7 +9,8 @@ import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { getEmailError, getPasswordError, isLoginFormValid } from '../../src/utils/loginValidation';
 
 export default function LoginScreen() {
-  const { setTokens, setUser } = useAuthStore();
+  const { setTokens, setUser, authNotice, setAuthNotice } = useAuthStore();
+  const authNoticeShown = useRef(false);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +30,12 @@ export default function LoginScreen() {
 
   const isFormValid = useMemo(() => isLoginFormValid({ email, password }), [email, password]);
   const isSubmitDisabled = loading || !isFormValid;
+
+  useEffect(() => {
+    if (!authNotice || authNoticeShown.current) return;
+    authNoticeShown.current = true;
+    Alert.alert('Đăng xuất khỏi thiết bị khác', authNotice, [{ text: 'Đóng', onPress: () => setAuthNotice(null) }]);
+  }, [authNotice, setAuthNotice]);
 
   const handleLogin = async () => {
     setTouched({ email: true, password: true });

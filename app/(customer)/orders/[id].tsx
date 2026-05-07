@@ -57,9 +57,6 @@ export default function OrderDetail() {
                     <Text className="text-sm font-inter text-text" numberOfLines={1}>
                       {i.productName} × {i.quantity}
                     </Text>
-                    <Text className="text-[11px] font-inter text-muted mt-1">
-                      {i.allowSubstitution ? 'Cho phép thay thế' : 'Không cho phép thay thế'}
-                    </Text>
                   </View>
                   <Text className="text-sm font-inter-bold text-text">{i.totalPrice.toLocaleString('vi-VN')}₫</Text>
                 </View>

@@ -17,7 +17,6 @@ export type OrderItem = {
   subtotal: number;
   discountAmount: number;
   totalPrice: number;
-  allowSubstitution: boolean;
 };
 
 export type Order = {

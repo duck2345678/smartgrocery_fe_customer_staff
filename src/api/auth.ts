@@ -24,6 +24,8 @@ const normalizeUser = (value: unknown): UserDto => {
     id: Number(v.id ?? 0),
     email: String(v.email ?? ''),
     fullName: typeof v.fullName === 'string' ? v.fullName : null,
+    phone: typeof v.phone === 'string' ? v.phone : null,
+    avatarUrl: typeof v.avatarUrl === 'string' ? v.avatarUrl : null,
     role: normalizedRole,
   };
 };
@@ -38,6 +40,8 @@ const normalizeAuthResponse = (value: unknown): AuthResponse => {
 };
 
 export const authApi = {
+  normalizeAuthResponse,
+
   login: async (email: string, password: string): Promise<AuthResponse> => {
     const response = await apiClient.post<RawAuthResponse>('/auth/login', {
       email,
@@ -51,6 +55,16 @@ export const authApi = {
       refreshToken,
     });
     return normalizeAuthResponse(response.data);
+  },
+
+  getCurrentUser: async (): Promise<UserDto> => {
+    const response = await apiClient.get<RawAuthResponse>('/auth/me');
+    return normalizeUser(response.data);
+  },
+
+  updateProfile: async (updates: Record<string, string>): Promise<UserDto> => {
+    const response = await apiClient.patch<RawAuthResponse>('/auth/profile', updates);
+    return normalizeUser(response.data);
   },
 
   logout: async (refreshToken: string): Promise<void> => {

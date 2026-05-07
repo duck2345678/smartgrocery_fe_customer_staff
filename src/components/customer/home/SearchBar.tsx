@@ -6,17 +6,28 @@ export default function SearchBar() {
   const router = useRouter();
 
   return (
-    <View className="px-6 pb-4">
+    <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12 }}>
       <Pressable
         onPress={() => router.push('/(customer)/search' as never)}
-        className="flex-row items-center bg-surface border border-border rounded-2xl px-4 py-3"
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: '#FFFFFF',
+          borderRadius: 16,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 3,
+        }}
         hitSlop={8}
       >
-        <Search size={18} color="#94A3B8" />
-        <Text className="flex-1 ml-2 text-base font-inter text-slate-400">Tìm sản phẩm...</Text>
-        <View className="ml-2 px-3 py-2 rounded-xl bg-primary">
-          <Text className="text-primary-fg font-inter-bold text-sm">Tìm</Text>
-        </View>
+        <Search size={20} color="#94A3B8" />
+        <Text style={{ flex: 1, marginLeft: 10, fontSize: 15, fontFamily: 'Inter-Regular', color: '#94A3B8' }}>
+          Tìm sản phẩm...
+        </Text>
       </Pressable>
     </View>
   );

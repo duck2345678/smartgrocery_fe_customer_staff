@@ -18,8 +18,8 @@ describe('staffPickingUtils', () => {
       assigneeId: 10,
       leaseExpiresAt: null,
       items: [
-        { orderItemId: 101, variantId: 1, sku: 'S1', productName: 'A', orderedQuantity: 2, pickedQuantity: null, allowSubstitution: true, unitPrice: 10 },
-        { orderItemId: 102, variantId: 2, sku: 'S2', productName: 'B', orderedQuantity: 1, allowSubstitution: false, unitPrice: 10 },
+        { orderItemId: 101, variantId: 1, sku: 'S1', productName: 'A', orderedQuantity: 2, pickedQuantity: null, unitPrice: 10 },
+        { orderItemId: 102, variantId: 2, sku: 'S2', productName: 'B', orderedQuantity: 1, unitPrice: 10 },
       ],
     };
 
@@ -36,8 +36,8 @@ describe('staffPickingUtils', () => {
       assigneeId: 10,
       leaseExpiresAt: null,
       items: [
-        { orderItemId: 101, variantId: 1, sku: 'S1', productName: 'A', orderedQuantity: 2, allowSubstitution: true, unitPrice: 10 },
-        { orderItemId: 102, variantId: 2, sku: 'S2', productName: 'B', orderedQuantity: 1, allowSubstitution: false, unitPrice: 10 },
+        { orderItemId: 101, variantId: 1, sku: 'S1', productName: 'A', orderedQuantity: 2, unitPrice: 10 },
+        { orderItemId: 102, variantId: 2, sku: 'S2', productName: 'B', orderedQuantity: 1, unitPrice: 10 },
       ],
     };
 

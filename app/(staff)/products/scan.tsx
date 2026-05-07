@@ -230,6 +230,7 @@ export default function StaffBarcodeScanScreen() {
             </View>
 
             <Pressable
+              testID="scanner-switch-camera"
               onPress={toggleFacing}
               style={{ alignItems: 'center', gap: 8 }}
             >
@@ -261,4 +262,3 @@ export default function StaffBarcodeScanScreen() {
     </View>
   );
 }
-

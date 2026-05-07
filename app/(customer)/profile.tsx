@@ -22,8 +22,8 @@ export default function CustomerProfile() {
         <Pressable onPress={() => router.push('/(customer)/orders' as never)}>
           <Card className="p-4 border border-border">
             <View className="flex-row items-center">
-              <View className="w-9 h-9 rounded-xl bg-emerald-50 items-center justify-center">
-                <History size={18} color="#22C55E" />
+              <View className="w-9 h-9 rounded-xl bg-primary/5 items-center justify-center">
+                <History size={18} color="#16A34A" />
               </View>
               <View className="flex-1 ml-3">
                 <Text className="text-base font-inter-bold text-text">Đơn hàng</Text>

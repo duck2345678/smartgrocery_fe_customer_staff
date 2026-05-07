@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 
 type StaffHomeState = {
-  promoIndex: number;
-  setPromoIndex: (value: number) => void;
   selectedDateIso: string;
   setSelectedDateIso: (value: string) => void;
   handbookOpenCategoryIds: string[];
@@ -10,8 +8,6 @@ type StaffHomeState = {
 };
 
 export const useStaffHomeStore = create<StaffHomeState>((set) => ({
-  promoIndex: 0,
-  setPromoIndex: (value) => set({ promoIndex: value }),
   selectedDateIso: new Date().toISOString().slice(0, 10),
   setSelectedDateIso: (value) => set({ selectedDateIso: value }),
   handbookOpenCategoryIds: ['getting-started'],

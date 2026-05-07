@@ -33,6 +33,7 @@ vi.mock('react-native', async () => {
     Pressable: ({ children, onPress, ...props }: { children?: React.ReactNode; onPress?: () => void }) =>
       ReactActual.createElement('button', { ...props, onClick: onPress }, children),
     ScrollView: create('div'),
+    RefreshControl: create('div'),
     Text: create('span'),
     TextInput: create('input'),
     View: create('div'),
@@ -45,11 +46,6 @@ vi.mock('react-native', async () => {
 vi.mock('expo-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
   Stack: { Screen: () => null },
-}));
-
-vi.mock('../src/store/staffOrdersStore', () => ({
-  useStaffOrdersStore: (selector: (s: { view: 'QUEUE' | 'MY_ACTIVE'; setView: (v: 'QUEUE' | 'MY_ACTIVE') => void }) => unknown) =>
-    selector({ view: 'QUEUE', setView: vi.fn() }),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -91,7 +87,8 @@ describe('StaffOrdersScreen', () => {
     });
     const text = collectTextFromInstance(inst.root).join(' ');
     expect(text).toContain('Đơn hàng');
-    expect(text).toContain('Hàng chờ');
-    expect(text).toContain('Đang xử lý');
+    expect(text).toContain('Phân công đơn hàng');
+    expect(text).toContain('Đơn đang xử lý');
+    expect(text).toContain('Đơn được phân công');
   });
 });

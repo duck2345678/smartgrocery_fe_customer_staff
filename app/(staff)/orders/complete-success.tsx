@@ -1,11 +1,22 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react-native';
+import { useStaffHomeStore } from '../../../src/store/staffHomeStore';
 
 export default function CompleteSuccessScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const selectedDateIso = useStaffHomeStore((s) => s.selectedDateIso);
+
+  useEffect(() => {
+    void queryClient.invalidateQueries({ queryKey: ['staff-performance-daily', selectedDateIso] });
+    void queryClient.invalidateQueries({ queryKey: ['staff-performance-summary', selectedDateIso] });
+    void queryClient.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+    void queryClient.invalidateQueries({ queryKey: ['staff-order-queue'] });
+  }, [queryClient, selectedDateIso]);
 
   return (
     <SafeAreaView className="flex-1 bg-[#F5FAF7] px-5 justify-center">

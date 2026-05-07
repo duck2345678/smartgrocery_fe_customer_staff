@@ -49,6 +49,11 @@ export default function StaffLayout() {
           title: 'Sản phẩm',
           tabBarIcon: ({ color, size, focused }) => <Package size={size ?? 21} color={focused ? '#16A34A' : color} strokeWidth={focused ? 2.5 : 2} />,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate('products');
+          },
+        })}
       />
       <Tabs.Screen
         name="orders"
@@ -56,6 +61,11 @@ export default function StaffLayout() {
           title: 'Đơn hàng',
           tabBarIcon: ({ color, size, focused }) => <ClipboardList size={size ?? 21} color={focused ? '#16A34A' : color} strokeWidth={focused ? 2.5 : 2} />,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate('orders');
+          },
+        })}
       />
       <Tabs.Screen
         name="attendance"
@@ -63,6 +73,11 @@ export default function StaffLayout() {
           title: 'Chấm công',
           tabBarIcon: ({ color, size, focused }) => <Clock size={size ?? 21} color={focused ? '#16A34A' : color} strokeWidth={focused ? 2.5 : 2} />,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate('attendance');
+          },
+        })}
       />
       <Tabs.Screen
         name="profile"
@@ -70,17 +85,21 @@ export default function StaffLayout() {
           title: 'Cá nhân',
           tabBarIcon: ({ color, size, focused }) => <User size={size ?? 21} color={focused ? '#16A34A' : color} strokeWidth={focused ? 2.5 : 2} />,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate('profile');
+          },
+        })}
       />
       {/* Hidden routes — accessible via navigation but not shown in tab bar */}
-      <Tabs.Screen name="admin-issues" options={{ href: null }} />
       <Tabs.Screen name="admin-queue" options={{ href: null }} />
-      <Tabs.Screen name="handbook" options={{ href: null }} />
-      <Tabs.Screen name="issues" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="performance" options={{ href: null }} />
       <Tabs.Screen name="products/scan" options={{ href: null }} />
       <Tabs.Screen name="products/[id]" options={{ href: null }} />
       <Tabs.Screen name="orders/[id]" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="handbook" options={{ href: null }} />
+      <Tabs.Screen name="performance" options={{ href: null }} />
+      <Tabs.Screen name="profile/payslip" options={{ href: null }} />
     </Tabs>
   );
 }

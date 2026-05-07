@@ -1,11 +1,28 @@
-import { Redirect, Stack, type Href } from 'expo-router';
+import { Stack, type Href, useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { ActivityIndicator, View } from 'react-native';
+import { useEffect } from 'react';
 
 export default function AuthLayout() {
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isHydrated && isAuthenticated && user) {
+      const target: Href =
+        user.role === 'STAFF' || user.role === 'ADMIN'
+            ? '/(staff)'
+            : '/(customer)';
+      
+      const timer = setTimeout(() => {
+        router.replace(target);
+      }, 0);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isHydrated, isAuthenticated, user, router]);
 
   if (!isHydrated) {
     return (
@@ -16,11 +33,8 @@ export default function AuthLayout() {
   }
 
   if (isAuthenticated && user) {
-    const target: Href =
-      user.role === 'STAFF' || user.role === 'ADMIN'
-          ? '/(staff)'
-          : '/(customer)';
-    return <Redirect href={target} />;
+    // Return null while waiting for the useEffect redirect to fire
+    return null;
   }
 
   return (

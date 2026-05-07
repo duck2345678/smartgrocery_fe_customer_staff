@@ -8,8 +8,9 @@ export type StaffPickItem = {
   aisleLocation?: string | null;
   orderedQuantity: number;
   pickedQuantity?: number | null;
-  allowSubstitution: boolean;
   unitPrice: number;
+  imageUrl?: string | null;
+  stockQuantity?: number | null;
 };
 
 export type StaffPickOrder = {
@@ -18,14 +19,24 @@ export type StaffPickOrder = {
   status: string;
   assigneeId: number | null;
   leaseExpiresAt: string | null;
+  packingPhotoUrl?: string | null;
+  deliveryPhotoUrl?: string | null;
   items: StaffPickItem[];
+  customerName?: string | null;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
+  addressLine?: string | null;
+  paymentMethod?: string | null;
+  subtotal?: number | null;
+  totalAmount?: number | null;
+  orderDate?: string | null;
+  deliveryDate?: string | null;
 };
 
 export type PickItemState = {
   orderItemId: number;
   orderedQuantity: number;
   pickedQuantity: number;
-  allowSubstitution: boolean;
   isSubstituted: boolean;
   substitutedVariantId: number | null;
   reason: string;
@@ -65,7 +76,6 @@ export const buildInitialSession = (pickOrder: StaffPickOrder): StaffPickSession
       orderItemId: it.orderItemId,
       orderedQuantity: it.orderedQuantity,
       pickedQuantity: picked,
-      allowSubstitution: Boolean(it.allowSubstitution),
       isSubstituted: false,
       substitutedVariantId: null,
       reason: '',

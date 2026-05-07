@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Animated, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, RefreshControl, Text, useWindowDimensions, View, Pressable } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
@@ -7,7 +7,6 @@ import HomeHeader from '../../src/components/customer/home/HomeHeader';
 import SearchBar from '../../src/components/customer/home/SearchBar';
 import BannerCarousel from '../../src/components/customer/home/BannerCarousel';
 import AiNudge from '../../src/components/customer/home/AiNudge';
-import CategoryGrid from '../../src/components/customer/home/CategoryGrid';
 import DealsRow from '../../src/components/customer/home/DealsRow';
 import Button from '../../src/components/ui/Button';
 import Skeleton from '../../src/components/ui/Skeleton';
@@ -18,37 +17,48 @@ import { type Product } from '../../src/types/product';
 function ProductTile({ item, onPress }: { item: Product; onPress: () => void }) {
   const discountPercent = item.discountPercent ?? 0;
   const hasDiscount = discountPercent > 0;
+  const stockRatio = Math.min(item.stock / 50, 1); // Mock max stock of 50 for the progress bar
+
   return (
-    <View className="bg-surface border border-border rounded-3xl overflow-hidden">
-      <View className="w-full h-28 bg-surface2">
+    <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' }}>
+      <View style={{ width: '100%', height: 130, backgroundColor: '#F8FAFC' }}>
         <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="disk" transition={200} />
         {hasDiscount ? (
-          <View className="absolute top-2 left-2 px-2 py-1 rounded-full bg-red-500">
-            <Text className="text-white text-[10px] font-inter-bold">-{discountPercent}%</Text>
+          <View style={{ position: 'absolute', top: 0, right: 0, backgroundColor: '#EF4444', borderBottomLeftRadius: 12, paddingHorizontal: 8, paddingVertical: 4 }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 11, fontFamily: 'Inter-Bold' }}>-{discountPercent}%</Text>
           </View>
         ) : null}
       </View>
-      <View className="p-3">
-        <Text className="text-sm font-inter-bold text-text" numberOfLines={1}>
+      <View style={{ padding: 12 }}>
+        <Text style={{ fontSize: 14, fontFamily: 'Outfit-Bold', color: '#0F172A' }} numberOfLines={1}>
           {item.name}
         </Text>
-        <Text className="text-[11px] font-inter text-muted mt-1" numberOfLines={1}>
+        <Text style={{ fontSize: 11, fontFamily: 'Inter-Regular', color: '#64748B', marginTop: 2 }} numberOfLines={1}>
           {item.category}
         </Text>
-        <View className="flex-row items-end justify-between mt-2">
-          <View>
-            <Text className={`text-base font-outfit-bold ${hasDiscount ? 'text-red-600' : 'text-text'}`}>{item.price.toLocaleString('vi-VN')}₫</Text>
-            {hasDiscount ? (
-              <Text className="text-[11px] font-inter text-muted line-through">
-                {(item.originalPrice ?? item.price).toLocaleString('vi-VN')}₫
-              </Text>
-            ) : null}
+        
+        <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ fontSize: 14, fontFamily: 'Outfit-Bold', color: '#0F172A' }}>{item.price.toLocaleString('vi-VN')}₫</Text>
+          {hasDiscount ? (
+            <Text style={{ fontSize: 10, fontFamily: 'Inter-Regular', color: '#94A3B8', textDecorationLine: 'line-through', marginLeft: 6 }}>
+              {(item.originalPrice ?? item.price).toLocaleString('vi-VN')}₫
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={{ marginTop: 8 }}>
+          <Text style={{ fontSize: 11, fontFamily: 'Inter-Medium', color: '#334155' }}>Còn {item.stock}</Text>
+          <View style={{ width: '100%', height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, marginTop: 4 }}>
+            <View style={{ width: `${stockRatio * 100}%`, height: '100%', backgroundColor: '#16A34A', borderRadius: 2 }} />
           </View>
-          <Text className="text-[11px] font-inter-bold text-muted">{item.stock > 0 ? `Còn ${item.stock}` : 'Hết'}</Text>
         </View>
-        <View className="mt-2">
-          <Button label="Xem" variant="outline" onPress={onPress} />
-        </View>
+
+        <Pressable 
+          onPress={onPress} 
+          style={{ marginTop: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#16A34A', alignItems: 'center' }}
+        >
+          <Text style={{ fontSize: 13, fontFamily: 'Inter-Bold', color: '#16A34A' }}>Xem</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -109,7 +119,6 @@ export default function CustomerHome() {
       <SearchBar />
       <BannerCarousel />
       <AiNudge />
-      <CategoryGrid />
       <DealsRow />
       <View className="px-6 pb-3 flex-row items-center justify-between">
         <Text className="text-base font-outfit-bold text-text">Sản phẩm hằng ngày</Text>
@@ -122,6 +131,8 @@ export default function CustomerHome() {
 
   return (
     <View className="flex-1 bg-background">
+      {/* Decorative light green background top section */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 240, backgroundColor: '#EBF5EC', borderBottomLeftRadius: 40, borderBottomRightRadius: 40 }} />
       <HomeHeader />
       <Animated.View style={{ flex: 1, opacity, transform: [{ translateY }] }}>
         <FlashList
@@ -132,7 +143,7 @@ export default function CustomerHome() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={header}
           contentContainerStyle={{ paddingBottom: 24 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#16A34A" />}
           onEndReached={() => {
             if (dailyQuery.hasNextPage && !dailyQuery.isFetchingNextPage) void dailyQuery.fetchNextPage();
           }}

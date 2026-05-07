@@ -7,7 +7,7 @@ import { ProtectedRoute } from '../../src/components/auth/ProtectedRoute';
 import { useCart } from '../../src/hooks/useCart';
 
 const TAB_SCREEN_OPTIONS = {
-  tabBarActiveTintColor: '#22C55E',
+  tabBarActiveTintColor: '#16A34A',
   headerShown: false,
   tabBarStyle: {
     borderTopWidth: 0,
@@ -80,7 +80,7 @@ function CartTabIcon({ color }: { color: string }) {
   const { count } = useCart();
   return (
     <View style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
-      <ShoppingCart size={24} color={count > 0 ? '#22C55E' : color} />
+      <ShoppingCart size={24} color={count > 0 ? '#16A34A' : color} />
       {count > 0 ? (
         <View
           style={{

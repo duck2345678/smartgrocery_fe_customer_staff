@@ -32,7 +32,7 @@ export default function OrderSuccess() {
     <View className="flex-1 bg-background p-6">
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 items-center justify-center">
-        <CheckCircle2 size={72} color="#22C55E" />
+        <CheckCircle2 size={72} color="#16A34A" />
         <Text className="text-2xl font-outfit-bold text-slate-900 mt-6">Đặt hàng thành công</Text>
         {displayOrderNumber ? (
           <Text className="text-slate-500 font-inter mt-2">Mã đơn: {displayOrderNumber}</Text>

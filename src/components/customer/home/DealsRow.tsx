@@ -25,7 +25,7 @@ export default function DealsRow() {
       <View className="px-6 flex-row items-center justify-between mb-3">
         <Text className="text-base font-outfit-bold text-slate-900">Giảm giá hot</Text>
         <Pressable onPress={() => router.push('/(customer)/shop' as never)} hitSlop={8}>
-          <Text className="text-sm font-inter-bold text-emerald-700">Xem thêm</Text>
+          <Text className="text-sm font-inter-bold text-primary">Xem thêm</Text>
         </Pressable>
       </View>
 
@@ -48,7 +48,7 @@ export default function DealsRow() {
           </View>
         </View>
       ) : (
-        <View style={{ height: 196 }}>
+        <View style={{ height: 280 }}>
           <FlashList
             data={deals}
             horizontal
@@ -56,43 +56,56 @@ export default function DealsRow() {
             contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
             estimatedItemSize={170}
             keyExtractor={(i) => String(i.id)}
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => router.push(`/(customer)/products/${item.id}` as never)}
-                className="w-40 bg-white border border-slate-100 rounded-2xl overflow-hidden"
-              >
-                <View className="w-full h-28 bg-slate-100">
-                  <Image
-                    source={{ uri: item.imageUrl }}
-                    style={{ width: '100%', height: '100%' }}
-                    contentFit="cover"
-                    cachePolicy="disk"
-                    transition={200}
-                  />
-                  <View className="absolute top-2 left-2 px-2 py-1 rounded-full bg-red-500">
-                    <Text className="text-white text-[10px] font-inter-bold">-{item.discountPercent}%</Text>
+            renderItem={({ item }) => {
+              const stockRatio = Math.min(item.stock / 50, 1);
+              return (
+                <Pressable
+                  onPress={() => router.push(`/(customer)/products/${item.id}` as never)}
+                  style={{ width: 160, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' }}
+                >
+                  <View style={{ width: '100%', height: 120, backgroundColor: '#F8FAFC' }}>
+                    <Image
+                      source={{ uri: item.imageUrl }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                      cachePolicy="disk"
+                      transition={200}
+                    />
+                    <View style={{ position: 'absolute', top: 0, right: 0, backgroundColor: '#EF4444', borderBottomLeftRadius: 12, paddingHorizontal: 8, paddingVertical: 4 }}>
+                      <Text style={{ color: '#FFFFFF', fontSize: 11, fontFamily: 'Inter-Bold' }}>-{item.discountPercent}%</Text>
+                    </View>
                   </View>
-                </View>
-                <View className="p-3">
-                  <Text className="text-sm font-inter-bold text-slate-900" numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text className="text-[11px] font-inter text-slate-500 mt-1" numberOfLines={1}>
-                    {item.category}
-                  </Text>
-                  <View className="mt-2">
-                    <Text className="text-base font-outfit-bold text-red-600">
-                      {item.price.toLocaleString('vi-VN')}₫
+                  <View style={{ padding: 12 }}>
+                    <Text style={{ fontSize: 14, fontFamily: 'Outfit-Bold', color: '#0F172A' }} numberOfLines={1}>
+                      {item.name}
                     </Text>
-                    {typeof item.originalPrice === 'number' ? (
-                      <Text className="text-[11px] font-inter text-slate-400 line-through">
-                        {item.originalPrice.toLocaleString('vi-VN')}₫
-                      </Text>
-                    ) : null}
+                    <Text style={{ fontSize: 11, fontFamily: 'Inter-Regular', color: '#64748B', marginTop: 2 }} numberOfLines={1}>
+                      {item.category}
+                    </Text>
+                    
+                    <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, fontFamily: 'Outfit-Bold', color: '#0F172A' }}>{item.price.toLocaleString('vi-VN')}₫</Text>
+                      {typeof item.originalPrice === 'number' ? (
+                        <Text style={{ fontSize: 10, fontFamily: 'Inter-Regular', color: '#94A3B8', textDecorationLine: 'line-through', marginLeft: 6 }}>
+                          {item.originalPrice.toLocaleString('vi-VN')}₫
+                        </Text>
+                      ) : null}
+                    </View>
+
+                    <View style={{ marginTop: 8 }}>
+                      <Text style={{ fontSize: 11, fontFamily: 'Inter-Medium', color: '#334155' }}>Còn {item.stock}</Text>
+                      <View style={{ width: '100%', height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, marginTop: 4 }}>
+                        <View style={{ width: `${stockRatio * 100}%`, height: '100%', backgroundColor: '#16A34A', borderRadius: 2 }} />
+                      </View>
+                    </View>
+
+                    <View style={{ marginTop: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#16A34A', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, fontFamily: 'Inter-Bold', color: '#16A34A' }}>Xem</Text>
+                    </View>
                   </View>
-                </View>
-              </Pressable>
-            )}
+                </Pressable>
+              );
+            }}
           />
         </View>
       )}

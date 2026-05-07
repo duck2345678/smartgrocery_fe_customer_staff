@@ -94,7 +94,7 @@ export default function AiMealReviewScreen() {
         <Card className={clsx('p-4 border', isChecked ? 'border-primary bg-surface' : 'border-border bg-surface')}>
           <View className="flex-row items-start">
             <View className="mt-0.5">
-              {isChecked ? <CheckCircle2 size={20} color="#22C55E" /> : <Circle size={20} color="#94A3B8" />}
+              {isChecked ? <CheckCircle2 size={20} color="#16A34A" /> : <Circle size={20} color="#94A3B8" />}
             </View>
             <View className="flex-1 ml-3">
               <Text className={clsx('text-base font-outfit-bold', isOut ? 'text-slate-500' : 'text-slate-900')} numberOfLines={1}>

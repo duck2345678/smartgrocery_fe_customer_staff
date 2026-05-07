@@ -14,7 +14,7 @@ type CartItemDto = {
   sku: string;
   unitPrice: number;
   quantity: number;
-  allowSubstitution?: boolean | null;
+
   subtotal: number;
   imageUrl?: string | null;
   stock?: number | null;
@@ -65,7 +65,7 @@ const mapCartDto = (value: unknown): CartResponse => {
       imageUrl: resolveImageUrl(i.imageUrl),
       stock: typeof i.stock === 'number' ? i.stock : 0,
       quantity: i.quantity,
-      allowSubstitution: Boolean(i.allowSubstitution),
+
     })),
   };
 };
@@ -94,10 +94,6 @@ export const cartApi = {
     return mapCartDto(response.data);
   },
 
-  updateAllowSubstitution: async (input: { cartItemId: number; allowSubstitution: boolean }): Promise<CartResponse> => {
-    const response = await apiClient.patch(`/carts/item/${input.cartItemId}`, { allowSubstitution: input.allowSubstitution });
-    return mapCartDto(response.data);
-  },
 
   removeItem: async (input: { cartItemId: number }): Promise<CartResponse> => {
     const response = await apiClient.delete(`/carts/item/${input.cartItemId}`);

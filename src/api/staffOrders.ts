@@ -1,5 +1,7 @@
 import apiClient from './client';
-import { type CompletePickingPayload, type StaffPickOrder } from '../utils/staffPickingUtils';
+import { type CompletePickingPayload, type StaffPickOrder, type StaffPickItem } from '../utils/staffPickingUtils';
+import { resolveImageUrl } from '../utils/imageUtils';
+export type { CompletePickingPayload, StaffPickOrder, StaffPickItem };
 
 export type StaffOrderQueueItem = {
   id: number;
@@ -47,21 +49,6 @@ export type AssignOrderResponse = {
   leaseExpiresAt: string | null;
 };
 
-export type StaffPickItem = {
-  orderItemId: number;
-  variantId: number;
-  sku: string;
-  barcode?: string | null;
-  productName: string;
-  variantName?: string | null;
-  aisleLocation?: string | null;
-  orderedQuantity: number;
-  pickedQuantity?: number | null;
-  allowSubstitution: boolean;
-  unitPrice: number;
-  imageUrl?: string | null;
-  stockQuantity?: number | null;
-};
 
 const toNumber = (v: unknown): number => {
   if (typeof v === 'number') return v;
@@ -107,6 +94,17 @@ const mapPickOrder = (x: unknown): StaffPickOrder => {
     status: String(o.status ?? ''),
     assigneeId: o.assigneeId != null ? toNumber(o.assigneeId) : null,
     leaseExpiresAt: typeof o.leaseExpiresAt === 'string' ? o.leaseExpiresAt : null,
+    packingPhotoUrl: resolveImageUrl(o.packingPhotoUrl, 'Packing'),
+    deliveryPhotoUrl: resolveImageUrl(o.deliveryPhotoUrl, 'Delivery'),
+    customerName: typeof o.customerName === 'string' ? o.customerName : null,
+    customerPhone: typeof o.customerPhone === 'string' ? o.customerPhone : null,
+    customerEmail: typeof o.customerEmail === 'string' ? o.customerEmail : null,
+    addressLine: typeof o.addressLine === 'string' ? o.addressLine : null,
+    paymentMethod: typeof o.paymentMethod === 'string' ? o.paymentMethod : null,
+    subtotal: o.subtotal != null ? toNumber(o.subtotal) : null,
+    totalAmount: o.totalAmount != null ? toNumber(o.totalAmount) : null,
+    orderDate: typeof o.orderDate === 'string' ? o.orderDate : null,
+    deliveryDate: typeof o.deliveryDate === 'string' ? o.deliveryDate : null,
     items: itemsRaw.map((it) => {
       const i = it as Record<string, unknown>;
       return {
@@ -119,9 +117,8 @@ const mapPickOrder = (x: unknown): StaffPickOrder => {
         aisleLocation: typeof i.aisleLocation === 'string' ? i.aisleLocation : null,
         orderedQuantity: toNumber(i.orderedQuantity),
         pickedQuantity: i.pickedQuantity != null ? toNumber(i.pickedQuantity) : null,
-        allowSubstitution: Boolean(i.allowSubstitution),
         unitPrice: toNumber(i.unitPrice),
-        imageUrl: typeof i.imageUrl === 'string' ? i.imageUrl : null,
+        imageUrl: resolveImageUrl(i.imageUrl, String(i.productName ?? 'Product')),
         stockQuantity: i.stockQuantity != null ? toNumber(i.stockQuantity) : null,
       };
     }),
@@ -140,9 +137,8 @@ export const staffOrdersApi = {
       const res = await apiClient.get('/staff/orders/my-active');
       if (!res.data) return null;
       return mapQueueItem(res.data);
-    } catch (error) {
-      const e = error as { response?: { status?: number } };
-      if (e.response?.status === 404) return null;
+    } catch (error: any) {
+      if (error.status === 404 || error.response?.status === 404) return null;
       throw error;
     }
   },
@@ -218,5 +214,17 @@ export const staffOrdersApi = {
       monthTo: String(o.monthTo ?? ''),
       monthCompletedCount: toNumber(o.monthCompletedCount),
     };
+  },
+
+  pack: async (orderId: number, packingPhotoUrl: string): Promise<void> => {
+    await apiClient.post(`/orders/${orderId}/pack`, null, { params: { packingPhotoUrl } });
+  },
+
+  deliver: async (orderId: number, deliveryPhotoUrl: string): Promise<void> => {
+    await apiClient.post(`/orders/${orderId}/deliver`, null, { params: { deliveryPhotoUrl } });
+  },
+
+  complete: async (orderId: number): Promise<void> => {
+    await apiClient.post(`/orders/${orderId}/complete`);
   },
 };

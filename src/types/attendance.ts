@@ -1,4 +1,4 @@
-export type ShiftType = 'S' | 'C' | 'G' | 'P' | 'F' | 'OFF';
+export type ShiftType = 'S' | 'C' | 'G' | 'P' | 'OFF';
 export type DayStatus = 'ON_TIME' | 'LATE' | 'ABSENT' | 'SCHEDULED' | 'OFF' | 'NO_SCHEDULE';
 
 export interface ShiftBlock {
@@ -20,7 +20,7 @@ export interface AttendanceRecord {
   checkInAt: string | null;
   checkOutAt: string | null;
   checkInStatus: 'ON_TIME' | 'LATE' | null;
-  checkOutStatus: 'ON_TIME' | 'EARLY' | 'AUTO_CLOSED' | null;
+  checkOutStatus: 'ON_TIME' | 'EARLY' | 'LATE' | 'AUTO_CLOSED' | null;
   note: string | null;
 }
 

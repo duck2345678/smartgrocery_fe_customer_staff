@@ -8,6 +8,8 @@ export type UserDto = {
   id: number;
   email: string;
   fullName?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
   role: 'CUSTOMER' | 'STAFF' | 'ADMIN';
 };
 
@@ -20,9 +22,11 @@ type AuthState = {
   isAuthenticated: boolean;
   user: UserDto | null;
   isHydrated: boolean;
+  authNotice: string | null;
   setHydrated: () => void;
   setTokens: (accessToken: string | null, refreshToken: string | null) => void;
   setUser: (user: UserDto | null) => void;
+  setAuthNotice: (notice: string | null) => void;
   logout: () => void;
 };
 
@@ -34,22 +38,27 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       user: null,
       isHydrated: false,
+      authNotice: null,
       setHydrated: () => set({ isHydrated: true }),
       setTokens: (accessToken, refreshToken) => {
         set((s) => ({
           token: accessToken,
           refreshToken: refreshToken,
           isAuthenticated: Boolean(accessToken) && Boolean(s.user),
+          authNotice: null,
         }));
       },
       setUser: (user) => {
         if (user && !isSupportedRole(user.role)) {
           useCartStore.getState().clear();
           useOrderStore.getState().clearOrders();
-          set({ token: null, refreshToken: null, isAuthenticated: false, user: null });
+          set({ token: null, refreshToken: null, isAuthenticated: false, user: null, authNotice: null });
           return;
         }
-        set((s) => ({ user, isAuthenticated: Boolean(s.token) && Boolean(user) }));
+        set((s) => ({ user, isAuthenticated: Boolean(s.token) && Boolean(user), authNotice: null }));
+      },
+      setAuthNotice: (notice) => {
+        set({ authNotice: notice });
       },
       logout: () => {
         useCartStore.getState().clear();
@@ -60,6 +69,13 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "smart-grocery-auth-v2",
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        token: state.token,
+        refreshToken: state.refreshToken,
+        isAuthenticated: state.isAuthenticated,
+        user: state.user,
+        isHydrated: state.isHydrated,
+      }),
       onRehydrateStorage: () => (state) => {
         useAuthStore.setState({ isHydrated: true });
         if (!state) return;

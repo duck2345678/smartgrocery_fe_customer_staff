@@ -14,28 +14,45 @@ vi.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Success: 'Success', Error: 'Error' },
 }));
 
-vi.mock('react-native', async () => {
-  const ReactActual = await vi.importActual<typeof import('react')>('react');
-  const create = (type: string) => ({ children, ...props }: { children?: React.ReactNode }) =>
-    ReactActual.createElement(type, props, children);
+vi.mock('lucide-react-native', () => {
+  const Icon = () => null;
+  return {
+    User: Icon,
+    Briefcase: Icon,
+    ReceiptText: Icon,
+    Lock: Icon,
+    LogOut: Icon,
+    ChevronRight: Icon,
+  };
+});
+
+vi.mock('react-native', () => {
+  const create =
+    (type: string) =>
+    ({ children, ...props }: { children?: React.ReactNode } & Record<string, any>) =>
+      React.createElement(type, props, children);
   return {
     Alert: { alert: vi.fn() },
     ActivityIndicator: create('div'),
-    Pressable: ({ children, onPress, ...props }: { children?: React.ReactNode; onPress?: () => void }) =>
-      ReactActual.createElement('button', { ...props, onClick: onPress }, children),
+    Pressable: ({ children, onPress, ...props }: { children?: React.ReactNode; onPress?: () => void } & Record<string, any>) =>
+      React.createElement('button', { ...props, onClick: onPress }, children),
     ScrollView: create('div'),
     Text: create('span'),
     TextInput: create('input'),
     View: create('div'),
     Switch: create('input'),
     TouchableOpacity: create('button'),
-    Platform: { OS: 'ios', select: (v: Record<string, unknown>) => v.ios },
+    Platform: { OS: 'ios', select: (v: Record<string, any>) => v.ios },
   };
 });
 
 vi.mock('expo-router', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   Stack: { Screen: () => null },
+}));
+
+vi.mock('@react-navigation/native', () => ({
+  useFocusEffect: (cb: any) => cb?.(),
 }));
 
 vi.mock('../src/store/authStore', () => ({
@@ -62,16 +79,6 @@ vi.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-const collectText = (node: unknown, out: string[] = []): string[] => {
-  if (node == null) return out;
-  if (typeof node === 'string') out.push(node);
-  if (Array.isArray(node)) node.forEach((x) => collectText(x, out));
-  if (typeof node === 'object' && node && 'children' in (node as { children?: unknown })) {
-    collectText((node as { children?: unknown }).children, out);
-  }
-  return out;
-};
-
 const collectTextFromInstance = (node: renderer.ReactTestInstance | string, out: string[] = []): string[] => {
   if (typeof node === 'string') out.push(node);
   else node.children.forEach((c) => collectTextFromInstance(c as any, out));
@@ -85,8 +92,8 @@ describe('StaffProfileScreen', () => {
       inst = renderer.create(<StaffProfileScreen />);
     });
     const text = collectTextFromInstance(inst.root).join(' ');
-    expect(text).toContain('Cá nhân');
+    expect(text).toContain('Hồ sơ cá nhân');
     expect(text).toContain('Test Staff');
-    expect(text).toContain('staff@test.com');
+    expect(text).toContain('Nhân viên');
   });
 });
