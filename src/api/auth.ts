@@ -69,5 +69,14 @@ export const authApi = {
 
   logout: async (refreshToken: string): Promise<void> => {
     await apiClient.post('/auth/logout', { refreshToken });
-  }
+  },
+
+  register: async (fullName: string, email: string, password: string): Promise<AuthResponse> => {
+    const response = await apiClient.post<RawAuthResponse>('/auth/register', {
+      fullName,
+      email,
+      password,
+    });
+    return normalizeAuthResponse(response.data);
+  },
 };

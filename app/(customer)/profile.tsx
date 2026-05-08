@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { View, Text, Pressable, Alert } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import Button from '../../src/components/ui/Button';
-import Card from '../../src/components/ui/Card';
-import { ChevronRight, History, MapPin, Settings } from 'lucide-react-native';
+import { ChevronRight, History, MapPin, UserCircle2 } from 'lucide-react-native';
 
 export default function CustomerProfile() {
   const { user, logout } = useAuthStore();
@@ -13,56 +12,32 @@ export default function CustomerProfile() {
 
   return (
     <View className="flex-1 bg-background p-6">
-      <View className="mt-10">
-        <Text className="text-2xl font-outfit-bold text-text">Tài khoản</Text>
-        <Text className="text-muted font-inter mt-1">{user?.email}</Text>
+      <View className="mt-10 mb-6">
+        <Text className="text-2xl font-outfit-bold text-text">{user?.fullName ?? 'Khách hàng'}</Text>
+        <Text className="text-sm font-inter text-muted mt-1">{user?.email}</Text>
       </View>
 
-      <View className="mt-6 gap-y-3">
-        <Pressable onPress={() => router.push('/(customer)/orders' as never)}>
-          <Card className="p-4 border border-border">
-            <View className="flex-row items-center">
-              <View className="w-9 h-9 rounded-xl bg-primary/5 items-center justify-center">
-                <History size={18} color="#16A34A" />
-              </View>
-              <View className="flex-1 ml-3">
-                <Text className="text-base font-inter-bold text-text">Đơn hàng</Text>
-                <Text className="text-xs font-inter text-muted mt-1">Xem lịch sử và theo dõi trạng thái đơn.</Text>
-              </View>
-              <ChevronRight size={18} color="#94A3B8" />
-            </View>
-          </Card>
-        </Pressable>
+      <View className="space-y-3">
+        <PressableCard
+          title="Thông tin hồ sơ"
+          description="Chỉnh sửa tên và số điện thoại."
+          icon={<UserCircle2 size={18} color="#0F172A" />}
+          onPress={() => router.push('/(customer)/profile-edit' as never)}
+        />
 
-        <Pressable onPress={() => Alert.alert('Thông báo', 'Tính năng đang được phát triển.', [{ text: 'Đóng' }])}>
-          <Card className="p-4 border border-border">
-            <View className="flex-row items-center">
-              <View className="w-9 h-9 rounded-xl bg-slate-100 items-center justify-center">
-                <MapPin size={18} color="#0F172A" />
-              </View>
-              <View className="flex-1 ml-3">
-                <Text className="text-base font-inter-bold text-text">Sổ địa chỉ</Text>
-                <Text className="text-xs font-inter text-muted mt-1">Quản lý địa chỉ giao hàng.</Text>
-              </View>
-              <ChevronRight size={18} color="#94A3B8" />
-            </View>
-          </Card>
-        </Pressable>
+        <PressableCard
+          title="Địa chỉ giao hàng"
+          description="Thêm, sửa, xóa địa chỉ giao hàng."
+          icon={<MapPin size={18} color="#0F172A" />}
+          onPress={() => router.push('/(customer)/addresses' as never)}
+        />
 
-        <Pressable onPress={() => Alert.alert('Thông báo', 'Tính năng đang được phát triển.', [{ text: 'Đóng' }])}>
-          <Card className="p-4 border border-border">
-            <View className="flex-row items-center">
-              <View className="w-9 h-9 rounded-xl bg-slate-100 items-center justify-center">
-                <Settings size={18} color="#0F172A" />
-              </View>
-              <View className="flex-1 ml-3">
-                <Text className="text-base font-inter-bold text-text">Cài đặt</Text>
-                <Text className="text-xs font-inter text-muted mt-1">Bảo mật và tuỳ chọn tài khoản.</Text>
-              </View>
-              <ChevronRight size={18} color="#94A3B8" />
-            </View>
-          </Card>
-        </Pressable>
+        <PressableCard
+          title="Đơn hàng của tôi"
+          description="Xem lịch sử và trạng thái đơn hàng."
+          icon={<History size={18} color="#16A34A" />}
+          onPress={() => router.push('/(customer)/orders' as never)}
+        />
       </View>
 
       <View className="mt-8">
@@ -79,5 +54,34 @@ export default function CustomerProfile() {
         />
       </View>
     </View>
+  );
+}
+
+function PressableCard({
+  title,
+  description,
+  icon,
+  onPress,
+}: {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} className="rounded-3xl border border-border bg-white p-4">
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center gap-x-3">
+          <View className="w-11 h-11 rounded-2xl bg-slate-100 items-center justify-center">
+            {icon}
+          </View>
+          <View>
+            <Text className="text-base font-inter-bold text-text">{title}</Text>
+            <Text className="text-xs font-inter text-muted mt-1">{description}</Text>
+          </View>
+        </View>
+        <ChevronRight size={18} color="#94A3B8" />
+      </View>
+    </Pressable>
   );
 }

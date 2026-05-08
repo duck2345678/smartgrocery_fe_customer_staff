@@ -70,8 +70,13 @@ const CustomerTabs = memo(function CustomerTabs() {
       <Tabs.Screen name="orders" options={{ href: null }} />
       <Tabs.Screen name="checkout" options={{ href: null }} />
       <Tabs.Screen name="order-success" options={{ href: null }} />
+      <Tabs.Screen name="addresses" options={{ href: null }} />
+      <Tabs.Screen name="profile-edit" options={{ href: null }} />
       <Tabs.Screen name="products" options={{ href: null }} />
       <Tabs.Screen name="ai-meal-review" options={{ href: null }} />
+      <Tabs.Screen name="smart-lists" options={{ href: null }} />
+      <Tabs.Screen name="meal-plans" options={{ href: null }} />
+      <Tabs.Screen name="ai-chat" options={{ href: null }} />
     </Tabs>
   );
 });

@@ -7,6 +7,7 @@ import HomeHeader from '../../src/components/customer/home/HomeHeader';
 import SearchBar from '../../src/components/customer/home/SearchBar';
 import BannerCarousel from '../../src/components/customer/home/BannerCarousel';
 import AiNudge from '../../src/components/customer/home/AiNudge';
+import PersonalisedRecs from '../../src/components/customer/home/PersonalisedRecs';
 import DealsRow from '../../src/components/customer/home/DealsRow';
 import Button from '../../src/components/ui/Button';
 import Skeleton from '../../src/components/ui/Skeleton';
@@ -119,6 +120,7 @@ export default function CustomerHome() {
       <SearchBar />
       <BannerCarousel />
       <AiNudge />
+      <PersonalisedRecs />
       <DealsRow />
       <View className="px-6 pb-3 flex-row items-center justify-between">
         <Text className="text-base font-outfit-bold text-text">Sản phẩm hằng ngày</Text>

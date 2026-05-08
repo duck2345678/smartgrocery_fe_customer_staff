@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { authApi } from '../../src/api/auth';
 import Input from '../../src/components/ui/Input';
@@ -11,6 +12,7 @@ import { getEmailError, getPasswordError, isLoginFormValid } from '../../src/uti
 export default function LoginScreen() {
   const { setTokens, setUser, authNotice, setAuthNotice } = useAuthStore();
   const authNoticeShown = useRef(false);
+  const router = useRouter();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,11 +52,8 @@ export default function LoginScreen() {
         return;
       }
 
-      // Save to store
       setTokens(response.token, response.refreshToken);
       setUser(response.user);
-      
-      // Navigation is handled by Auth Guard in auth layout
     } catch (e) {
       const message =
         e instanceof Error
@@ -131,7 +130,9 @@ export default function LoginScreen() {
 
           <View className="flex-row justify-center mt-6">
             <Text className="text-slate-500 font-inter">Chưa có tài khoản? </Text>
-            <Text className="text-primary font-inter-bold">Đăng ký ngay</Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')} activeOpacity={0.7}>
+              <Text className="text-primary font-inter-bold">Đăng ký ngay</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>

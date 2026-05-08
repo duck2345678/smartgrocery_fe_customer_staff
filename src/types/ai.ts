@@ -58,3 +58,22 @@ export type AINudge = {
   reason: string;
   confidenceScore: number;
 };
+
+export type PersonalisedRec = {
+  id: number;
+  variantId: number;
+  productId: number;
+  productName: string;
+  productImage: string | null;
+  price: number;
+  unit: string;
+  rankNo: number;
+  score: number;
+  reasonText: string;
+};
+
+export type ChatSession = {
+  id: number;
+  title: string;
+  createdAt: string;
+};

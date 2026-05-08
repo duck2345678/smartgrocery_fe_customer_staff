@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
-import { Brain, Sparkles, Wand2 } from 'lucide-react-native';
+import { Brain, Sparkles, Wand2, ClipboardList, Bot } from 'lucide-react-native';
 import Card from '../../src/components/ui/Card';
 import Button from '../../src/components/ui/Button';
 import { aiApi } from '../../src/api/ai';
@@ -8,17 +8,15 @@ import { AIAction, AIResult } from '../../src/types/ai';
 import CartButton from '../../src/components/customer/CartButton';
 import { useCart } from '../../src/hooks/useCart';
 import { productApi } from '../../src/api/products';
-import { useMealPlanStore } from '../../src/store/aiMealPlanStore';
 import { useRouter } from 'expo-router';
 
-type Mode = 'BASKET_OPTIMIZER' | 'MEAL_PLANNER' | 'DISCOVER';
+type Mode = 'BASKET_OPTIMIZER' | 'DISCOVER';
 
 export default function CustomerAIHub() {
   const router = useRouter();
   const { items: cartItems, subtotal, addProduct, removeItem } = useCart();
   const [loadingMode, setLoadingMode] = useState<Mode | null>(null);
   const [result, setResult] = useState<AIResult | null>(null);
-  const setPlan = useMealPlanStore((s) => s.setPlan);
   const [showReasons, setShowReasons] = useState(true);
 
   const cartItemIds = useMemo(() => cartItems.map((i) => i.productId), [cartItems]);
@@ -35,11 +33,6 @@ export default function CustomerAIHub() {
         });
         setResult(response);
         setShowReasons(true);
-      }
-      if (mode === 'MEAL_PLANNER') {
-        const response = await aiApi.planMeals({ days: 7, budgetLimit: 500000 });
-        setResult(response);
-        setShowReasons(false);
       }
       if (mode === 'DISCOVER') {
         const response = await aiApi.discoverProducts({ max: 5 });
@@ -90,10 +83,26 @@ export default function CustomerAIHub() {
           <InstructionCard
             icon={<Brain size={20} color="#16A34A" />}
             title="Meal Planner"
-            subtitle="Lên thực đơn tự động trong 7 ngày."
-            actionLabel="Tạo thực đơn tuần"
-            loading={loadingMode === 'MEAL_PLANNER'}
-            onPress={() => runMode('MEAL_PLANNER')}
+            subtitle="Lên thực đơn 7 ngày với AI, thêm thẳng vào giỏ."
+            actionLabel="Xem thực đơn"
+            loading={false}
+            onPress={() => router.push('/(customer)/meal-plans' as never)}
+          />
+          <InstructionCard
+            icon={<ClipboardList size={20} color="#3B82F6" />}
+            title="Danh sách thông minh"
+            subtitle="Lưu và quản lý danh sách mua sắm của bạn."
+            actionLabel="Xem danh sách"
+            loading={false}
+            onPress={() => router.push('/(customer)/smart-lists' as never)}
+          />
+          <InstructionCard
+            icon={<Bot size={20} color="#8B5CF6" />}
+            title="Trợ lý AI"
+            subtitle="Hỏi đáp về sản phẩm, dinh dưỡng, và thực đơn."
+            actionLabel="Mở chat"
+            loading={false}
+            onPress={() => router.push('/(customer)/ai-chat' as never)}
           />
           <InstructionCard
             icon={<Sparkles size={20} color="#16A34A" />}
@@ -131,35 +140,15 @@ export default function CustomerAIHub() {
             ) : null}
 
             <View className="mt-5 gap-y-2">
-              {result.mode === 'MEAL_PLANNER' ? (
-                <>
-                  <Pressable
-                    onPress={() => {
-                      setPlan({ title: result.title, items: result.items, actions: result.actions });
-                      router.push('/(customer)/ai-meal-review' as never);
-                    }}
-                    className="px-4 py-3 rounded-xl border border-primary/20 bg-primary/5"
-                  >
-                    <Text className="text-primary font-inter-bold text-sm">Áp dụng ngay</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => setShowReasons((v) => !v)}
-                    className="px-4 py-3 rounded-xl border border-border bg-surface"
-                  >
-                    <Text className="text-text font-inter-bold text-sm">Xem lý do</Text>
-                  </Pressable>
-                </>
-              ) : (
-                result.actions.map((action, idx) => (
-                  <Pressable
-                    key={`${result.mode}-action-${idx}`}
-                    onPress={() => void applyAction(action)}
-                    className="px-4 py-3 rounded-xl border border-primary/20 bg-primary/5"
-                  >
-                    <Text className="text-primary font-inter-bold text-sm">{action.label}</Text>
-                  </Pressable>
-                ))
-              )}
+              {result.actions.map((action, idx) => (
+                <Pressable
+                  key={`${result.mode}-action-${idx}`}
+                  onPress={() => void applyAction(action)}
+                  className="px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50"
+                >
+                  <Text className="text-emerald-700 font-inter-bold text-sm">{action.label}</Text>
+                </Pressable>
+              ))}
             </View>
           </Card>
         ) : null}

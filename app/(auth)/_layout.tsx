@@ -40,6 +40,7 @@ export default function AuthLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="login" options={{ title: 'Login' }} />
+      <Stack.Screen name="register" options={{ title: 'Đăng ký' }} />
       <Stack.Screen name="design-system" options={{ title: 'Design System' }} />
     </Stack>
   );

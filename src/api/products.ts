@@ -100,11 +100,42 @@ const coerceProductDtos = (value: unknown): ProductDto[] => {
   return [];
 };
 
+const filterProductDtos = (dtos: ProductDto[], params?: ProductListParams): ProductDto[] => {
+  if (!params) return dtos;
+  const searchTerm = params.search?.trim().toLowerCase();
+  const categoryId = params.categoryId;
+
+  return dtos.filter((dto) => {
+    const matchesCategory =
+      categoryId == null ||
+      (dto.category != null && Number(dto.category.id) === Number(categoryId));
+    if (!matchesCategory) return false;
+
+    if (!searchTerm) return true;
+
+    const text = [dto.name, dto.description, dto.shortDescription, dto.category?.name]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return text.includes(searchTerm);
+  });
+};
+
 export const productApi = {
   getProducts: async (params?: ProductListParams): Promise<Product[]> => {
-    const response = await apiClient.get('/products', { params });
+    const queryParams: Record<string, unknown> = {};
+    if (typeof params?.page === 'number') queryParams.page = params.page;
+    if (typeof params?.size === 'number') queryParams.size = params.size;
+
+    if (params?.search || params?.categoryId) {
+      queryParams.page = params?.page ?? 0;
+      queryParams.size = params?.size ?? 100;
+    }
+
+    const response = await apiClient.get('/products', { params: queryParams });
     const dtos = coerceProductDtos(response.data);
-    const mapped = dtos.map(mapProductDto);
+    const filtered = filterProductDtos(dtos, params);
+    const mapped = filtered.map(mapProductDto);
     return mapped.sort((a, b) => b.purchaseCount - a.purchaseCount);
   },
   getProductById: async (id: number): Promise<Product> => {
