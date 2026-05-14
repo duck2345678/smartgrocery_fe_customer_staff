@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { Bell, MapPin, ShoppingCart, ClipboardList } from 'lucide-react-native';
+import { Bell, MapPin, ClipboardList, Home, Briefcase, Plus, CheckCircle2, X } from 'lucide-react-native';
 import Card from '../../ui/Card';
 import { useAuthStore } from '../../../store/authStore';
 import { useAddresses } from '../../../hooks/useAddresses';
 import { useAddressStore } from '../../../store/addressStore';
 import Skeleton from '../../ui/Skeleton';
 import { useRouter } from 'expo-router';
-import { useCart } from '../../../hooks/useCart';
+
 
 export default function HomeHeader() {
   const router = useRouter();
@@ -15,7 +15,7 @@ export default function HomeHeader() {
   const { addresses, isLoading, isError, refetch } = useAddresses(userId);
   const selectedAddressId = useAddressStore((s) => s.selectedAddressId);
   const setSelectedAddressId = useAddressStore((s) => s.setSelectedAddressId);
-  const { count: cartCount } = useCart();
+
   const [open, setOpen] = useState(false);
 
   const activeAddress = useMemo(() => {
@@ -59,19 +59,7 @@ export default function HomeHeader() {
               <Bell size={20} color="#0F172A" />
             </Pressable>
 
-            {/* Cart */}
-            <Pressable
-              onPress={() => router.push('/(customer)/cart' as never)}
-              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
-              hitSlop={8}
-            >
-              <ShoppingCart size={20} color="#0F172A" />
-              {cartCount > 0 ? (
-                <View style={{ position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 10, fontFamily: 'Inter-Bold', color: '#FFFFFF' }}>{cartCount > 99 ? '99+' : String(cartCount)}</Text>
-                </View>
-              ) : null}
-            </Pressable>
+
 
             {/* Orders */}
             <Pressable
@@ -85,63 +73,121 @@ export default function HomeHeader() {
         </View>
       </View>
 
-      {/* Address picker modal */}
+      {/* Address picker modal (Bottom Sheet Style) */}
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable className="flex-1 bg-black/30" onPress={() => setOpen(false)} />
-        <View className="bg-surface rounded-t-3xl p-6">
-          <Text className="text-lg font-outfit-bold text-text">Chọn địa chỉ</Text>
-          <Text className="text-xs font-inter text-muted mt-1">Địa chỉ sẽ được dùng khi thanh toán.</Text>
+        <View className="flex-1 justify-end bg-black/50">
+          <Pressable className="flex-1" onPress={() => setOpen(false)} />
+          
+          <View className="bg-white rounded-t-[40px] px-6 pt-2 pb-10 shadow-2xl">
+            {/* Handle Bar */}
+            <View className="items-center mb-6">
+              <View className="w-12 h-1.5 bg-slate-200 rounded-full" />
+            </View>
 
-          <View className="mt-4">
-            {isLoading ? (
-              <View className="gap-y-3">
-                <Skeleton className="h-14 w-full rounded-2xl" />
-                <Skeleton className="h-14 w-full rounded-2xl" />
+            <View className="flex-row items-center justify-between mb-6">
+              <View>
+                <Text className="text-[22px] font-outfit-bold text-text">Giao hàng đến đâu?</Text>
+                <Text className="text-sm font-inter text-muted mt-0.5">Chọn địa chỉ để xem hàng hóa gần bạn.</Text>
               </View>
-            ) : isError ? (
-              <View className="items-start">
-                <Text className="text-sm font-inter text-muted">Không tải được địa chỉ.</Text>
-                <Pressable
-                  onPress={() => void refetch()}
-                  className="mt-3 px-4 py-3 rounded-2xl bg-surface border border-border"
-                >
-                  <Text className="text-sm font-inter-bold text-text">Thử lại</Text>
-                </Pressable>
-              </View>
-            ) : addresses.length === 0 ? (
-              <Text className="text-sm font-inter text-muted">Chưa có địa chỉ.</Text>
-            ) : (
-              <ScrollView style={{ maxHeight: 320 }}>
-                <View className="gap-y-3">
-                  {addresses.map((a) => {
-                    const active = activeAddress?.id === a.id;
-                    return (
-                      <Pressable
-                        key={a.id}
-                        onPress={() => {
-                          setSelectedAddressId(a.id);
-                          setOpen(false);
-                        }}
-                      >
-                        <Card className={`p-4 border ${active ? 'border-primary bg-primary/5' : 'border-border bg-surface'}`}>
-                          <Text className="text-sm font-inter-bold text-text" numberOfLines={1}>
-                            {a.receiverName} • {a.receiverPhone}
-                          </Text>
-                          <Text className="text-xs font-inter text-muted mt-1">
-                            {a.streetAddress}, {a.ward}, {a.district}, {a.city}
-                          </Text>
-                        </Card>
-                      </Pressable>
-                    );
-                  })}
+              <Pressable onPress={() => setOpen(false)} className="w-10 h-10 rounded-full bg-slate-50 items-center justify-center">
+                <X size={20} color="#64748B" />
+              </Pressable>
+            </View>
+
+            <View>
+              {isLoading ? (
+                <View className="gap-y-4">
+                  <Skeleton className="h-20 w-full rounded-[24px]" />
+                  <Skeleton className="h-20 w-full rounded-[24px]" />
                 </View>
-              </ScrollView>
-            )}
-          </View>
+              ) : isError ? (
+                <View className="items-center py-8">
+                  <Text className="text-sm font-inter text-muted">Không tải được địa chỉ.</Text>
+                  <Pressable
+                    onPress={() => void refetch()}
+                    className="mt-4 px-6 py-3 rounded-2xl bg-primary"
+                  >
+                    <Text className="text-white font-inter-bold">Thử lại</Text>
+                  </Pressable>
+                </View>
+              ) : addresses.length === 0 ? (
+                <View className="items-center py-8 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                  <MapPin size={32} color="#CBD5E1" />
+                  <Text className="text-sm font-inter text-muted mt-2">Bạn chưa có địa chỉ lưu sẵn.</Text>
+                </View>
+              ) : (
+                <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+                  <View className="gap-y-3">
+                    {addresses.map((a) => {
+                      const active = activeAddress?.id === a.id;
+                      
+                      return (
+                        <Pressable
+                          key={a.id}
+                          onPress={() => {
+                            setSelectedAddressId(a.id);
+                            setOpen(false);
+                          }}
+                        >
+                          <View 
+                            className={`p-4 rounded-[24px] border-2 flex-row items-center ${
+                              active ? 'border-primary bg-primary/5' : 'border-slate-50 bg-slate-50'
+                            }`}
+                          >
+                            <View className={`w-12 h-12 rounded-2xl items-center justify-center ${
+                              active ? 'bg-primary' : 'bg-white'
+                            }`}>
+                              {a.addressType === 'OFFICE' ? (
+                                <Briefcase size={22} color={active ? '#FFF' : '#64748B'} />
+                              ) : a.addressType === 'HOME' ? (
+                                <Home size={22} color={active ? '#FFF' : '#64748B'} />
+                              ) : (
+                                <MapPin size={22} color={active ? '#FFF' : '#64748B'} />
+                              )}
+                            </View>
 
-          <Pressable onPress={() => setOpen(false)} className="mt-5 px-4 py-3 rounded-2xl bg-surface border border-border items-center">
-            <Text className="text-sm font-inter-bold text-text">Đóng</Text>
-          </Pressable>
+                            <View className="flex-1 mx-4">
+                              <View className="flex-row items-center">
+                                <Text className="text-base font-inter-bold text-text">
+                                  {a.addressType === 'HOME' ? 'Nhà riêng' : a.addressType === 'OFFICE' ? 'Văn phòng' : 'Khác'}
+                                </Text>
+                                {a.isDefault && (
+                                  <View className="ml-2 px-2 py-0.5 bg-primary/10 rounded-md">
+                                    <Text className="text-[10px] font-inter-bold text-primary">MẶC ĐỊNH</Text>
+                                  </View>
+                                )}
+                              </View>
+                              <Text className="text-xs font-inter text-muted mt-1" numberOfLines={2}>
+                                {a.streetAddress}, {a.ward}, {a.district}, {a.city}
+                              </Text>
+                              <Text className="text-[11px] font-inter-bold text-slate-400 mt-1">
+                                {a.receiverName} • {a.receiverPhone}
+                              </Text>
+                            </View>
+
+                            <View className="w-6 h-6 rounded-full border-2 border-slate-200 items-center justify-center">
+                              {active && <CheckCircle2 size={24} color="#16A34A" fill="#FFFFFF" />}
+                            </View>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
+            </View>
+
+            <Pressable 
+              onPress={() => {
+                setOpen(false);
+                router.push({ pathname: '/(customer)/profile/addresses/form', params: { mode: 'ADD' } } as any);
+              }} 
+              className="mt-6 flex-row items-center justify-center bg-slate-900 h-14 rounded-2xl shadow-lg"
+            >
+              <Plus size={20} color="#FFFFFF" className="mr-2" />
+              <Text className="text-white font-inter-bold ml-2">Thêm địa chỉ mới</Text>
+            </Pressable>
+          </View>
         </View>
       </Modal>
     </>

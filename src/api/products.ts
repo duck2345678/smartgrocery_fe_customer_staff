@@ -21,10 +21,11 @@ type ProductVariantDto = {
   net_price?: number | string | null;
   compareAtPrice?: number | string | null;
   compare_at_price?: number | string | null;
-  stock?: number | null;
+  stock?: number | string | null;
+  inventoryStock?: number | string | null;
 };
 
-type CategoryDto = { id: number; name: string };
+type CategoryDto = { id: number; name: string; categoryName?: string | null };
 
 type ProductDto = {
   id: number;
@@ -32,8 +33,11 @@ type ProductDto = {
   shortDescription?: string | null;
   description?: string | null;
   image?: string | null;
+  imageUrl?: string | null;
   category?: CategoryDto | null;
+  categoryName?: string | null;
   variants?: ProductVariantDto[] | null;
+  productVariants?: ProductVariantDto[] | null;
   soldCount?: number | string | null;
   sold_count?: number | string | null;
   purchaseCount?: number | string | null;
@@ -45,7 +49,7 @@ type ProductDto = {
 type PageDto<T> = { content?: T[] };
 
 const getFirstVariant = (dto: ProductDto): ProductVariantDto | undefined => {
-  const vars = dto.variants ?? [];
+  const vars = dto.variants ?? dto.productVariants ?? [];
   return Array.isArray(vars) ? vars[0] : undefined;
 };
 
@@ -58,8 +62,6 @@ const toNumber = (v: unknown): number => {
   return 0;
 };
 
-
-
 const mapProductDto = (dto: ProductDto): Product => {
   const v = getFirstVariant(dto);
   const price = toNumber(v?.netPrice ?? v?.net_price);
@@ -67,8 +69,9 @@ const mapProductDto = (dto: ProductDto): Product => {
   const hasDiscount = compareAtPrice > price && price > 0;
   const discountPercent = hasDiscount ? Math.round((1 - price / compareAtPrice) * 100) : undefined;
   const purchaseCount = toNumber(
-    dto.purchaseCount ?? dto.purchase_count ?? dto.soldCount ?? dto.sold_count ?? dto.totalSold ?? dto.total_sold
+    dto.purchaseCount ?? dto.purchase_count ?? dto.soldCount ?? dto.sold_count ?? dto.totalSold ?? dto.total_sold,
   );
+  const categoryName = dto.category?.name ?? dto.category?.categoryName ?? dto.categoryName ?? 'Khác';
   return {
     id: dto.id,
     name: dto.name,
@@ -77,25 +80,26 @@ const mapProductDto = (dto: ProductDto): Product => {
     originalPrice: hasDiscount ? compareAtPrice : undefined,
     discountPercent: hasDiscount ? discountPercent : undefined,
     unit: (v?.unit ?? v?.unit_name ?? 'unit') as string,
-    stock: typeof v?.stock === 'number' ? v.stock : 0,
+    stock: toNumber(v?.stock ?? v?.inventoryStock),
     purchaseCount,
-    imageUrl: resolveImageUrl(dto.image, dto.name),
-    category: dto.category?.name ?? 'Khác',
+    imageUrl: resolveImageUrl(dto.image ?? dto.imageUrl, dto.name) ?? '',
+    category: categoryName,
     description: dto.description ?? dto.shortDescription ?? undefined,
   };
 };
 
 const coerceProductDtos = (value: unknown): ProductDto[] => {
   if (!value) return [];
-  if (Array.isArray(value)) return value as ProductDto[];
-  if (typeof value === 'object' && value) {
-    if ('items' in value && Array.isArray((value as { items?: unknown }).items)) {
-      return (value as { items: ProductDto[] }).items;
+  const unwrapped = value && typeof value === 'object' && 'data' in value ? (value as { data?: unknown }).data : value;
+  if (Array.isArray(unwrapped)) return unwrapped as ProductDto[];
+  if (typeof unwrapped === 'object' && unwrapped) {
+    if ('items' in unwrapped && Array.isArray((unwrapped as { items?: unknown }).items)) {
+      return (unwrapped as { items: ProductDto[] }).items;
     }
-    if ('content' in value && Array.isArray((value as PageDto<ProductDto>).content)) {
-      return (value as PageDto<ProductDto>).content ?? [];
+    if ('content' in unwrapped && Array.isArray((unwrapped as PageDto<ProductDto>).content)) {
+      return (unwrapped as PageDto<ProductDto>).content ?? [];
     }
-    if ('data' in value) return coerceProductDtos((value as { data?: unknown }).data);
+    if ('data' in unwrapped) return coerceProductDtos((unwrapped as { data?: unknown }).data);
   }
   return [];
 };
@@ -109,7 +113,8 @@ export const productApi = {
   },
   getProductById: async (id: number): Promise<Product> => {
     const response = await apiClient.get(`/products/${id}`);
-    return mapProductDto(response.data as ProductDto);
+    const dto = coerceProductDtos(response.data)[0] ?? (response.data as ProductDto);
+    return mapProductDto(dto);
   },
 
   getCategories: async (): Promise<Category[]> => {

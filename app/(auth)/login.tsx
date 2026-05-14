@@ -73,10 +73,10 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <View className="flex-1 justify-center p-6 mt-12">
-          <View className="mb-10 items-center">
-            <BrandMark size={86} />
-            <Text className="text-4xl font-outfit-bold text-primary">SmartGrocery</Text>
-            <Text className="text-slate-500 font-inter mt-2">Chào mừng bạn quay trở lại!</Text>
+          <View className="mb-12 items-center">
+            <BrandMark size={300} />
+            <Text className="text-4xl font-outfit-bold text-primary mt-2">SmartGrocery</Text>
+            <Text className="text-slate-500 font-inter mt-3">Chào mừng bạn quay trở lại!</Text>
           </View>
 
           <Input 

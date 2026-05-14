@@ -8,7 +8,7 @@ export default function SearchBar() {
   return (
     <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12 }}>
       <Pressable
-        onPress={() => router.push('/(customer)/search' as never)}
+        onPress={() => router.push({ pathname: '/(customer)/(tabs)/shop', params: { focusSearch: 'true' } } as never)}
         style={{
           flexDirection: 'row',
           alignItems: 'center',

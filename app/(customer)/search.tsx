@@ -97,24 +97,41 @@ export default function CustomerSearch() {
             </View>
 
             <View className="flex-row items-end justify-between">
-              <Text className="text-lg font-outfit-bold text-text">
-                {item.price.toLocaleString('vi-VN')}₫
-                <Text className="text-xs font-inter text-muted"> / {item.unit}</Text>
-              </Text>
-              <View
-                className={clsx(
-                  'px-2 py-0.5 rounded-full border',
-                  isOut ? 'bg-slate-100 border-slate-200' : 'bg-primary/5 border-primary/20'
+              <View>
+                <View className="flex-row items-center">
+                  <Text className="text-lg font-outfit-bold text-text">
+                    {item.price.toLocaleString('vi-VN')}₫
+                  </Text>
+                  {item.originalPrice && (
+                    <Text className="text-[11px] font-inter text-muted line-through ml-2">
+                      {item.originalPrice.toLocaleString('vi-VN')}₫
+                    </Text>
+                  )}
+                </View>
+                <Text className="text-xs font-inter text-muted">/ {item.unit}</Text>
+              </View>
+
+              <View className="items-end gap-y-1">
+                {item.discountPercent && (
+                  <View className="bg-red-100 px-2 py-0.5 rounded-lg border border-red-200 mb-1">
+                    <Text className="text-[10px] font-outfit-bold text-red-600">-{item.discountPercent}%</Text>
+                  </View>
                 )}
-              >
-                <Text
+                <View
                   className={clsx(
-                    'text-[10px] font-inter-bold',
-                    isOut ? 'text-slate-500' : 'text-primary'
+                    'px-2 py-0.5 rounded-full border',
+                    isOut ? 'bg-slate-100 border-slate-200' : 'bg-primary/5 border-primary/20'
                   )}
                 >
-                  {isOut ? 'HẾT' : `${item.stock}`}
-                </Text>
+                  <Text
+                    className={clsx(
+                      'text-[10px] font-inter-bold',
+                      isOut ? 'text-slate-500' : 'text-primary'
+                    )}
+                  >
+                    {isOut ? 'HẾT' : `${item.stock}`}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>

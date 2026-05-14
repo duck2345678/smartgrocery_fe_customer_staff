@@ -17,12 +17,14 @@ export type OrderItem = {
   subtotal: number;
   discountAmount: number;
   totalPrice: number;
+  imageUrl?: string;
 };
 
 export type Order = {
   id: number;
   userId: number;
   addressId: number;
+  addressLine?: string;
   orderNumber: string;
   subtotal: number;
   discountAmount: number;

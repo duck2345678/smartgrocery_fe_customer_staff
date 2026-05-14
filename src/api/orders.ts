@@ -13,6 +13,12 @@ const coerceOrders = (value: unknown): Order[] => {
   return [];
 };
 
+const coerceOrder = (value: unknown): Order | null => {
+  if (!value || typeof value !== 'object') return null;
+  if ('data' in value && value.data) return value.data as Order;
+  return value as Order;
+};
+
 export const orderApi = {
   getOrders: async (): Promise<Order[]> => {
     const response = await apiClient.get('/orders/my-orders');
@@ -21,7 +27,7 @@ export const orderApi = {
 
   getOrderById: async (id: number): Promise<Order> => {
     const response = await apiClient.get(`/orders/${id}`);
-    return response.data as Order;
+    return coerceOrder(response.data) as Order;
   },
 
   createOrderFromCart: async (input: {
@@ -47,5 +53,10 @@ export const orderApi = {
       return (value as { data: Voucher[] }).data;
     }
     return [];
+  },
+
+  cancelOrder: async (id: number): Promise<Order> => {
+    const response = await apiClient.post(`/orders/${id}/cancel`);
+    return coerceOrder(response.data) as Order;
   },
 };

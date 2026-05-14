@@ -11,10 +11,10 @@ export default function AuthLayout() {
 
   useEffect(() => {
     if (isHydrated && isAuthenticated && user) {
-      const target: Href =
+      const target =
         user.role === 'STAFF' || user.role === 'ADMIN'
-            ? '/(staff)'
-            : '/(customer)';
+          ? ('/(staff)' as Href)
+          : ('/(customer)' as Href);
       
       const timer = setTimeout(() => {
         router.replace(target);

@@ -47,9 +47,9 @@ function getPaymentMethodLabel(method?: string | null) {
 export default function StaffPerformanceOrderDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
+  const [brokenImageIds, setBrokenImageIds] = React.useState<Record<number, boolean>>({});
 
-  const orderId = useMemo(() => {
-    const raw = params.id;
+  const orderId = useMemo(() => {    const raw = params.id;
     const v = Array.isArray(raw) ? raw[0] : raw;
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
@@ -62,18 +62,48 @@ export default function StaffPerformanceOrderDetailScreen() {
   });
 
   const order = detailQuery.data;
-  const items = order?.items ?? [];
+  const items = useMemo(() => {
+    const raw = order as unknown as Record<string, unknown> | undefined;
+    const candidates =
+      (Array.isArray(order?.items) && order?.items) ||
+      (raw && Array.isArray(raw.orderItems) ? raw.orderItems : null) ||
+      (raw && Array.isArray(raw.details) ? raw.details : null) ||
+      [];
+
+    return candidates.map((it: any) => ({
+      orderItemId: Number(it.orderItemId ?? it.id ?? 0),
+      variantId: Number(it.variantId ?? 0),
+      sku: String(it.sku ?? ''),
+      barcode: typeof it.barcode === 'string' ? it.barcode : null,
+      productName:
+        typeof it.productName === 'string'
+          ? it.productName
+          : typeof it.name === 'string'
+            ? it.name
+            : typeof it.product?.name === 'string'
+              ? it.product.name
+              : 'Sản phẩm',
+      variantName: typeof it.variantName === 'string' ? it.variantName : null,
+      aisleLocation: typeof it.aisleLocation === 'string' ? it.aisleLocation : null,
+      orderedQuantity: Number(it.orderedQuantity ?? it.quantity ?? 0),
+      pickedQuantity: it.pickedQuantity != null ? Number(it.pickedQuantity) : null,
+      unitPrice: Number(it.unitPrice ?? it.price ?? 0),
+      imageUrl: typeof it.imageUrl === 'string' ? it.imageUrl : typeof it.productImageUrl === 'string' ? it.productImageUrl : typeof it.product?.image === 'string' ? it.product.image : null,
+      stockQuantity: it.stockQuantity != null ? Number(it.stockQuantity) : null,
+    }));
+  }, [order]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5FAF7]" edges={['left', 'right']}>
+    <SafeAreaView className="flex-1 bg-[#F5FAF7]" edges={['left', 'right', 'top']}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View className="px-5 pt-4 pb-3 flex-row items-center bg-white border-b border-slate-100 shadow-sm">
+      <View className="px-5 py-3 flex-row items-center bg-white border-b border-slate-100 shadow-sm">
         <Pressable 
           onPress={() => router.back()} 
-          className="w-11 h-11 rounded-2xl bg-slate-50 border border-slate-200 items-center justify-center mr-4"
+          className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 items-center justify-center mr-3"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <ChevronLeft size={22} color="#0F172A" />
+          <ChevronLeft size={24} color="#0F172A" />
         </Pressable>
         <View>
           <Text className="text-[20px] font-outfit-bold text-text">Chi tiết đơn hàng</Text>
@@ -246,13 +276,23 @@ export default function StaffPerformanceOrderDetailScreen() {
             </View>
 
             <View style={{ gap: 12 }}>
-              {items.map((it) => (
+              {items.map((it) => {
+                const fallbackLabel = (it.productName || 'S').trim().charAt(0).toUpperCase();
+                const showFallback = !it.imageUrl || brokenImageIds[it.orderItemId];
+                return (
                 <View key={it.orderItemId} className="flex-row items-center">
                   <View className="w-16 h-16 rounded-2xl bg-slate-100 items-center justify-center mr-3 overflow-hidden border border-slate-100">
-                    {it.imageUrl ? (
-                      <Image source={{ uri: it.imageUrl }} className="w-full h-full" resizeMode="cover" />
+                    {!showFallback ? (
+                      <Image
+                        source={{ uri: it.imageUrl as string }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                        onError={() => setBrokenImageIds((prev) => ({ ...prev, [it.orderItemId]: true }))}
+                      />
                     ) : (
-                      <Package size={20} color="#94A3B8" />
+                      <View className="w-full h-full bg-[#16A34A] items-center justify-center">
+                        <Text className="text-white text-[18px] font-outfit-bold">{fallbackLabel}</Text>
+                      </View>
                     )}
                   </View>
 
@@ -272,7 +312,8 @@ export default function StaffPerformanceOrderDetailScreen() {
                     </View>
                   </View>
                 </View>
-              ))}
+                );
+              })}
             </View>
 
             {/* ── Tổng tiền ── */}

@@ -3,16 +3,16 @@ import { Animated, RefreshControl, Text, useWindowDimensions, View, Pressable } 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
-import HomeHeader from '../../src/components/customer/home/HomeHeader';
-import SearchBar from '../../src/components/customer/home/SearchBar';
-import BannerCarousel from '../../src/components/customer/home/BannerCarousel';
-import AiNudge from '../../src/components/customer/home/AiNudge';
-import DealsRow from '../../src/components/customer/home/DealsRow';
-import Button from '../../src/components/ui/Button';
-import Skeleton from '../../src/components/ui/Skeleton';
+import HomeHeader from '../../../src/components/customer/home/HomeHeader';
+import SearchBar from '../../../src/components/customer/home/SearchBar';
+import BannerCarousel from '../../../src/components/customer/home/BannerCarousel';
+import AiNudge from '../../../src/components/customer/home/AiNudge';
+import DealsRow from '../../../src/components/customer/home/DealsRow';
+import Button from '../../../src/components/ui/Button';
+import Skeleton from '../../../src/components/ui/Skeleton';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { productApi } from '../../src/api/products';
-import { type Product } from '../../src/types/product';
+import { productApi } from '../../../src/api/products';
+import { type Product } from '../../../src/types/product';
 
 function ProductTile({ item, onPress }: { item: Product; onPress: () => void }) {
   const discountPercent = item.discountPercent ?? 0;
@@ -79,8 +79,15 @@ export default function CustomerHome() {
     useCallback(() => {
       anim.setValue(0);
       Animated.timing(anim, { toValue: 1, duration: 260, useNativeDriver: true }).start();
+      
+      // Auto refresh data when returning to home
+      queryClient.invalidateQueries({ queryKey: ['home-daily-products'] });
+      queryClient.invalidateQueries({ queryKey: ['home-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['home-ai-nudge'] });
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+
       return () => {};
-    }, [anim])
+    }, [anim, queryClient])
   );
 
   const onRefresh = useCallback(async () => {

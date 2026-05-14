@@ -48,7 +48,7 @@ export default function DealsRow() {
           </View>
         </View>
       ) : (
-        <View style={{ height: 280 }}>
+        <View style={{ height: 310 }}>
           <FlashList
             data={deals}
             horizontal

@@ -32,20 +32,51 @@ export default function StaffOrdersScreen() {
     queryFn: () => getTodayStatus(),
   });
 
+  const myActive = myActiveQuery.data;
+  const queue = queueQuery.data ?? [];
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
+      if (!myActive) {
+        // If free, try to auto-assign one
+        await autoAssignMutation.mutateAsync();
+      } else {
+        // Just refresh current status
+        await Promise.all([queueQuery.refetch(), myActiveQuery.refetch(), attendanceQuery.refetch()]);
+      }
+    } catch (err) {
+      // In case of error (e.g. no orders), just refetch to update UI
       await Promise.all([queueQuery.refetch(), myActiveQuery.refetch(), attendanceQuery.refetch()]);
     } finally {
       setRefreshing(false);
     }
-  }, [queueQuery, myActiveQuery, attendanceQuery]);
+  }, [queueQuery, myActiveQuery, attendanceQuery, myActive]);
+
+  const autoAssignMutation = useMutation({
+    mutationFn: () => staffOrdersApi.autoAssign(),
+    onSuccess: async (data) => {
+      await qc.invalidateQueries({ queryKey: ['staff-order-queue'] });
+      await qc.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+      if (data && data.id) {
+        router.push(`/(staff)/orders/${data.id}` as never);
+      }
+    },
+    onError: (e: any) => {
+      // If no orders, we don't necessarily want to alert, just refresh
+      qc.invalidateQueries({ queryKey: ['staff-order-queue'] });
+      qc.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+    }
+  });
 
   const assignMutation = useMutation({
     mutationFn: (orderId: number) => staffOrdersApi.assign(orderId),
-    onSuccess: async () => {
+    onSuccess: async (_data, orderId) => {
       await qc.invalidateQueries({ queryKey: ['staff-order-queue'] });
       await qc.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+      await qc.invalidateQueries({ queryKey: ['staff-order-pick-list', orderId] });
+      await qc.invalidateQueries({ queryKey: ['staff-order-pick-list'] });
+      router.push(`/(staff)/orders/${orderId}` as never);
     },
     onError: (e) => {
       Alert.alert('Không thể nhận đơn', e instanceof Error ? e.message : 'Đã có lỗi xảy ra.', [{ text: 'Đóng' }]);
@@ -54,9 +85,10 @@ export default function StaffOrdersScreen() {
 
   const releaseMutation = useMutation({
     mutationFn: (orderId: number) => staffOrdersApi.release(orderId),
-    onSuccess: async () => {
+    onSuccess: async (_data, orderId) => {
       await qc.invalidateQueries({ queryKey: ['staff-order-queue'] });
       await qc.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+      await qc.invalidateQueries({ queryKey: ['staff-order-pick-list', orderId] });
     },
     onError: (e) => {
       Alert.alert('Không thể thả đơn', e instanceof Error ? e.message : 'Đã có lỗi xảy ra.', [{ text: 'Đóng' }]);
@@ -65,9 +97,6 @@ export default function StaffOrdersScreen() {
 
   const isLoading = queueQuery.isLoading || myActiveQuery.isLoading;
   const isError = queueQuery.isError || myActiveQuery.isError;
-
-  const myActive = myActiveQuery.data;
-  const queue = queueQuery.data ?? [];
 
   const isClockedIn = useMemo(() => {
     if (!attendanceQuery.data) return false;
@@ -214,7 +243,8 @@ export default function StaffOrdersScreen() {
           </Card>
         ) : (
           <View style={{ gap: 14 }}>
-            {myActive && (
+            {myActive ? (
+              /* Case 1: Show ONLY the active order */
               <QueueOrderCard
                 order={myActive}
                 isActive
@@ -227,30 +257,24 @@ export default function StaffOrdersScreen() {
                 }}
                 isSubmitting={releaseMutation.isPending}
               />
-            )}
-
-            {queue.length > 0 && (
-              <>
-                {queue.map((o) => (
-                  <QueueOrderCard
-                    key={o.id}
-                    order={o}
-                    onOpen={() => router.push(`/(staff)/orders/${o.id}` as never)}
-                    onAssign={() => assignMutation.mutate(o.id)}
-                    isSubmitting={assignMutation.isPending || Boolean(myActive)}
-                  />
-                ))}
-              </>
-            )}
-
-            {queue.length === 0 && !myActive && (
+            ) : queue.length > 0 ? (
+              /* Case 2: If free, show ONLY the first order in queue */
+              <QueueOrderCard
+                key={queue[0].id}
+                order={queue[0]}
+                onOpen={() => router.push(`/(staff)/orders/${queue[0].id}` as never)}
+                onAssign={() => assignMutation.mutate(queue[0].id)}
+                isSubmitting={assignMutation.isPending}
+              />
+            ) : (
+              /* Case 3: No orders available */
               <View className="py-20 items-center justify-center">
                 <View className="w-20 h-20 rounded-full bg-surface2 items-center justify-center mb-4">
                   <ShoppingBag size={32} color="#94A3B8" strokeWidth={1.5} />
                 </View>
                 <Text className="text-[15px] font-outfit-bold text-text text-center">Chưa có đơn hàng mới</Text>
                 <Text className="text-xs font-inter text-muted mt-1 text-center px-10">
-                  Hệ thống sẽ tự động cập nhật khi có đơn hàng được phân công cho bạn.
+                  Hệ thống sẽ tự động cập nhật khi có đơn hàng mới cần xử lý.
                 </Text>
               </View>
             )}
@@ -350,21 +374,19 @@ function QueueOrderCard({
                   </Pressable>
                 </>
               ) : (
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    onAssign?.();
-                  }}
-                  disabled={isSubmitting}
-                  className={cn(
-                    'px-6 py-2.5 rounded-xl shadow-sm',
-                    isSubmitting ? 'bg-surface border border-border shadow-none' : 'bg-primary shadow-primary/20'
-                  )}
-                >
-                  <Text className={isSubmitting ? 'font-outfit-bold text-muted text-xs' : 'font-outfit-bold text-primary-fg text-xs'}>
-                    Nhận
-                  </Text>
-                </Pressable>
+                !isSubmitting && (
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onAssign?.();
+                    }}
+                    className="bg-primary px-6 py-2.5 rounded-xl shadow-sm shadow-primary/20"
+                  >
+                    <Text className="font-outfit-bold text-primary-fg text-xs">
+                      Nhận đơn
+                    </Text>
+                  </Pressable>
+                )
               )}
             </View>
           </View>

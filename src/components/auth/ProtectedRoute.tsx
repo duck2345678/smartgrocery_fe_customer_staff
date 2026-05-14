@@ -29,14 +29,14 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
     let target: Href | null = null;
 
     if (!isAuthenticated || !user) {
-      target = '/(auth)/login';
+      target = '/(auth)/login' as any;
     } else if (role && !roleSatisfied(role, user.role)) {
       target =
         user.role === 'STAFF' || user.role === 'ADMIN'
-            ? '/(staff)'
+            ? '/(staff)' as any
             : user.role === 'CUSTOMER'
-              ? '/(customer)'
-              : '/(auth)/login';
+              ? '/(customer)' as any
+              : '/(auth)/login' as any;
     }
 
     if (!target) return;

@@ -2,7 +2,33 @@ import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import { useAuthStore } from '../store/authStore';
 import { getDeviceFingerprint } from '../utils/deviceFingerprint';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8080/api/v1';
+const IS_WEB_RUNTIME = typeof window !== 'undefined' && typeof document !== 'undefined';
+
+const normalizeApiBaseUrl = (input: string): string => {
+  const base = input.replace(/\/+$/, '');
+  if (/\/api(\/|$)/i.test(base)) return base;
+  return `${base}/api/v1`;
+};
+
+const resolveApiBaseUrl = (): string => {
+  const fallback = IS_WEB_RUNTIME ? '/api/v1' : 'http://10.0.2.2:8080/api/v1';
+  const normalized = normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_URL ?? fallback);
+
+  if (IS_WEB_RUNTIME && (normalized.startsWith('http://') || normalized.startsWith('https://'))) {
+    try {
+      const url = new URL(normalized);
+      if (typeof window !== 'undefined' && url.origin !== window.location.origin) {
+        return '/api/v1';
+      }
+    } catch {
+      return '/api/v1';
+    }
+  }
+
+  return normalized;
+};
+
+const BASE_URL = resolveApiBaseUrl();
 
 type ApiEnvelope<T> = {
   data: T;
@@ -61,11 +87,15 @@ const refreshAccessToken = async (): Promise<string> => {
   const refreshToken = useAuthStore.getState().refreshToken;
   if (!refreshToken) throw new Error('Phiên đăng nhập hết hạn');
 
-  const deviceFingerprint = await getDeviceFingerprint();
+  const headers: Record<string, string> = {};
+  if (!IS_WEB_RUNTIME) {
+    const deviceFingerprint = await getDeviceFingerprint();
+    headers['X-Device-Fingerprint'] = deviceFingerprint;
+  }
   const response = await axios.post(
     `${BASE_URL}/auth/refresh`,
     { refreshToken },
-    { headers: { 'X-Device-Fingerprint': deviceFingerprint } },
+    { headers },
   );
   const tokens = unwrap<{ token: string; refreshToken: string }>(response.data);
   useAuthStore.getState().setTokens(tokens.token, tokens.refreshToken);
@@ -87,9 +117,11 @@ apiClient.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  const deviceFingerprint = await getDeviceFingerprint();
   config.headers = config.headers ?? {};
-  config.headers['X-Device-Fingerprint'] = deviceFingerprint;
+  if (!IS_WEB_RUNTIME) {
+    const deviceFingerprint = await getDeviceFingerprint();
+    config.headers['X-Device-Fingerprint'] = deviceFingerprint;
+  }
   return config;
 });
 

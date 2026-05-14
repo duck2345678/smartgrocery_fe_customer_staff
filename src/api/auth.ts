@@ -17,8 +17,14 @@ const normalizeUser = (value: unknown): UserDto => {
   const v = value as Record<string, unknown>;
   const role = (v.role ?? v.roleName ?? v.role_code ?? v.roleCode) as unknown;
   const roleStr = typeof role === 'string' ? role : '';
-  const normalizedRole =
-    roleStr === 'CUSTOMER' || roleStr === 'STAFF' || roleStr === 'ADMIN' ? roleStr : 'CUSTOMER';
+  const roleUpper = roleStr.toUpperCase();
+  const normalizedRole = roleUpper.includes('ADMIN')
+    ? 'ADMIN'
+    : roleUpper.includes('STAFF')
+      ? 'STAFF'
+      : roleUpper.includes('CUSTOMER')
+        ? 'CUSTOMER'
+        : 'CUSTOMER';
 
   return {
     id: Number(v.id ?? 0),

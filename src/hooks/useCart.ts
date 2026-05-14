@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { cartApi } from '../api/cart';
 import { type CartItem } from '../types/cart';
 import { type Product } from '../types/product';
 
 type Cart = { items: CartItem[] };
 
-const getSubtotal = (items: CartItem[]) => items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+const calculateSubtotal = (items: CartItem[]) => items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+const calculateCount = (items: CartItem[]) => items.reduce((sum, i) => sum + i.quantity, 0);
 
 export function useCart() {
   const queryClient = useQueryClient();
@@ -13,6 +15,7 @@ export function useCart() {
   const cartQuery = useQuery({
     queryKey: ['cart'],
     queryFn: () => cartApi.getCart(),
+    staleTime: 3000,
   });
 
   const updateQuantity = useMutation({
@@ -24,14 +27,10 @@ export function useCart() {
 
       queryClient.setQueryData<Cart>(['cart'], (current) => {
         const base = current?.items ?? [];
-        const nextItems = base
-          .map((it) => {
-            const match = it.cartItemId === input.cartItemId;
-            if (!match) return it;
-            const nextQty = Math.max(0, Math.min(input.quantity, Math.max(0, it.stock)));
-            return { ...it, quantity: nextQty };
-          })
-          .filter((it) => it.quantity > 0);
+        const nextItems = base.map((it) => {
+          if (it.cartItemId !== input.cartItemId) return it;
+          return { ...it, quantity: input.quantity };
+        });
         return { items: nextItems };
       });
 
@@ -39,7 +38,7 @@ export function useCart() {
     },
     onError: (err, _input, context) => {
       if (context?.previous) queryClient.setQueryData(['cart'], context.previous);
-      throw err;
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['cart'], data);
@@ -50,16 +49,14 @@ export function useCart() {
   });
 
   const removeItem = useMutation({
-    mutationFn: (input: { cartItemId: number }) => cartApi.removeItem({ cartItemId: input.cartItemId }),
+    mutationFn: (input: { cartItemId: number }) => cartApi.removeItem({ cartItemId: Number(input.cartItemId) }),
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: ['cart'] });
       const previous = queryClient.getQueryData<Cart>(['cart']);
 
       queryClient.setQueryData<Cart>(['cart'], (current) => {
         const base = current?.items ?? [];
-        const nextItems = base.filter((it) => {
-          return it.cartItemId !== input.cartItemId;
-        });
+        const nextItems = base.filter((it) => it.cartItemId !== input.cartItemId);
         return { items: nextItems };
       });
 
@@ -67,7 +64,7 @@ export function useCart() {
     },
     onError: (err, _input, context) => {
       if (context?.previous) queryClient.setQueryData(['cart'], context.previous);
-      throw err;
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['cart'], data);
@@ -76,49 +73,10 @@ export function useCart() {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
   });
-
 
   const addProduct = useMutation({
     mutationFn: (input: { product: Product; quantity?: number }) =>
       cartApi.addItem({ product: input.product, quantity: input.quantity }),
-    onMutate: async (input) => {
-      await queryClient.cancelQueries({ queryKey: ['cart'] });
-      const previous = queryClient.getQueryData<Cart>(['cart']);
-
-      const q = Math.max(1, Math.floor(input.quantity ?? 1));
-
-      queryClient.setQueryData<Cart>(['cart'], (current) => {
-        const base = current?.items ?? [];
-        const existing = base.find((it) => it.productId === input.product.id);
-        if (!existing) {
-          const nextItem: CartItem = {
-            productId: input.product.id,
-            variantId: input.product.variantId ?? input.product.id,
-            name: input.product.name,
-            price: input.product.price,
-            unit: input.product.unit,
-            imageUrl: input.product.imageUrl,
-            stock: input.product.stock,
-            quantity: Math.min(q, Math.max(0, input.product.stock)),
-          };
-          return { items: [...base, nextItem].filter((it) => it.quantity > 0) };
-        }
-
-        const nextItems = base.map((it) => {
-          if (it.productId !== input.product.id) return it;
-          const nextQty = Math.min(it.quantity + q, Math.max(0, input.product.stock));
-          return { ...it, quantity: nextQty, stock: input.product.stock };
-        });
-
-        return { items: nextItems.filter((it) => it.quantity > 0) };
-      });
-
-      return { previous };
-    },
-    onError: (err, _input, context) => {
-      if (context?.previous) queryClient.setQueryData(['cart'], context.previous);
-      throw err;
-    },
     onSuccess: (data) => {
       queryClient.setQueryData(['cart'], data);
     },
@@ -127,12 +85,18 @@ export function useCart() {
     },
   });
 
-  const items = cartQuery.data?.items ?? [];
+  const items = useMemo(() => {
+    const raw = cartQuery.data?.items ?? [];
+    return raw.filter(it => it.quantity > 0 && it.cartItemId);
+  }, [cartQuery.data?.items]);
+
+  const subtotal = useMemo(() => calculateSubtotal(items), [items]);
+  const count = useMemo(() => calculateCount(items), [items]);
 
   return {
     items,
-    subtotal: getSubtotal(items),
-    count: items.reduce((sum, i) => sum + i.quantity, 0),
+    subtotal,
+    count,
     isLoading: cartQuery.isLoading,
     isError: cartQuery.isError,
     error: cartQuery.error,

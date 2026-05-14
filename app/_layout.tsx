@@ -5,7 +5,9 @@ import { QueryClient } from '@tanstack/react-query';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View, KeyboardAvoidingView, ScrollView, FlatList, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
+import { cssInterop } from 'nativewind';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Constants from 'expo-constants';
@@ -26,6 +28,21 @@ import "../src/styles/global.css";
 import { useAuthStore } from '../src/store/authStore';
 import { registerDeviceForPush } from '../src/notifications/push';
 import { NotificationBanner } from '../src/components/ui/NotificationBanner';
+
+// ── NativeWind Interop Setup ────────────────────────────────────────
+// Register components that aren't styled by default in NativeWind v4
+// to avoid "un-styled component" warnings that can cause crashes.
+cssInterop(KeyboardAvoidingView, { className: 'style' });
+cssInterop(ScrollView, { 
+  className: 'style', 
+  contentContainerClassName: 'contentContainerStyle' 
+});
+cssInterop(FlatList, { 
+  className: 'style', 
+  contentContainerClassName: 'contentContainerStyle' 
+});
+cssInterop(ActivityIndicator, { className: 'style' });
+cssInterop(Image, { className: 'style' });
 
 // ── Singleton instances (never re-created) ──────────────────────────
 const queryClient = new QueryClient({
@@ -52,11 +69,8 @@ const SCREEN_OPTIONS = { headerShown: false } as const;
 // Prevent splash screen from hiding until fonts are loaded
 SplashScreen.preventAutoHideAsync();
 
-// ── Navigator isolated from NativeWind re-renders ───────────────────
-// Memo prevents the navigator from being re-rendered when the parent
-// (RootLayout) re-renders due to Zustand / React-Query state changes.
-// This breaks the infinite loop: wrap-jsx → useSyncState → forceStoreRerender → wrap-jsx.
-const NavigatorShell = memo(function NavigatorShell() {
+// ── Navigator Shell ───────────────────────────────────────────────
+function NavigatorShell() {
   return (
     <Stack screenOptions={SCREEN_OPTIONS}>
       <Stack.Screen name="(auth)" />
@@ -64,7 +78,7 @@ const NavigatorShell = memo(function NavigatorShell() {
       <Stack.Screen name="(staff)" />
     </Stack>
   );
-});
+}
 
 export default function RootLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -183,43 +197,43 @@ export default function RootLayout() {
           client={queryClient}
           persistOptions={persistOptions}
         >
-          <View className={themeClass} style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: themeClass === 'theme-staff' ? '#F1F8F2' : '#F3F8F6' }}>
             <NavigatorShell />
             {banner ? (
-              <View style={{ position: 'absolute', top: 60, left: 16, right: 16 }}>
-                <Pressable
-                  onPress={() => {
-                    setBanner(null);
-                    if (banner.variant === 'error') {
-                      router.replace('/(auth)/login' as never);
-                    } else {
-                      router.push('/(staff)/orders' as never);
-                    }
-                  }}
-                  style={{
-                    backgroundColor: banner.variant === 'error' ? '#7F1D1D' : '#0F172A',
-                    borderRadius: 18,
-                    paddingVertical: 14,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderColor: banner.variant === 'error' ? '#FCA5A5' : 'transparent',
-                    shadowColor: '#000',
-                    shadowOpacity: 0.18,
-                    shadowRadius: 14,
-                    shadowOffset: { width: 0, height: 8 },
-                    elevation: 8,
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontFamily: 'Outfit-Bold', fontSize: 14 }}>
-                    {banner.variant === 'error' ? 'Phiên đăng nhập bị thay thế' : banner.title}
-                  </Text>
-                  <Text style={{ color: banner.variant === 'error' ? '#FEE2E2' : '#E2E8F0', fontFamily: 'Inter-Regular', fontSize: 12, marginTop: 4 }} numberOfLines={3}>
-                    {banner.variant === 'error'
-                      ? 'Tài khoản của bạn đã đăng nhập ở thiết bị khác. Bạn sẽ được chuyển về màn hình đăng nhập.'
-                      : banner.body}
-                  </Text>
-                </Pressable>
-              </View>
+                <View style={{ position: 'absolute', top: 60, left: 16, right: 16 }}>
+                  <Pressable
+                    onPress={() => {
+                      setBanner(null);
+                      if (banner.variant === 'error') {
+                        router.replace('/(auth)/login' as never);
+                      } else {
+                        router.push('/(staff)/orders' as never);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: banner.variant === 'error' ? '#7F1D1D' : '#0F172A',
+                      borderRadius: 18,
+                      paddingVertical: 14,
+                      paddingHorizontal: 14,
+                      borderWidth: 1,
+                      borderColor: banner.variant === 'error' ? '#FCA5A5' : 'transparent',
+                      shadowColor: '#000',
+                      shadowOpacity: 0.18,
+                      shadowRadius: 14,
+                      shadowOffset: { width: 0, height: 8 },
+                      elevation: 8,
+                    }}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontFamily: 'Outfit-Bold', fontSize: 14 }}>
+                      {banner.variant === 'error' ? 'Phiên đăng nhập bị thay thế' : banner.title}
+                    </Text>
+                    <Text style={{ color: banner.variant === 'error' ? '#FEE2E2' : '#E2E8F0', fontFamily: 'Inter-Regular', fontSize: 12, marginTop: 4 }} numberOfLines={3}>
+                      {banner.variant === 'error'
+                        ? 'Tài khoản của bạn đã đăng nhập ở thiết bị khác. Bạn sẽ được chuyển về màn hình đăng nhập.'
+                        : banner.body}
+                    </Text>
+                  </Pressable>
+                </View>
             ) : null}
           </View>
         </PersistQueryClientProvider>

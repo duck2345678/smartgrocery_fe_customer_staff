@@ -58,3 +58,71 @@ export type AINudge = {
   reason: string;
   confidenceScore: number;
 };
+
+export type AiChatRequest = {
+  message: string;
+  sessionId?: number | null;
+};
+
+export type ProposedItem = {
+  productId: number;
+  variantId?: number;
+  quantity: number;
+  note?: string;
+  reason?: string; // Explainable AI: why this product was suggested
+  allergyWarning?: string;
+  nutritionFacts?: {
+    calories?: number;
+    protein?: number;
+    [key: string]: unknown;
+  };
+  dayNo?: number;
+  mealSlot?: string;
+  substitutionFor?: number; // If this is a replacement for another product
+};
+
+export type MealPlanGenerateResponse = {
+  mealPlan: {
+    id: number;
+    title: string;
+    status?: string;
+    planDays?: number;
+    createdAt?: string;
+  };
+  trustScore?: number;
+  explanations?: Record<number, string>;
+  allergyWarnings?: string[];
+  proposedItems?: ProposedItem[];
+};
+
+export type AiChatResponse = {
+  sessionId: number;
+  aiMessageId?: string;
+  reply: string;
+  recommendedProductIds: number[];
+  proposedItems?: ProposedItem[];
+  removeVariantIds?: number[];
+  removeReasons?: Record<number, string>;
+  rewardVoucherId: number | null;
+  explanations?: Record<number, string>; // productId -> explanation mapping
+  trustScore?: number; // 0-100: confidence in recommendations (for transparency)
+  expectationPrompt?: string;
+};
+
+export type ChatMessageFeedback = {
+  chatMessageId: number;
+  messageId: string;
+  feedbackType: 'HELPFUL' | 'NOT_HELPFUL' | 'CONFUSING';
+  reason?: string;
+  createdAt: string;
+};
+
+export type ChatHistoryItem = {
+  type: 'session' | 'message';
+  sessionId?: number;
+  title?: string;
+  id?: number;
+  role?: string;
+  content?: string;
+  createdAt?: string;
+};

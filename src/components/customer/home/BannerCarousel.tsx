@@ -66,15 +66,11 @@ export default function BannerCarousel({
           <Pressable className={clsx('rounded-3xl overflow-hidden bg-slate-100', width > 560 ? 'w-[520px]' : 'w-full')} style={{ width: itemWidth }}>
             <Image
               source={item.imageSource ?? { uri: item.imageUrl }}
-              style={{ width: '100%', height: 160 }}
+              style={{ width: '100%', height: 180 }}
               contentFit="cover"
               cachePolicy="disk"
               transition={200}
             />
-            <View className="absolute bottom-0 left-0 right-0 p-4 bg-black/35">
-              <Text className="text-white font-outfit-bold text-lg">{item.title}</Text>
-              <Text className="text-white/90 font-inter text-xs mt-1">{item.subtitle}</Text>
-            </View>
           </Pressable>
         )}
       />

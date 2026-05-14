@@ -1,23 +1,8 @@
-import { AINudge, AIResult, BasketOptimizePayload, DiscoverPayload, MealPlannerPayload } from '../types/ai';
+import { AiChatRequest, AiChatResponse, ChatHistoryItem, MealPlanGenerateResponse } from '../types/ai';
 import apiClient from './client';
 
 export const aiApi = {
-  optimizeBasket: async (payload: BasketOptimizePayload): Promise<AIResult> => {
-    const response = await apiClient.post<AIResult>('/recommendations/basket-optimize', payload);
-    return response.data;
-  },
-
-  planMeals: async (payload: MealPlannerPayload): Promise<AIResult> => {
-    const response = await apiClient.post<AIResult>('/recommendations/meal-plan', payload);
-    return response.data;
-  },
-
-  discoverProducts: async (payload: DiscoverPayload): Promise<AIResult> => {
-    const response = await apiClient.post<AIResult>('/recommendations/discover', payload);
-    return response.data;
-  },
-
-  getNudges: async (): Promise<AINudge[]> => {
+  getNudges: async (): Promise<Array<{ productId: number; name: string; image: string | null; price: number; reason: string; confidenceScore: number }>> => {
     const response = await apiClient.get('/ai/nudges');
     const raw = Array.isArray(response.data) ? response.data : [];
     return raw.map((x) => ({
@@ -28,5 +13,33 @@ export const aiApi = {
       reason: String((x as { reason?: unknown }).reason ?? ''),
       confidenceScore: Number((x as { confidenceScore?: unknown }).confidenceScore ?? 0),
     }));
+  },
+
+  chatWithAi: async (payload: AiChatRequest, options?: { clientRawText?: string }): Promise<AiChatResponse> => {
+    const config: Record<string, unknown> = { timeout: 45000 };
+    if (options?.clientRawText) {
+      config.headers = { 'X-Client-Raw-Text': options.clientRawText };
+    }
+    const response = await apiClient.post<AiChatResponse>('/ai/chat', payload, config);
+    return response.data;
+  },
+
+  getChatHistory: async (): Promise<ChatHistoryItem[]> => {
+    const response = await apiClient.get<ChatHistoryItem[]>('/ai/chat/history');
+    return response.data;
+  },
+
+  generateMealPlan: async (goal: string): Promise<MealPlanGenerateResponse> => {
+    const response = await apiClient.post<MealPlanGenerateResponse>('/meal-plans/generate', { goal });
+    return response.data;
+  },
+
+  submitFeedback: async (messageId: string, feedbackType: 'HELPFUL' | 'NOT_HELPFUL', reason?: string): Promise<{ status: string }> => {
+    const response = await apiClient.post<{ status: string }>('/ai/chat/feedback', {
+      messageId,
+      feedbackType,
+      reason,
+    });
+    return response.data;
   },
 };

@@ -13,6 +13,7 @@ type CartItemDto = {
   productName: string;
   sku: string;
   unitPrice: number;
+  compareAtPrice?: number | null;
   quantity: number;
 
   subtotal: number;
@@ -51,21 +52,34 @@ const resolveImageUrl = (input: unknown): string => {
   return `${origin}/${raw}`;
 };
 
+const coerceCartDto = (value: unknown): CartDto | null => {
+  if (!value || typeof value !== 'object') return null;
+  if ('data' in value && (value as { data?: unknown }).data) return coerceCartDto((value as { data?: unknown }).data);
+  return value as CartDto;
+};
+
 const mapCartDto = (value: unknown): CartResponse => {
-  const dto = value as CartDto;
-  const items = Array.isArray(dto?.items) ? dto.items : [];
+  const dto = coerceCartDto(value);
+  const itemsRaw = Array.isArray(dto?.items)
+    ? dto.items
+    : Array.isArray((dto as { contents?: unknown })?.contents)
+      ? ((dto as { contents?: CartItemDto[] }).contents ?? [])
+      : [];
   return {
-    items: items.map((i) => ({
+    items: itemsRaw.map((i) => ({
       cartItemId: i.id,
       productId: i.productId,
       variantId: i.variantId,
       name: i.productName,
       price: toNumber(i.unitPrice),
+      originalPrice: i.compareAtPrice ? toNumber(i.compareAtPrice) : undefined,
+      discountPercent: (i.compareAtPrice && toNumber(i.compareAtPrice) > toNumber(i.unitPrice)) 
+        ? Math.round((1 - toNumber(i.unitPrice) / toNumber(i.compareAtPrice)) * 100) 
+        : undefined,
       unit: i.unit,
       imageUrl: resolveImageUrl(i.imageUrl),
       stock: typeof i.stock === 'number' ? i.stock : 0,
       quantity: i.quantity,
-
     })),
   };
 };

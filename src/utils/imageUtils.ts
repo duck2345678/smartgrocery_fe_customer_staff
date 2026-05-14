@@ -11,14 +11,24 @@ const getApiOrigin = (): string => {
  * Resolves an image path from the API.
  * Handles absolute URLs, relative paths (with or without leading slash), and fallbacks.
  */
-export const resolveImageUrl = (input: unknown, fallbackName: string = 'Image'): string => {
+export const resolveImageUrl = (
+  input: unknown,
+  fallbackName: string = 'Image',
+  useFallback: boolean = true,
+): string | null => {
   const raw = typeof input === 'string' ? input.trim() : '';
-  if (!raw) return buildFallbackUrl(fallbackName);
-  
+
+  // 1. If empty or a local device URI, return fallback or null
+  if (!raw || raw.startsWith('file://') || raw.startsWith('content://')) {
+    return useFallback ? buildFallbackUrl(fallbackName) : null;
+  }
+
+  // 2. If it's already an absolute URL (Cloud storage), return as is
   if (raw.startsWith('http://') || raw.startsWith('https://')) {
     return raw;
   }
-  
+
+  // 3. If it's a relative path from the server, prepend the origin
   const origin = getApiOrigin();
   if (raw.startsWith('/')) {
     return `${origin}${raw}`;

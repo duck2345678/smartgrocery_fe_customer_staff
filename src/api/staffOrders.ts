@@ -87,15 +87,21 @@ const mapAssign = (x: unknown): AssignOrderResponse => {
 
 const mapPickOrder = (x: unknown): StaffPickOrder => {
   const o = x as Record<string, unknown>;
-  const itemsRaw = Array.isArray(o.items) ? o.items : [];
+  const itemsRaw = Array.isArray(o.items)
+    ? o.items
+    : Array.isArray(o.orderItems)
+      ? o.orderItems
+      : Array.isArray(o.details)
+        ? o.details
+        : [];
   return {
     orderId: toNumber(o.orderId),
     orderNumber: String(o.orderNumber ?? ''),
     status: String(o.status ?? ''),
     assigneeId: o.assigneeId != null ? toNumber(o.assigneeId) : null,
     leaseExpiresAt: typeof o.leaseExpiresAt === 'string' ? o.leaseExpiresAt : null,
-    packingPhotoUrl: resolveImageUrl(o.packingPhotoUrl, 'Packing'),
-    deliveryPhotoUrl: resolveImageUrl(o.deliveryPhotoUrl, 'Delivery'),
+    packingPhotoUrl: resolveImageUrl(o.packingPhotoUrl, 'Packing', false),
+    deliveryPhotoUrl: resolveImageUrl(o.deliveryPhotoUrl, 'Delivery', false),
     customerName: typeof o.customerName === 'string' ? o.customerName : null,
     customerPhone: typeof o.customerPhone === 'string' ? o.customerPhone : null,
     customerEmail: typeof o.customerEmail === 'string' ? o.customerEmail : null,
@@ -107,18 +113,30 @@ const mapPickOrder = (x: unknown): StaffPickOrder => {
     deliveryDate: typeof o.deliveryDate === 'string' ? o.deliveryDate : null,
     items: itemsRaw.map((it) => {
       const i = it as Record<string, unknown>;
+      const product =
+        typeof i.product === 'object' && i.product !== null
+          ? (i.product as Record<string, unknown>)
+          : null;
+      const productName =
+        typeof i.productName === 'string'
+          ? i.productName
+          : typeof i.name === 'string'
+            ? i.name
+            : typeof product?.name === 'string'
+              ? String(product.name)
+              : '';
+      const imageSource = i.imageUrl ?? i.productImageUrl ?? product?.image ?? null;
       return {
-        orderItemId: toNumber(i.orderItemId),
+        orderItemId: toNumber(i.orderItemId ?? i.id),
         variantId: toNumber(i.variantId),
         sku: String(i.sku ?? ''),
         barcode: typeof i.barcode === 'string' ? i.barcode : null,
-        productName: String(i.productName ?? ''),
+        productName,
         variantName: typeof i.variantName === 'string' ? i.variantName : null,
-        aisleLocation: typeof i.aisleLocation === 'string' ? i.aisleLocation : null,
-        orderedQuantity: toNumber(i.orderedQuantity),
+        orderedQuantity: toNumber(i.orderedQuantity ?? i.quantity),
         pickedQuantity: i.pickedQuantity != null ? toNumber(i.pickedQuantity) : null,
-        unitPrice: toNumber(i.unitPrice),
-        imageUrl: resolveImageUrl(i.imageUrl, String(i.productName ?? 'Product')),
+        unitPrice: toNumber(i.unitPrice ?? i.price),
+        imageUrl: resolveImageUrl(imageSource, productName || 'Product'),
         stockQuantity: i.stockQuantity != null ? toNumber(i.stockQuantity) : null,
       };
     }),
@@ -146,6 +164,11 @@ export const staffOrdersApi = {
   assign: async (orderId: number): Promise<AssignOrderResponse> => {
     const res = await apiClient.post(`/staff/orders/${orderId}/assign`);
     return mapAssign(res.data);
+  },
+
+  autoAssign: async (): Promise<StaffOrderQueueItem> => {
+    const res = await apiClient.post('/staff/orders/auto-assign');
+    return mapQueueItem(res.data);
   },
 
   heartbeat: async (orderId: number): Promise<AssignOrderResponse> => {
