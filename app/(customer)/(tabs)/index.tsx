@@ -3,6 +3,7 @@ import { Animated, RefreshControl, Text, useWindowDimensions, View, Pressable } 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
+<<<<<<< HEAD:app/(customer)/(tabs)/index.tsx
 import HomeHeader from '../../../src/components/customer/home/HomeHeader';
 import SearchBar from '../../../src/components/customer/home/SearchBar';
 import BannerCarousel from '../../../src/components/customer/home/BannerCarousel';
@@ -10,6 +11,16 @@ import AiNudge from '../../../src/components/customer/home/AiNudge';
 import DealsRow from '../../../src/components/customer/home/DealsRow';
 import Button from '../../../src/components/ui/Button';
 import Skeleton from '../../../src/components/ui/Skeleton';
+=======
+import HomeHeader from '../../src/components/customer/home/HomeHeader';
+import SearchBar from '../../src/components/customer/home/SearchBar';
+import BannerCarousel from '../../src/components/customer/home/BannerCarousel';
+import AiNudge from '../../src/components/customer/home/AiNudge';
+import PersonalisedRecs from '../../src/components/customer/home/PersonalisedRecs';
+import DealsRow from '../../src/components/customer/home/DealsRow';
+import Button from '../../src/components/ui/Button';
+import Skeleton from '../../src/components/ui/Skeleton';
+>>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e:app/(customer)/index.tsx
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { productApi } from '../../../src/api/products';
 import { type Product } from '../../../src/types/product';
@@ -126,6 +137,7 @@ export default function CustomerHome() {
       <SearchBar />
       <BannerCarousel />
       <AiNudge />
+      <PersonalisedRecs />
       <DealsRow />
       <View className="px-6 pb-3 flex-row items-center justify-between">
         <Text className="text-base font-outfit-bold text-text">Sản phẩm hằng ngày</Text>

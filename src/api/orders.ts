@@ -25,6 +25,11 @@ export const orderApi = {
     return coerceOrders(response.data);
   },
 
+  getAllOrders: async (): Promise<Order[]> => {
+    const response = await apiClient.get('/orders/admin/all');
+    return coerceOrders(response.data);
+  },
+
   getOrderById: async (id: number): Promise<Order> => {
     const response = await apiClient.get(`/orders/${id}`);
     return coerceOrder(response.data) as Order;

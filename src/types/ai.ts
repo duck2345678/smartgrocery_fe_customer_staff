@@ -59,6 +59,7 @@ export type AINudge = {
   confidenceScore: number;
 };
 
+<<<<<<< HEAD
 export type AiChatRequest = {
   message: string;
   sessionId?: number | null;
@@ -126,3 +127,23 @@ export type ChatHistoryItem = {
   content?: string;
   createdAt?: string;
 };
+=======
+export type PersonalisedRec = {
+  id: number;
+  variantId: number;
+  productId: number;
+  productName: string;
+  productImage: string | null;
+  price: number;
+  unit: string;
+  rankNo: number;
+  score: number;
+  reasonText: string;
+};
+
+export type ChatSession = {
+  id: number;
+  title: string;
+  createdAt: string;
+};
+>>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e

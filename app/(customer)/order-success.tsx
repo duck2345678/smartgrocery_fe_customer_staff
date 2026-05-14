@@ -19,7 +19,7 @@ export default function OrderSuccess() {
     const parsed = parseInt(String(raw ?? ''), 10);
     return Number.isFinite(parsed) ? parsed : 0;
   }, [params.orderId]);
-  const { data: order } = useQuery({
+  const { data: order, isLoading, isError } = useQuery({
     queryKey: ['orders', orderId],
     queryFn: () => orderApi.getOrderById(orderId),
     enabled: orderId > 0,
@@ -27,20 +27,58 @@ export default function OrderSuccess() {
   });
 
   const displayOrderNumber = order?.orderNumber ?? rawOrderNumber;
+  const itemCount = order?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   return (
     <View className="flex-1 bg-background p-6">
       <Stack.Screen options={{ headerShown: false }} />
-      <View className="flex-1 items-center justify-center">
-        <CheckCircle2 size={72} color="#16A34A" />
-        <Text className="text-2xl font-outfit-bold text-slate-900 mt-6">Đặt hàng thành công</Text>
-        {displayOrderNumber ? (
-          <Text className="text-slate-500 font-inter mt-2">Mã đơn: {displayOrderNumber}</Text>
-        ) : orderId > 0 ? (
-          <Text className="text-slate-500 font-inter mt-2">Mã tham chiếu: #{orderId}</Text>
-        ) : (
-          <Text className="text-slate-500 font-inter mt-2">Cảm ơn bạn đã mua sắm!</Text>
-        )}
+
+      <View className="flex-1 justify-center">
+        <View className="items-center">
+          <CheckCircle2 size={72} color="#16A34A" />
+          <Text className="text-2xl font-outfit-bold text-slate-900 mt-6">Đặt hàng thành công</Text>
+          {displayOrderNumber ? (
+            <Text className="text-slate-500 font-inter mt-2">Mã đơn: {displayOrderNumber}</Text>
+          ) : orderId > 0 ? (
+            <Text className="text-slate-500 font-inter mt-2">Mã tham chiếu: #{orderId}</Text>
+          ) : (
+            <Text className="text-slate-500 font-inter mt-2">Cảm ơn bạn đã mua sắm!</Text>
+          )}
+        </View>
+
+        {order ? (
+          <View className="mt-6 rounded-3xl border border-border bg-white p-4">
+            <Text className="text-sm font-inter text-muted">Chi tiết đơn hàng</Text>
+            <View className="mt-3 space-y-2">
+              <Text className="text-base font-inter text-text">Số sản phẩm: {itemCount}</Text>
+              <Text className="text-base font-inter text-text">Thanh toán: {order.paymentMethod}</Text>
+              <Text className="text-base font-inter text-text">Trạng thái: {order.status}</Text>
+              <Text className="text-base font-inter text-text">Tổng thanh toán: {order.totalAmount.toLocaleString('vi-VN')}₫</Text>
+            </View>
+            {order.items?.length > 0 ? (
+              <View className="mt-4">
+                <Text className="text-sm font-inter-bold text-text mb-2">Mặt hàng</Text>
+                {order.items.slice(0, 3).map((item) => (
+                  <View key={item.id} className="flex-row items-center justify-between py-1">
+                    <Text className="text-sm font-inter text-text" numberOfLines={1}>
+                      {item.productName} x{item.quantity}
+                    </Text>
+                    <Text className="text-sm font-inter-bold text-text">
+                      {item.totalPrice.toLocaleString('vi-VN')}₫
+                    </Text>
+                  </View>
+                ))}
+                {order.items.length > 3 ? (
+                  <Text className="text-xs font-inter text-muted mt-2">+ {order.items.length - 3} sản phẩm khác</Text>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        ) : isLoading ? (
+          <Text className="text-sm font-inter text-muted mt-6">Đang tải chi tiết đơn hàng…</Text>
+        ) : isError ? (
+          <Text className="text-sm font-inter text-muted mt-6">Không thể tải chi tiết đơn hàng.</Text>
+        ) : null}
       </View>
 
       <View className="gap-y-3">

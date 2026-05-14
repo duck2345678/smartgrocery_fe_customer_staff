@@ -1,16 +1,18 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
+  Modal,
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+<<<<<<< HEAD
 import { CheckCircle2, ShoppingBag, User, Phone, MapPin, CreditCard, Calendar } from 'lucide-react-native';
 import { useCameraPermissions } from 'expo-camera';
 import Card from '../../../src/components/ui/Card';
@@ -18,6 +20,23 @@ import PackingPhotoCapture from '../../../src/components/ui/PackingPhotoCapture'
 import { useStaffHomeStore } from '../../../src/store/staffHomeStore';
 import { staffOrdersApi, type StaffPickItem } from '../../../src/api/staffOrders';
 import { fileApi } from '../../../src/api/file';
+=======
+import { ShoppingBag } from 'lucide-react-native';
+import Card from '../../../src/components/ui/Card';
+import { staffOrdersApi } from '../../../src/api/staffOrders';
+import {
+  buildCompletePickingPayload,
+  buildInitialSession,
+  clampInt,
+  type StaffPickItem,
+  type StaffPickSession,
+} from '../../../src/utils/staffPickingUtils';
+
+function formatMoney(v: number) {
+  if (!Number.isFinite(v)) return '—';
+  return v.toLocaleString('vi-VN') + ' ₫';
+}
+>>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
 
 /* ─── 3-step stepper ─────────────────────────────────────── */
 const STEPS = ['Soạn & Đóng gói', 'Giao hàng', 'Hoàn tất'] as const;
@@ -39,6 +58,7 @@ const getCurrentStep = (status?: string): number => {
   }
 };
 
+<<<<<<< HEAD
 const getActionLabel = (step: number, status: string): string => {
   if (status === 'READY_TO_SHIP') return 'Chụp ảnh giao hàng';
   if (status === 'DELIVERING') return 'Xác nhận hoàn tất';
@@ -78,39 +98,153 @@ function getPaymentMethodLabel(method?: string | null) {
   return method || 'Chưa xác định';
 }
 
+=======
+>>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
 /* ─── Main screen ─────────────────────────────────────────── */
 export default function StaffOrderDetailScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
   const params = useLocalSearchParams<{ id?: string }>();
-  const [checkedIds, setCheckedIds] = useState<Record<number, boolean>>({});
-  const [packingCameraVisible, setPackingCameraVisible] = useState(false);
-  const [deliveryCameraVisible, setDeliveryCameraVisible] = useState(false);
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-
-  /* Pre-request camera permission so it's ready when needed */
-  useEffect(() => {
-    if (cameraPermission && !cameraPermission.granted) {
-      void requestCameraPermission();
-    }
-  }, [cameraPermission, requestCameraPermission]);
 
   const orderId = useMemo(() => {
     const raw = params.id;
     const v = Array.isArray(raw) ? raw[0] : raw;
     const n = Number(v);
-    return Number.isFinite(n) ? n : 0;
+    return Number.isFinite(n) && n > 0 ? n : 0;
   }, [params.id]);
+
+  const [session, setSession] = useState<StaffPickSession | null>(null);
+  const [subModal, setSubModal] = useState<{ orderItemId: number; item: StaffPickItem } | null>(null);
+  const [subReason, setSubReason] = useState('');
 
   const pickListQuery = useQuery({
     queryKey: ['staff-order-pick-list', orderId],
     queryFn: () => staffOrdersApi.getPickList(orderId),
     enabled: orderId > 0,
+    staleTime: 60_000,
   });
+
+  const subsQuery = useQuery({
+    queryKey: ['staff-order-substitutions', orderId, subModal?.orderItemId],
+    queryFn: () => staffOrdersApi.getSubstitutions(orderId, subModal!.orderItemId),
+    enabled: !!subModal,
+  });
+
+  // Khởi tạo session một lần khi có dữ liệu
+  useEffect(() => {
+    if (pickListQuery.data && !session) {
+      setSession(buildInitialSession(pickListQuery.data));
+    }
+  }, [pickListQuery.data, session]);
+
+  // Heartbeat mỗi 5 phút để giữ lease đơn hàng
+  useEffect(() => {
+    if (!orderId) return;
+    const t = setInterval(() => {
+      staffOrdersApi.heartbeat(orderId).catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [orderId]);
+
+  const updateQty = useCallback((orderItemId: number, delta: number) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const it = prev.itemsById[orderItemId];
+      if (!it) return prev;
+      const newQty = clampInt(it.pickedQuantity + delta, 0, it.orderedQuantity);
+      return {
+        ...prev,
+        itemsById: {
+          ...prev.itemsById,
+          [orderItemId]: { ...it, pickedQuantity: newQty, isSubstituted: false, substitutedVariantId: null },
+        },
+      };
+    });
+  }, []);
+
+  const cancelSubstitution = useCallback((orderItemId: number) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const it = prev.itemsById[orderItemId];
+      if (!it) return prev;
+      return {
+        ...prev,
+        itemsById: {
+          ...prev.itemsById,
+          [orderItemId]: { ...it, isSubstituted: false, substitutedVariantId: null, reason: '' },
+        },
+      };
+    });
+  }, []);
+
+  const applySubstitution = useCallback(
+    (orderItemId: number, variantId: number) => {
+      setSession((prev) => {
+        if (!prev) return prev;
+        const it = prev.itemsById[orderItemId];
+        if (!it) return prev;
+        return {
+          ...prev,
+          itemsById: {
+            ...prev.itemsById,
+            [orderItemId]: {
+              ...it,
+              isSubstituted: true,
+              substitutedVariantId: variantId,
+              pickedQuantity: it.orderedQuantity,
+              reason: subReason.trim(),
+            },
+          },
+        };
+      });
+      setSubModal(null);
+      setSubReason('');
+    },
+    [subReason],
+  );
+
+  const completeMutation = useMutation({
+    mutationFn: () => {
+      if (!session) throw new Error('Chưa có session nhặt hàng.');
+      return staffOrdersApi.completePicking(orderId, buildCompletePickingPayload(session));
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['staff-order-queue'] });
+      void qc.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+      void qc.invalidateQueries({ queryKey: ['staff-order-pick-list', orderId] });
+      Alert.alert('Hoàn thành!', 'Đơn hàng đã được nhặt xong thành công.', [
+        { text: 'OK', onPress: () => router.replace('/(staff)/orders' as never) },
+      ]);
+    },
+    onError: (e) => {
+      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+    },
+  });
+
+  const progress = useMemo(() => {
+    if (!session) return { done: 0, total: 0, allDone: false };
+    const items = Object.values(session.itemsById);
+    const done = items.filter((it) => it.pickedQuantity >= it.orderedQuantity || it.isSubstituted).length;
+    return { done, total: items.length, allDone: done === items.length };
+  }, [session]);
+
+  const handleComplete = () => {
+    Alert.alert(
+      'Xác nhận hoàn thành',
+      `Bạn đã nhặt ${progress.done}/${progress.total} mặt hàng. Xác nhận hoàn thành đơn?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Xác nhận', onPress: () => completeMutation.mutate() },
+      ],
+    );
+  };
+
+  const pickItems = useMemo(() => pickListQuery.data?.items ?? [], [pickListQuery.data]);
 
   const order = pickListQuery.data;
   const status = order?.status ?? '';
   const currentStep = getCurrentStep(status);
+<<<<<<< HEAD
   const isPacked = currentStep >= 1;
   const leaseExpiresAt = order?.leaseExpiresAt ?? null;
   const expiryAlertShown = useRef(false);
@@ -353,11 +487,13 @@ export default function StaffOrderDetailScreen() {
       : leaseRemainingMs <= 15 * 60 * 1000
         ? '#F59E0B'
         : '#16A34A';
+=======
+>>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
 
   /* ────────────────────── render ────────────────────── */
   return (
     <SafeAreaView className="flex-1 bg-[#F5FAF7]" edges={['left', 'right']}>
-      <Stack.Screen options={{ title: 'Chi tiết đơn hàng', headerShown: true }} />
+      <Stack.Screen options={{ title: `Đơn #${orderId || ''}`, headerShown: true }} />
 
       {/* ── Loading ── */}
       {pickListQuery.isLoading ? (
@@ -371,7 +507,7 @@ export default function StaffOrderDetailScreen() {
         </View>
 
       /* ── Error ── */
-      ) : pickListQuery.isError || !order ? (
+      ) : pickListQuery.isError || !pickListQuery.data || !session ? (
         <View className="p-4">
           <Card className="p-4">
             <Text className="font-inter-bold text-text">Không tải được chi tiết đơn.</Text>
@@ -391,14 +527,14 @@ export default function StaffOrderDetailScreen() {
           </Card>
         </View>
 
-      /* ── Main content (Image 1) ── */
+      /* ── Main content ── */
       ) : (
         <>
           <ScrollView
             contentContainerStyle={{
               paddingHorizontal: 18,
               paddingTop: 0,
-              paddingBottom: 220,
+              paddingBottom: 120,
               gap: 14,
             }}
             showsVerticalScrollIndicator={false}
@@ -415,7 +551,7 @@ export default function StaffOrderDetailScreen() {
                     className="mt-1 text-[26px] font-outfit-bold text-white"
                     numberOfLines={1}
                   >
-                    #{order.orderNumber || order.orderId}
+                    #{pickListQuery.data.orderNumber || pickListQuery.data.orderId}
                   </Text>
                 </View>
                 <View className="w-14 h-14 rounded-2xl bg-white/15 items-center justify-center">
@@ -423,17 +559,13 @@ export default function StaffOrderDetailScreen() {
                 </View>
               </View>
 
-              {leaseRemainingLabel ? (
-                <View className="mt-4 rounded-[22px] bg-white/15 px-4 py-3">
-                  <Text className="text-[12px] font-inter text-white/80">Thời gian giữ chỗ</Text>
-                  <Text className="mt-1 text-[24px] font-outfit-bold" style={{ color: leaseTimerColor }}>
-                    {leaseExpired ? '00:00' : leaseRemainingLabel}
-                  </Text>
-                  <Text className="text-[11px] font-inter text-white/80">
-                    {leaseExpired ? 'Đơn đã quá hạn và sẽ được trả về hàng chờ.' : 'Đơn sẽ tự động thu hồi khi hết thời gian.'}
-                  </Text>
-                </View>
-              ) : null}
+              {/* Progress badge */}
+              <View className="mt-3 rounded-[18px] bg-white/15 px-4 py-3">
+                <Text className="text-[12px] font-inter text-white/80">Tiến độ nhặt hàng</Text>
+                <Text className="mt-1 text-[20px] font-outfit-bold text-white">
+                  {progress.done}/{progress.total} mặt hàng
+                </Text>
+              </View>
 
               {/* 3-step stepper */}
               <View
@@ -539,6 +671,7 @@ export default function StaffOrderDetailScreen() {
             </Card>
 
             {/* ───── Product list card ───── */}
+<<<<<<< HEAD
             <View className="bg-white rounded-[32px] p-6 shadow-sm border border-[#E5E7EB]">
               <View className="flex-row items-center justify-between mb-6">
                 <Text className="font-outfit-bold text-[#111827] text-[20px]">
@@ -607,61 +740,140 @@ export default function StaffOrderDetailScreen() {
                 })}
               </View>
             </View>
+=======
+            <View style={{ gap: 8 }}>
+              {pickItems.map((it) => {
+                const state = session.itemsById[it.orderItemId];
+                if (!state) return null;
 
-            {/* ───── Packing photo display card (Step 2) ───── */}
-            {order.packingPhotoUrl && (
-              <View 
-                className="rounded-[30px] p-5 bg-[#EDF7F1] border border-[#D1EAD9] overflow-hidden"
-              >
-                {/* Decorative elements */}
-                <View className="absolute right-4 top-4 opacity-40">
-                  <Text className="text-[24px]">✨</Text>
-                </View>
-                <View className="absolute left-[-10] bottom-4 opacity-20">
-                  <Text className="text-[40px]">🍃</Text>
-                </View>
-                <View className="absolute right-4 bottom-4 opacity-40">
-                  <Text className="text-[20px]">✨</Text>
-                </View>
- 
-                <Text className="font-inter-bold text-[#111827] text-[18px] mb-4">
-                  Ảnh đóng gói
-                </Text>
-                <View className="w-full aspect-[4/3] rounded-[24px] bg-white overflow-hidden shadow-sm">
-                  <Image 
-                    source={{ uri: order.packingPhotoUrl }}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                  />
-                </View>
-              </View>
-            )}
- 
-            {/* ───── Delivery photo display card (Step 3) ───── */}
-            {order.deliveryPhotoUrl && (
-              <View 
-                className="rounded-[30px] p-5 bg-[#EDF7F1] border border-[#D1EAD9] overflow-hidden"
-              >
-                {/* Decorative elements */}
-                <View className="absolute right-4 top-4 opacity-40">
-                  <Text className="text-[24px]">📦</Text>
-                </View>
-                <View className="absolute left-[-10] bottom-4 opacity-20">
-                  <Text className="text-[40px]">🏠</Text>
-                </View>
-                
-                <Text className="font-inter-bold text-[#111827] text-[18px] mb-4">
-                  Ảnh giao hàng
-                </Text>
-                <View className="w-full aspect-[4/3] rounded-[24px] bg-white overflow-hidden shadow-sm">
-                  <Image 
-                    source={{ uri: order.deliveryPhotoUrl }}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                  />
-                </View>
-              </View>
-            )}
+                const isFullyPicked = state.pickedQuantity >= it.orderedQuantity || state.isSubstituted;
+                const isZero = state.pickedQuantity === 0 && !state.isSubstituted;
+                const leftBorderColor = isFullyPicked ? '#4ade80' : isZero ? '#fca5a5' : '#fbbf24';
+
+                return (
+                  <View
+                    key={it.orderItemId}
+                    style={{ borderLeftWidth: 4, borderLeftColor: leftBorderColor, borderRadius: 16, overflow: 'hidden' }}
+                  >
+                    <Card className="p-4">
+                      {/* Thông tin sản phẩm */}
+                      <View className="flex-row items-start justify-between">
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <Text className="font-inter-bold text-text" numberOfLines={2}>
+                            {it.productName}
+                          </Text>
+                          <Text className="text-xs font-inter text-muted mt-0.5" numberOfLines={1}>
+                            {it.variantName ?? '—'} • SKU: {it.sku}
+                          </Text>
+                          {it.aisleLocation ? (
+                            <Text className="text-xs font-inter mt-0.5" style={{ color: '#16a34a' }}>
+                              📍 Kệ: {it.aisleLocation}
+                            </Text>
+                          ) : null}
+                          {state.isSubstituted ? (
+                            <Text className="text-xs font-inter mt-1" style={{ color: '#d97706' }}>
+                              🔄 Đã chọn hàng thay thế
+                            </Text>
+                          ) : null}
+                        </View>
+                        {/* Số lượng cần nhặt */}
+                        <View className="items-end">
+                          <Text className="text-xs font-inter text-muted">Cần</Text>
+                          <Text className="font-outfit-bold text-text">{it.orderedQuantity}</Text>
+                        </View>
+                      </View>
+
+                      {/* Điều chỉnh số lượng đã nhặt */}
+                      {!state.isSubstituted ? (
+                        <View className="mt-3 flex-row items-center justify-between">
+                          <Text className="text-sm font-inter text-text">Đã nhặt:</Text>
+                          <View className="flex-row items-center" style={{ gap: 16 }}>
+                            <Pressable
+                              onPress={() => updateQty(it.orderItemId, -1)}
+                              disabled={state.pickedQuantity <= 0}
+                              style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 18,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: state.pickedQuantity <= 0 ? '#f1f5f9' : '#16A34A',
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontWeight: '700',
+                                  fontSize: 20,
+                                  color: state.pickedQuantity <= 0 ? '#94a3b8' : '#ffffff',
+                                  lineHeight: 24,
+                                }}
+                              >
+                                −
+                              </Text>
+                            </Pressable>
+                            <Text className="font-outfit-bold text-text text-xl" style={{ minWidth: 28, textAlign: 'center' }}>
+                              {state.pickedQuantity}
+                            </Text>
+                            <Pressable
+                              onPress={() => updateQty(it.orderItemId, 1)}
+                              disabled={state.pickedQuantity >= it.orderedQuantity}
+                              style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 18,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: state.pickedQuantity >= it.orderedQuantity ? '#f1f5f9' : '#16A34A',
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontWeight: '700',
+                                  fontSize: 20,
+                                  color: state.pickedQuantity >= it.orderedQuantity ? '#94a3b8' : '#ffffff',
+                                  lineHeight: 24,
+                                }}
+                              >
+                                +
+                              </Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ) : (
+                        <Pressable
+                          onPress={() => cancelSubstitution(it.orderItemId)}
+                          className="mt-3 px-3 py-2 rounded-xl bg-surface border border-border items-center"
+                        >
+                          <Text className="text-xs font-inter text-muted">Hủy thay thế</Text>
+                        </Pressable>
+                      )}
+>>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
+
+                      {/* Nút chọn hàng thay thế */}
+                      {state.pickedQuantity < it.orderedQuantity && !state.isSubstituted ? (
+                        <Pressable
+                          onPress={() => setSubModal({ orderItemId: it.orderItemId, item: it })}
+                          style={{
+                            marginTop: 8,
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 12,
+                            backgroundColor: '#fffbeb',
+                            borderWidth: 1,
+                            borderColor: '#fde68a',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#b45309' }}>
+                            🔄 Chọn hàng thay thế
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                    </Card>
+                  </View>
+                );
+              })}
+            </View>
           </ScrollView>
 
           {/* ───── Fixed bottom action bar ───── */}
@@ -669,49 +881,115 @@ export default function StaffOrderDetailScreen() {
             className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 pb-8 pt-5"
             style={{ elevation: 10 }}
           >
-            <Text className="font-outfit-bold text-text text-[18px] mb-4">
-              {stepLabel}
-            </Text>
-            {leaseRemainingLabel ? (
-              <Text className="text-[12px] font-inter mb-3" style={{ color: leaseTimerColor }}>
-                {leaseExpired ? 'Đơn đã hết hạn.' : `Còn ${leaseRemainingLabel} để xử lý đơn này.`}
-              </Text>
-            ) : null}
             <Pressable
-              onPress={onAction}
-              disabled={leaseExpired}
-              className="w-full py-5 rounded-[22px] items-center justify-center"
-              style={{ backgroundColor: '#16A34A', opacity: leaseExpired ? 0.45 : 1 }}
+              onPress={handleComplete}
+              disabled={completeMutation.isPending}
+              style={{
+                paddingVertical: 16,
+                borderRadius: 16,
+                alignItems: 'center',
+                backgroundColor: completeMutation.isPending ? '#e2e8f0' : '#16A34A',
+              }}
             >
-              <Text className="font-outfit-bold text-white text-[18px]">
-                {actionLabel}
-              </Text>
+              {completeMutation.isPending ? (
+                <ActivityIndicator color="#16A34A" />
+              ) : (
+                <Text style={{ fontWeight: '700', fontSize: 16, color: '#ffffff' }}>
+                  {progress.allDone ? '✓ Hoàn thành nhặt hàng' : `Hoàn thành (${progress.done}/${progress.total})`}
+                </Text>
+              )}
             </Pressable>
           </View>
 
-          {/* ───── Packing photo camera (only for step 0) ───── */}
-          <PackingPhotoCapture
-            visible={packingCameraVisible}
-            title="Chụp ảnh xác nhận đóng gói"
-            hintText="Chụp rõ đơn hàng đã đóng gói"
-            primaryColor="#16A34A"
-            onClose={() => setPackingCameraVisible(false)}
-            onCaptured={handlePackingPhotoCaptured}
-          />
+          {/* Modal chọn hàng thay thế */}
+          <Modal
+            visible={!!subModal}
+            animationType="slide"
+            transparent
+            onRequestClose={() => {
+              setSubModal(null);
+              setSubReason('');
+            }}
+          >
+            <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+              <View
+                className="bg-background"
+                style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '78%' }}
+              >
+                {/* Modal header */}
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text className="font-outfit-bold text-text text-base">Chọn hàng thay thế</Text>
+                  <Pressable
+                    onPress={() => {
+                      setSubModal(null);
+                      setSubReason('');
+                    }}
+                  >
+                    <Text className="font-inter text-muted">Đóng</Text>
+                  </Pressable>
+                </View>
 
-          {/* ───── Delivery photo camera (Step 2) ───── */}
-          <PackingPhotoCapture
-            visible={deliveryCameraVisible}
-            title="Chụp ảnh xác nhận giao hàng"
-            hintText="Chụp rõ đơn hàng tại điểm giao"
-            primaryColor="#16A34A"
-            reviewTitle="Kiểm tra ảnh giao hàng"
-            reviewHint="mã đơn và vị trí giao hàng"
-            confirmLabel="Xác nhận hoàn tất"
-            onClose={() => setDeliveryCameraVisible(false)}
-            onCaptured={handleDeliveryPhotoCaptured}
-          />
+                {subModal ? (
+                  <Text className="text-xs font-inter text-muted mb-3" numberOfLines={2}>
+                    Thay thế cho: {subModal.item.productName}
+                  </Text>
+                ) : null}
 
+                {/* Lý do thay thế */}
+                <TextInput
+                  value={subReason}
+                  onChangeText={setSubReason}
+                  placeholder="Lý do thay thế (tùy chọn)"
+                  className="bg-surface border border-border rounded-xl px-3 text-text font-inter"
+                  style={{ paddingVertical: 10, fontSize: 14, marginBottom: 12 }}
+                  placeholderTextColor="#94a3b8"
+                />
+
+                {subsQuery.isLoading ? (
+                  <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+                    <ActivityIndicator color="#16A34A" />
+                    <Text className="text-xs font-inter text-muted mt-2">Đang tải gợi ý…</Text>
+                  </View>
+                ) : subsQuery.isError || !subsQuery.data?.length ? (
+                  <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+                    <Text className="text-sm font-inter text-muted">Không có sản phẩm thay thế phù hợp.</Text>
+                  </View>
+                ) : (
+                  <ScrollView style={{ maxHeight: 320 }} contentContainerStyle={{ gap: 8 }}>
+                    {subsQuery.data.map((sub) => (
+                      <Pressable
+                        key={sub.variantId}
+                        onPress={() => subModal && applySubstitution(subModal.orderItemId, sub.variantId)}
+                        className="p-3 bg-surface border border-border rounded-2xl flex-row items-center justify-between"
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text className="font-inter-bold text-text" numberOfLines={2}>
+                            {sub.name}
+                          </Text>
+                          <Text className="text-xs font-inter text-muted mt-0.5">
+                            {formatMoney(sub.price)} • Tồn kho: {sub.stock}
+                          </Text>
+                        </View>
+                        {sub.isRecommended ? (
+                          <View
+                            style={{
+                              marginLeft: 8,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                              borderRadius: 99,
+                              backgroundColor: '#dcfce7',
+                            }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#15803d' }}>Gợi ý</Text>
+                          </View>
+                        ) : null}
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            </View>
+          </Modal>
         </>
       )}
     </SafeAreaView>

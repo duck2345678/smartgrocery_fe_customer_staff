@@ -126,6 +126,7 @@ export default function CheckoutScreen() {
         pathname: '/(customer)/order-success',
         params: {
           orderId: String(created.id),
+          orderNumber: String(created.orderNumber ?? ''),
         },
       } as never);
     } catch (e) {
