@@ -1,8 +1,6 @@
 import apiClient from './client';
 import { type UserAddress } from '../types/address';
 import { type UserDto } from '../store/authStore';
-<<<<<<< HEAD
-=======
 
 const unwrapResponse = <T>(value: unknown): T => {
   if (!value || typeof value !== 'object') return value as T;
@@ -38,7 +36,6 @@ export type CreateAddressRequest = {
 };
 
 export type UpdateAddressRequest = Partial<CreateAddressRequest>;
->>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
 
 export const userApi = {
   getUserProfile: async (userId: number): Promise<FullUserProfile> => {
@@ -51,6 +48,11 @@ export const userApi = {
     return unwrapResponse<FullUserProfile>(response.data);
   },
 
+  updateProfile: async (userId: number, data: Partial<UserDto>): Promise<UserDto> => {
+    const response = await apiClient.put(`/users/${userId}`, data);
+    return unwrapResponse<UserDto>(response.data);
+  },
+
   getUserAddresses: async (userId: number): Promise<UserAddress[]> => {
     const response = await apiClient.get(`/users/${userId}/addresses`);
     return unwrapResponse<UserAddress[]>(response.data) ?? [];
@@ -61,28 +63,14 @@ export const userApi = {
     return unwrapResponse<UserAddress>(response.data);
   },
 
-  updateAddress: async (userId: number, addressId: number, data: UpdateAddressRequest): Promise<UserAddress> => {
-    const response = await apiClient.put(`/users/${userId}/addresses/${addressId}`, data);
+  addAddress: async (userId: number, data: Partial<UserAddress>): Promise<UserAddress> => {
+    const response = await apiClient.post(`/users/${userId}/addresses`, data);
     return unwrapResponse<UserAddress>(response.data);
   },
 
-  deleteAddress: async (userId: number, addressId: number): Promise<void> => {
-    await apiClient.delete(`/users/${userId}/addresses/${addressId}`);
-  },
-
-  updateProfile: async (userId: number, data: Partial<UserDto>): Promise<UserDto> => {
-    const response = await apiClient.put(`/users/${userId}`, data);
-    return response.data as UserDto;
-  },
-
-  addAddress: async (userId: number, data: Partial<UserAddress>): Promise<UserAddress> => {
-    const response = await apiClient.post(`/users/${userId}/addresses`, data);
-    return response.data as UserAddress;
-  },
-
-  updateAddress: async (userId: number, addressId: number, data: Partial<UserAddress>): Promise<UserAddress> => {
+  updateAddress: async (userId: number, addressId: number, data: UpdateAddressRequest | Partial<UserAddress>): Promise<UserAddress> => {
     const response = await apiClient.put(`/users/${userId}/addresses/${addressId}`, data);
-    return response.data as UserAddress;
+    return unwrapResponse<UserAddress>(response.data);
   },
 
   deleteAddress: async (userId: number, addressId: number): Promise<void> => {
@@ -93,4 +81,3 @@ export const userApi = {
     await apiClient.patch(`/users/${userId}/addresses/${addressId}/default`);
   },
 };
-

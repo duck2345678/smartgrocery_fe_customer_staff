@@ -122,11 +122,9 @@ export default function RootLayout() {
 
         Notifications.setNotificationHandler({
           handleNotification: async () => ({
-            shouldShowAlert: false,
-            shouldShowBanner: false,
-            shouldShowList: false,
-            shouldPlaySound: false,
-            shouldSetBadge: false,
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
           }),
         });
 
@@ -176,7 +174,7 @@ export default function RootLayout() {
   }, [authNotice, setAuthNotice]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user || user.role !== 'STAFF') return;
+    if (!isAuthenticated || !user) return;
     void registerDeviceForPush(Platform.OS);
   }, [isAuthenticated, user]);
 

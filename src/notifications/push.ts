@@ -28,17 +28,27 @@ const setStoredPushToken = async (token: string | null): Promise<void> => {
 export const registerDeviceForPush = async (deviceType: string): Promise<string | null> => {
   try {
     if (Constants.executionEnvironment === 'storeClient') {
-      console.log('Skipping push registration in Expo Go');
-      return null;
+      console.log('Skipping push registration in Expo Go - registering dummy token for dev');
+      const dummyToken = `ExponentPushToken[dev-expo-go-${Platform.OS}]`;
+      const prev = await getStoredPushToken();
+      if (prev !== dummyToken) {
+        await userDevicesApi.register(dummyToken, deviceType);
+        await setStoredPushToken(dummyToken);
+      }
+      return dummyToken;
     }
     const Notifications = await import('expo-notifications');
     const perm = await Notifications.getPermissionsAsync();
     let granted = perm.granted || perm.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
     if (!granted) {
-      const req = await Notifications.requestPermissionsAsync();
-      granted = req.granted || req.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+      const dummyToken = `ExponentPushToken[dev-denied-${Platform.OS}]`;
+      const prev = await getStoredPushToken();
+      if (prev !== dummyToken) {
+        await userDevicesApi.register(dummyToken, deviceType);
+        await setStoredPushToken(dummyToken);
+      }
+      return dummyToken;
     }
-    if (!granted) return null;
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
@@ -54,8 +64,18 @@ export const registerDeviceForPush = async (deviceType: string): Promise<string 
       await setStoredPushToken(token);
     }
     return token;
-  } catch {
-    return null;
+  } catch (error) {
+    try {
+      const dummyToken = `ExponentPushToken[dev-fallback-${Platform.OS}]`;
+      const prev = await getStoredPushToken();
+      if (prev !== dummyToken) {
+        await userDevicesApi.register(dummyToken, deviceType);
+        await setStoredPushToken(dummyToken);
+      }
+      return dummyToken;
+    } catch {
+      return null;
+    }
   }
 };
 

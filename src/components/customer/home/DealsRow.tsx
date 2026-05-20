@@ -7,6 +7,7 @@ import { productApi } from '../../../api/products';
 import Skeleton from '../../ui/Skeleton';
 import { pickTopDiscounted } from '../../../utils/homeUtils';
 import { useRouter } from 'expo-router';
+import { FlashSaleTimer } from '../FlashSaleTimer';
 
 export default function DealsRow() {
   const router = useRouter();
@@ -76,6 +77,11 @@ export default function DealsRow() {
                     </View>
                   </View>
                   <View style={{ padding: 12 }}>
+                    {item.flashSaleEndsAt && (
+                      <View style={{ marginBottom: 6 }}>
+                        <FlashSaleTimer endTime={item.flashSaleEndsAt} compact />
+                      </View>
+                    )}
                     <Text style={{ fontSize: 14, fontFamily: 'Outfit-Bold', color: '#0F172A' }} numberOfLines={1}>
                       {item.name}
                     </Text>

@@ -9,21 +9,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-<<<<<<< HEAD
-import { CheckCircle2, ShoppingBag, User, Phone, MapPin, CreditCard, Calendar } from 'lucide-react-native';
-import { useCameraPermissions } from 'expo-camera';
-import Card from '../../../src/components/ui/Card';
-import PackingPhotoCapture from '../../../src/components/ui/PackingPhotoCapture';
-import { useStaffHomeStore } from '../../../src/store/staffHomeStore';
-import { staffOrdersApi, type StaffPickItem } from '../../../src/api/staffOrders';
-import { fileApi } from '../../../src/api/file';
-=======
-import { ShoppingBag } from 'lucide-react-native';
+import { ShoppingBag, User, Camera, Truck, Check, ShieldAlert } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import Card from '../../../src/components/ui/Card';
 import { staffOrdersApi } from '../../../src/api/staffOrders';
+import { getTodayStatus } from '../../../src/api/staffAttendance';
 import {
   buildCompletePickingPayload,
   buildInitialSession,
@@ -31,12 +25,6 @@ import {
   type StaffPickItem,
   type StaffPickSession,
 } from '../../../src/utils/staffPickingUtils';
-
-function formatMoney(v: number) {
-  if (!Number.isFinite(v)) return '—';
-  return v.toLocaleString('vi-VN') + ' ₫';
-}
->>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
 
 /* ─── 3-step stepper ─────────────────────────────────────── */
 const STEPS = ['Soạn & Đóng gói', 'Giao hàng', 'Hoàn tất'] as const;
@@ -48,29 +36,12 @@ const getCurrentStep = (status?: string): number => {
     case 'PICKED':
       return 0;
     case 'READY_TO_SHIP':
-      return 1;
     case 'DELIVERING':
-      return 2;
+      return 1;
     case 'DELIVERED':
       return 2;
     default:
       return 0;
-  }
-};
-
-<<<<<<< HEAD
-const getActionLabel = (step: number, status: string): string => {
-  if (status === 'READY_TO_SHIP') return 'Chụp ảnh giao hàng';
-  if (status === 'DELIVERING') return 'Xác nhận hoàn tất';
-  switch (step) {
-    case 0:
-      return 'Xác nhận đóng gói';
-    case 1:
-      return 'Chụp ảnh giao hàng';
-    case 2:
-      return 'Xác nhận hoàn tất';
-    default:
-      return 'Tiếp tục';
   }
 };
 
@@ -98,8 +69,6 @@ function getPaymentMethodLabel(method?: string | null) {
   return method || 'Chưa xác định';
 }
 
-=======
->>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
 /* ─── Main screen ─────────────────────────────────────────── */
 export default function StaffOrderDetailScreen() {
   const router = useRouter();
@@ -114,8 +83,10 @@ export default function StaffOrderDetailScreen() {
   }, [params.id]);
 
   const [session, setSession] = useState<StaffPickSession | null>(null);
-  const [subModal, setSubModal] = useState<{ orderItemId: number; item: StaffPickItem } | null>(null);
-  const [subReason, setSubReason] = useState('');
+
+  const [localPackingPhoto, setLocalPackingPhoto] = useState<string | null>(null);
+  const [localDeliveryPhoto, setLocalDeliveryPhoto] = useState<string | null>(null);
+  const [brokenImageIds, setBrokenImageIds] = useState<Record<number, boolean>>({});
 
   const pickListQuery = useQuery({
     queryKey: ['staff-order-pick-list', orderId],
@@ -124,18 +95,53 @@ export default function StaffOrderDetailScreen() {
     staleTime: 60_000,
   });
 
-  const subsQuery = useQuery({
-    queryKey: ['staff-order-substitutions', orderId, subModal?.orderItemId],
-    queryFn: () => staffOrdersApi.getSubstitutions(orderId, subModal!.orderItemId),
-    enabled: !!subModal,
+  const attendanceQuery = useQuery({
+    queryKey: ['staff-attendance-today'],
+    queryFn: () => getTodayStatus(),
   });
+
+  const isClockedIn = useMemo(() => {
+    if (!attendanceQuery.data) return false;
+    const activeRecords = attendanceQuery.data.records.filter(r => r.checkInAt && !r.checkOutAt);
+    if (activeRecords.length === 0) return false;
+
+    // Check if any active record is still within its shift time
+    const now = new Date();
+    const currentTimeVal = now.getHours() * 60 + now.getMinutes();
+
+    return activeRecords.some(r => {
+      let endTimeVal = 0;
+      if (r.shiftType === 'S') endTimeVal = 14 * 60 + 30; // 14:30
+      else if (r.shiftType === 'C') endTimeVal = 22 * 60 + 30; // 22:30
+      else if (r.shiftType === 'G') {
+        if (r.blockNumber === 1) endTimeVal = 10 * 60 + 30;
+        else if (r.blockNumber === 2) endTimeVal = 14 * 60 + 30;
+        else if (r.blockNumber === 3) endTimeVal = 18 * 60 + 30;
+        else if (r.blockNumber === 4) endTimeVal = 22 * 60 + 30;
+      }
+      return currentTimeVal < endTimeVal;
+    });
+  }, [attendanceQuery.data]);
 
   // Khởi tạo session một lần khi có dữ liệu
   useEffect(() => {
     if (pickListQuery.data && !session) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSession(buildInitialSession(pickListQuery.data));
     }
   }, [pickListQuery.data, session]);
+
+  // Đồng bộ ảnh đã tải lên từ trước
+  useEffect(() => {
+    if (pickListQuery.data) {
+      if (pickListQuery.data.packingPhotoUrl) {
+        setLocalPackingPhoto(pickListQuery.data.packingPhotoUrl);
+      }
+      if (pickListQuery.data.deliveryPhotoUrl) {
+        setLocalDeliveryPhoto(pickListQuery.data.deliveryPhotoUrl);
+      }
+    }
+  }, [pickListQuery.data]);
 
   // Heartbeat mỗi 5 phút để giữ lease đơn hàng
   useEffect(() => {
@@ -145,6 +151,116 @@ export default function StaffOrderDetailScreen() {
     }, 5 * 60 * 1000);
     return () => clearInterval(t);
   }, [orderId]);
+
+  const handleSelectPhoto = async (type: 'pack' | 'deliver', autoSubmit: boolean = false) => {
+    Alert.alert(
+      'Chọn hình ảnh',
+      'Bạn muốn chụp ảnh trực tiếp hay chọn ảnh từ thư viện?',
+      [
+        {
+          text: 'Chụp ảnh trực tiếp',
+          onPress: async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Quyền truy cập', 'Vui lòng cấp quyền camera trong cài đặt.');
+              return;
+            }
+            const res = await ImagePicker.launchCameraAsync({
+              quality: 0.8,
+            });
+            if (!res.canceled) {
+              const uri = res.assets[0].uri;
+              if (type === 'pack') {
+                setLocalPackingPhoto(uri);
+                if (autoSubmit) packMutation.mutate(uri);
+              } else {
+                setLocalDeliveryPhoto(uri);
+                if (autoSubmit) completeDeliveryMutation.mutate(uri);
+              }
+            }
+          }
+        },
+        {
+          text: 'Chọn ảnh từ thư viện',
+          onPress: async () => {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Quyền truy cập', 'Vui lòng cấp quyền truy cập thư viện ảnh.');
+              return;
+            }
+            const res = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              quality: 0.8,
+            });
+            if (!res.canceled) {
+              const uri = res.assets[0].uri;
+              if (type === 'pack') {
+                setLocalPackingPhoto(uri);
+                if (autoSubmit) packMutation.mutate(uri);
+              } else {
+                setLocalDeliveryPhoto(uri);
+                if (autoSubmit) completeDeliveryMutation.mutate(uri);
+              }
+            }
+          }
+        },
+        { text: 'Hủy', style: 'cancel' }
+      ]
+    );
+  };
+
+  const packMutation = useMutation({
+    mutationFn: async (photoUrl?: string) => {
+      const mockUrl = photoUrl || localPackingPhoto || 'https://images.unsplash.com/photo-1542838132-92c53300491e';
+      // 1. Pack order -> READY_TO_SHIP
+      await staffOrdersApi.pack(orderId, mockUrl);
+      // 2. Deliver order with same photo -> DELIVERING (Đang giao)
+      await staffOrdersApi.deliver(orderId, mockUrl);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['staff-order-queue'] });
+      void qc.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+      void qc.invalidateQueries({ queryKey: ['staff-order-pick-list', orderId] });
+      Alert.alert('Thành công!', 'Xác nhận đóng gói hàng thành công. Đơn hàng chuyển sang trạng thái ĐANG GIAO.');
+    },
+    onError: (e) => {
+      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể xác nhận đóng gói.');
+    },
+  });
+
+  const deliverMutation = useMutation({
+    mutationFn: async () => {
+      const mockUrl = localDeliveryPhoto || 'https://images.unsplash.com/photo-1542838132-92c53300491e';
+      await staffOrdersApi.deliver(orderId, mockUrl);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['staff-order-queue'] });
+      void qc.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+      void qc.invalidateQueries({ queryKey: ['staff-order-pick-list', orderId] });
+      Alert.alert('Thành công!', 'Bắt đầu đi giao hàng.');
+    },
+    onError: (e) => {
+      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể đi giao hàng.');
+    },
+  });
+
+  const completeDeliveryMutation = useMutation({
+    mutationFn: async (photoUrl?: string) => {
+      const mockUrl = photoUrl || localDeliveryPhoto || 'https://images.unsplash.com/photo-1542838132-92c53300491e';
+      // 1. Deliver with Photo 2 -> saves real POD photo to deliveryPhotoUrl
+      await staffOrdersApi.deliver(orderId, mockUrl);
+      // 2. Complete order -> DELIVERED
+      await staffOrdersApi.complete(orderId);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['staff-order-queue'] });
+      void qc.invalidateQueries({ queryKey: ['staff-order-my-active'] });
+      router.replace('/(staff)/orders/complete-success' as never);
+    },
+    onError: (e) => {
+      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể hoàn tất đơn hàng.');
+    },
+  });
 
   const updateQty = useCallback((orderItemId: number, delta: number) => {
     setSession((prev) => {
@@ -162,47 +278,6 @@ export default function StaffOrderDetailScreen() {
     });
   }, []);
 
-  const cancelSubstitution = useCallback((orderItemId: number) => {
-    setSession((prev) => {
-      if (!prev) return prev;
-      const it = prev.itemsById[orderItemId];
-      if (!it) return prev;
-      return {
-        ...prev,
-        itemsById: {
-          ...prev.itemsById,
-          [orderItemId]: { ...it, isSubstituted: false, substitutedVariantId: null, reason: '' },
-        },
-      };
-    });
-  }, []);
-
-  const applySubstitution = useCallback(
-    (orderItemId: number, variantId: number) => {
-      setSession((prev) => {
-        if (!prev) return prev;
-        const it = prev.itemsById[orderItemId];
-        if (!it) return prev;
-        return {
-          ...prev,
-          itemsById: {
-            ...prev.itemsById,
-            [orderItemId]: {
-              ...it,
-              isSubstituted: true,
-              substitutedVariantId: variantId,
-              pickedQuantity: it.orderedQuantity,
-              reason: subReason.trim(),
-            },
-          },
-        };
-      });
-      setSubModal(null);
-      setSubReason('');
-    },
-    [subReason],
-  );
-
   const completeMutation = useMutation({
     mutationFn: () => {
       if (!session) throw new Error('Chưa có session nhặt hàng.');
@@ -212,8 +287,8 @@ export default function StaffOrderDetailScreen() {
       void qc.invalidateQueries({ queryKey: ['staff-order-queue'] });
       void qc.invalidateQueries({ queryKey: ['staff-order-my-active'] });
       void qc.invalidateQueries({ queryKey: ['staff-order-pick-list', orderId] });
-      Alert.alert('Hoàn thành!', 'Đơn hàng đã được nhặt xong thành công.', [
-        { text: 'OK', onPress: () => router.replace('/(staff)/orders' as never) },
+      Alert.alert('Hoàn thành nhặt hàng!', 'Hệ thống sẽ mở máy ảnh để bạn chụp ảnh xác nhận đóng gói.', [
+        { text: 'Chụp ảnh ngay', onPress: () => setTimeout(() => handleSelectPhoto('pack', true), 300) },
       ]);
     },
     onError: (e) => {
@@ -229,6 +304,16 @@ export default function StaffOrderDetailScreen() {
   }, [session]);
 
   const handleComplete = () => {
+    const items = session ? Object.values(session.itemsById) : [];
+    const hasZeroPicked = items.some((it) => it.pickedQuantity === 0);
+    if (hasZeroPicked) {
+      Alert.alert(
+        'Chưa nhặt đủ hàng',
+        'Có sản phẩm chưa được nhặt (số lượng nhặt bằng 0). Vui lòng soạn tối thiểu 1 sản phẩm cho mỗi mặt hàng.'
+      );
+      return;
+    }
+
     Alert.alert(
       'Xác nhận hoàn thành',
       `Bạn đã nhặt ${progress.done}/${progress.total} mặt hàng. Xác nhận hoàn thành đơn?`,
@@ -241,280 +326,86 @@ export default function StaffOrderDetailScreen() {
 
   const pickItems = useMemo(() => pickListQuery.data?.items ?? [], [pickListQuery.data]);
 
-  const order = pickListQuery.data;
+  const order = pickListQuery.data as NonNullable<typeof pickListQuery.data>;
   const status = order?.status ?? '';
   const currentStep = getCurrentStep(status);
-<<<<<<< HEAD
-  const isPacked = currentStep >= 1;
-  const leaseExpiresAt = order?.leaseExpiresAt ?? null;
-  const expiryAlertShown = useRef(false);
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  
-  const canPack = status === 'ASSIGNED' || status === 'PICKING' || status === 'PICKED';
 
-  useEffect(() => {
-    const timer = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const leaseRemainingMs = useMemo(() => {
-    if (!leaseExpiresAt) return null;
-    const expires = new Date(leaseExpiresAt).getTime();
-    if (!Number.isFinite(expires)) return null;
-    return expires - nowMs;
-  }, [leaseExpiresAt, nowMs]);
-
-  const leaseExpired = leaseRemainingMs != null && leaseRemainingMs <= 0;
-  const leaseRemainingLabel = useMemo(() => {
-    if (leaseRemainingMs == null) return null;
-    const safeMs = Math.max(0, leaseRemainingMs);
-    const totalSeconds = Math.floor(safeMs / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  }, [leaseRemainingMs]);
-
-  useEffect(() => {
-    if (!leaseExpired || expiryAlertShown.current) return;
-    expiryAlertShown.current = true;
-    Alert.alert(
-      'Đơn hàng đã hết hạn',
-      'Đơn hàng đã quá hạn xử lý và được chuyển lại vào hàng chờ chung.',
-      [{ text: 'Đã hiểu' }],
-    );
-  }, [leaseExpired]);
-
-  const items = useMemo(() => {
-    const raw = order as unknown as Record<string, unknown> | undefined;
-    const candidates =
-      (Array.isArray(order?.items) && order?.items) ||
-      (raw && Array.isArray(raw.orderItems) ? raw.orderItems : null) ||
-      (raw && Array.isArray(raw.details) ? raw.details : null) ||
-      [];
-
-    return candidates.map((it: any) => ({
-      orderItemId: Number(it.orderItemId ?? it.id ?? 0),
-      variantId: Number(it.variantId ?? 0),
-      sku: String(it.sku ?? ''),
-      barcode: typeof it.barcode === 'string' ? it.barcode : null,
-      productName:
-        typeof it.productName === 'string'
-          ? it.productName
-          : typeof it.name === 'string'
-            ? it.name
-            : typeof it.product?.name === 'string'
-              ? it.product.name
-              : 'Sản phẩm',
-      variantName: typeof it.variantName === 'string' ? it.variantName : null,
-      aisleLocation: typeof it.aisleLocation === 'string' ? it.aisleLocation : null,
-      orderedQuantity: Number(it.orderedQuantity ?? it.quantity ?? 0),
-      pickedQuantity: it.pickedQuantity != null ? Number(it.pickedQuantity) : null,
-      unitPrice: Number(it.unitPrice ?? it.price ?? 0),
-      imageUrl: typeof it.imageUrl === 'string' ? it.imageUrl : typeof it.productImageUrl === 'string' ? it.productImageUrl : typeof it.product?.image === 'string' ? it.product.image : null,
-      stockQuantity: it.stockQuantity != null ? Number(it.stockQuantity) : null,
-    })) as StaffPickItem[];
-  }, [order]);
-  
-  // Sync local checkedIds with server pickedQuantity if available
-  useEffect(() => {
-    if (items.length > 0) {
-      const initial: Record<number, boolean> = {};
-      items.forEach(it => {
-        if ((it.pickedQuantity ?? 0) >= it.orderedQuantity) {
-          initial[it.orderItemId] = true;
-        }
-      });
-      setCheckedIds(prev => ({ ...initial, ...prev }));
-    }
-  }, [items]);
-
-  const allPicked =
-    items.length > 0 &&
-    items.every((it) => checkedIds[it.orderItemId] || it.orderedQuantity <= 0);
-
-  const completePickingMutation = useMutation({
-    mutationFn: (payload: any) => staffOrdersApi.completePicking(orderId, payload),
-    onSuccess: async () => {
-      const selectedDateIso = useStaffHomeStore.getState().selectedDateIso;
-      await queryClient.invalidateQueries({ queryKey: ['staff-performance-daily', selectedDateIso] });
-      await queryClient.invalidateQueries({ queryKey: ['staff-performance-summary', selectedDateIso] });
-      await queryClient.invalidateQueries({ queryKey: ['staff-order-my-active'] });
-      await queryClient.invalidateQueries({ queryKey: ['staff-order-queue'] });
-      await pickListQuery.refetch();
-    },
-  });
-
-  const packMutation = useMutation({
-    mutationFn: (photoUrl: string) => staffOrdersApi.pack(orderId, photoUrl),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['staff-order-pick-list', orderId] });
-      void queryClient.invalidateQueries({ queryKey: ['staff-order-pick-list'] });
-      void queryClient.invalidateQueries({ queryKey: ['staff-orders-active'] });
-      void queryClient.invalidateQueries({ queryKey: ['staff-order-my-active'] });
-    },
-  });
-
-  const deliverMutation = useMutation({
-    mutationFn: (photoUrl: string) => staffOrdersApi.deliver(orderId, photoUrl),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['staff-order-pick-list', orderId] });
-      void queryClient.invalidateQueries({ queryKey: ['staff-order-pick-list'] });
-      void queryClient.invalidateQueries({ queryKey: ['staff-order-my-active'] });
-    },
-  });
-
-  const completeMutation = useMutation({
-    mutationFn: () => staffOrdersApi.complete(orderId),
-    onSuccess: async () => {
-      const selectedDateIso = useStaffHomeStore.getState().selectedDateIso;
-      await queryClient.invalidateQueries({ queryKey: ['staff-performance-daily', selectedDateIso] });
-      await queryClient.invalidateQueries({ queryKey: ['staff-performance-summary', selectedDateIso] });
-      await queryClient.invalidateQueries({ queryKey: ['staff-order-my-active'] });
-      await queryClient.invalidateQueries({ queryKey: ['staff-order-queue'] });
-      await pickListQuery.refetch();
-      router.push('/(staff)/orders/complete-success' as never);
-    },
-  });
-
-  const togglePicked = (item: StaffPickItem) => {
-    setCheckedIds((prev) => ({
-      ...prev,
-      [item.orderItemId]: !prev[item.orderItemId],
-    }));
-  };
-
-  /* ── Action: validate → open packing camera or go to next step ── */
-  const onAction = async () => {
-    if (leaseExpired) {
-      Alert.alert('Đơn hàng đã hết hạn', 'Đơn hàng đã quá hạn xử lý và được chuyển lại vào hàng chờ chung.');
-      return;
-    }
-
-    if (canPack) {
-      // Step 0: Đóng gói → open camera to take packing photo
-      if (!allPicked) {
-        Alert.alert(
-          'Chưa hoàn tất',
-          'Vui lòng tích hết các mặt hàng đã lấy đủ trước khi đóng gói.',
-        );
-        return;
-      }
-      // Ensure camera permission
-      if (!cameraPermission?.granted) {
-        const result = await requestCameraPermission();
-        if (!result.granted) {
-          Alert.alert('Thiếu quyền', 'Vui lòng cấp quyền camera để chụp ảnh xác nhận đóng gói.');
-          return;
-        }
-      }
-      setPackingCameraVisible(true);
-      return;
-    }
-    
-    // Step 1: READY_TO_SHIP -> Open delivery camera first, then call deliver
-    if (status === 'READY_TO_SHIP') {
-      if (!cameraPermission?.granted) {
-        const result = await requestCameraPermission();
-        if (!result.granted) {
-          Alert.alert('Thiếu quyền', 'Vui lòng cấp quyền camera để chụp ảnh xác nhận giao hàng.');
-          return;
-        }
-      }
-      setDeliveryCameraVisible(true);
-      return;
-    }
-    
-    // Step 2: DELIVERING -> Confirm complete (no photo needed, already captured)
-    if (status === 'DELIVERING') {
-      try {
-        await completeMutation.mutateAsync();
-      } catch (err: any) {
-        Alert.alert('Lỗi', err.message || 'Không thể hoàn tất giao hàng');
-      }
-      return;
-    }
-    
-    // Final state
-    if (status === 'DELIVERED') {
-      router.push('/(staff)/orders/complete-success' as never);
-      return;
-    }
-  };
-
-  /* ── After packing photo captured ── */
-  const handlePackingPhotoCaptured = async (uri: string) => {
-    setPackingCameraVisible(false);
-    try {
-      // 1. Complete picking (skip if already in PICKED state, e.g. retry)
-      if (status !== 'PICKED') {
-        const payload = {
-          pickedItems: items.map(it => ({
-            originalOrderItemId: it.orderItemId,
-            actualQuantity: checkedIds[it.orderItemId] ? it.orderedQuantity : 0,
-            isSubstituted: false
-          }))
-        };
-        await completePickingMutation.mutateAsync(payload);
-      }
-      
-      // 2. Pack (READY_TO_SHIP)
-      const { url: serverUrl } = await fileApi.upload(uri);
-      await packMutation.mutateAsync(serverUrl);
-    } catch (err: any) {
-      // Refetch to get latest status in case completePicking succeeded but pack failed
-      void pickListQuery.refetch();
-      Alert.alert('Lỗi', err.message || 'Không thể xác nhận đóng gói');
-    }
-  };
-
-  /* ── After delivery photo captured ── */
-  const handleDeliveryPhotoCaptured = async (uri: string) => {
-    setDeliveryCameraVisible(false);
-    try {
-      const { url: serverUrl } = await fileApi.upload(uri);
-      await deliverMutation.mutateAsync(serverUrl);
-    } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Không thể xác nhận giao hàng');
-    }
-  };
-
-  const stepLabel = `Bước ${currentStep + 1}: ${STEPS[currentStep]}`;
-  const actionLabel = getActionLabel(currentStep, status);
-  const leaseTimerColor = leaseRemainingMs == null
-    ? '#64748B'
-    : leaseRemainingMs <= 5 * 60 * 1000
-      ? '#EF4444'
-      : leaseRemainingMs <= 15 * 60 * 1000
-        ? '#F59E0B'
-        : '#16A34A';
-=======
->>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
-
-  /* ────────────────────── render ────────────────────── */
   return (
-    <SafeAreaView className="flex-1 bg-[#F5FAF7]" edges={['left', 'right']}>
-      <Stack.Screen options={{ title: `Đơn #${orderId || ''}`, headerShown: true }} />
+    <SafeAreaView className="flex-1 bg-background" edges={['left', 'right', 'top']}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* App Header */}
+      <View className="px-5 py-3 flex-row items-center bg-white border-b border-slate-100 shadow-sm justify-between">
+        <View className="flex-row items-center">
+          <Pressable
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 items-center justify-center mr-3"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text className="text-xl font-bold">←</Text>
+          </Pressable>
+          <View>
+            <Text className="text-[20px] font-outfit-bold text-text">Chi tiết đơn soạn</Text>
+            <Text className="text-[12px] font-inter text-muted mt-0.5">Xử lý đơn theo đúng quy trình đóng gói</Text>
+          </View>
+        </View>
+
+        {/* Refetch button */}
+        <Pressable
+          onPress={() => void pickListQuery.refetch()}
+          disabled={pickListQuery.isFetching}
+          className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 items-center justify-center"
+        >
+          {pickListQuery.isFetching ? (
+            <ActivityIndicator size="small" color="#10B981" />
+          ) : (
+            <Text className="text-emerald-600 text-lg">↻</Text>
+          )}
+        </Pressable>
+      </View>
 
       {/* ── Loading ── */}
       {pickListQuery.isLoading ? (
-        <View className="flex-1 items-center justify-center bg-[#F3FBF7]">
-          <View className="items-center justify-center w-16 h-16 rounded-full bg-white border border-[#DCEFE4] mb-3">
-            <ActivityIndicator color="#16A34A" />
-          </View>
-          <Text className="text-[13px] font-inter text-slate-500 mt-1">
-            Đang tải chi tiết đơn…
-          </Text>
+        <View className="flex-1 items-center justify-center py-20">
+          <ActivityIndicator color="#16A34A" />
+          <Text className="text-xs font-inter text-muted mt-2">Đang tải đơn hàng…</Text>
+        </View>
+
+      /* ── Block if offline / not ready ── */
+      ) : !isClockedIn ? (
+        <View className="flex-1 px-6 justify-center items-center">
+          <Card className="p-6 items-center bg-[#FFF7ED] border border-orange-200">
+            <View className="w-16 h-16 rounded-full bg-orange-100 items-center justify-center mb-4">
+              <ShieldAlert size={32} color="#F97316" />
+            </View>
+            <Text className="font-outfit-bold text-text text-lg text-center">Yêu cầu Vào ca</Text>
+            <Text className="text-xs font-inter text-muted mt-2 text-center leading-5 px-4">
+              Không thể xử lý đơn hàng khi chưa vào ca làm việc. Vui lòng chấm công để thực hiện soạn hàng, đóng gói và giao hàng.
+            </Text>
+            <Pressable
+              onPress={() => router.push('/(staff)/attendance' as never)}
+              className="mt-6 w-full py-3.5 rounded-2xl bg-orange-500 items-center"
+            >
+              <Text className="font-outfit-bold text-white text-[13px] uppercase">Đi tới Chấm công</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.back()}
+              className="mt-2.5 w-full py-3.5 rounded-2xl bg-white border border-slate-200 items-center"
+            >
+              <Text className="font-outfit-bold text-slate-700 text-[13px]">Quay lại</Text>
+            </Pressable>
+          </Card>
         </View>
 
       /* ── Error ── */
       ) : pickListQuery.isError || !pickListQuery.data || !session ? (
         <View className="p-4">
           <Card className="p-4">
-            <Text className="font-inter-bold text-text">Không tải được chi tiết đơn.</Text>
-            <Text className="text-xs font-inter text-muted mt-1">Vui lòng thử lại.</Text>
+            <Text className="font-inter-bold text-text">Không tải được chi tiết đơn soạn.</Text>
+            <Text className="text-xs font-inter text-muted mt-1">Lỗi kết nối hoặc đơn không tồn tại.</Text>
             <Pressable
               onPress={() => void pickListQuery.refetch()}
-              className="mt-3 px-4 py-3 rounded-2xl bg-primary items-center"
+              className="mt-4 px-4 py-3 rounded-2xl bg-primary items-center"
             >
               <Text className="font-outfit-bold text-primary-fg">Thử lại</Text>
             </Pressable>
@@ -534,7 +425,7 @@ export default function StaffOrderDetailScreen() {
             contentContainerStyle={{
               paddingHorizontal: 18,
               paddingTop: 0,
-              paddingBottom: 120,
+              paddingBottom: (status === 'ASSIGNED' || status === 'PICKING') ? 120 : 40,
               gap: 14,
             }}
             showsVerticalScrollIndicator={false}
@@ -670,205 +561,238 @@ export default function StaffOrderDetailScreen() {
               </View>
             </Card>
 
-            {/* ───── Product list card ───── */}
-<<<<<<< HEAD
-            <View className="bg-white rounded-[32px] p-6 shadow-sm border border-[#E5E7EB]">
-              <View className="flex-row items-center justify-between mb-6">
-                <Text className="font-outfit-bold text-[#111827] text-[20px]">
-                  Danh sách mặt hàng
-                </Text>
-                <View className="px-3 py-1.5 rounded-full bg-[#F0FDF4]">
-                  <Text className="text-[12px] font-inter-bold text-[#16A34A]">
-                    {items.length} món
-                  </Text>
+            {/* ───── Bằng chứng hình ảnh (Packing & Delivery Photos) ───── */}
+            {(order.packingPhotoUrl || order.deliveryPhotoUrl) && (
+              <Card className="p-5 rounded-[30px] border border-primary/20 bg-white">
+                <View className="flex-row items-center mb-4">
+                  <View className="w-9 h-9 rounded-full bg-[#EDF7F1] items-center justify-center mr-3 border border-primary/10">
+                    <Camera size={18} color="#16A34A" />
+                  </View>
+                  <Text className="font-inter-bold text-text text-[17px]">Ảnh đối soát đơn hàng</Text>
                 </View>
-              </View>
 
-              <View style={{ gap: 20 }}>
-                {items.map((it) => {
-                  const checked = !!checkedIds[it.orderItemId];
-                  const lineTotal = (it.unitPrice || 0) * (it.orderedQuantity || 0);
-                  
-                  return (
+                <View className="flex-row gap-3">
+                  {order.packingPhotoUrl ? (
+                    <View className="flex-1 bg-[#F8FAF9] rounded-2xl p-3 border border-slate-100 items-center">
+                      <Text className="text-[11px] font-inter-bold text-slate-500 mb-2 uppercase tracking-tighter">Ảnh đóng gói</Text>
+                      <Image
+                        source={{ uri: order.packingPhotoUrl }}
+                        style={{ width: '100%', aspectRatio: 4/3, borderRadius: 12 }}
+                        contentFit="cover"
+                        cachePolicy="disk"
+                        transition={200}
+                      />
+                    </View>
+                  ) : null}
+                  {order.deliveryPhotoUrl ? (
+                    <View className="flex-1 bg-[#F8FAF9] rounded-2xl p-3 border border-slate-100 items-center">
+                      <Text className="text-[11px] font-inter-bold text-slate-500 mb-2 uppercase tracking-tighter">Ảnh giao hàng (POD)</Text>
+                      <Image
+                        source={{ uri: order.deliveryPhotoUrl }}
+                        style={{ width: '100%', aspectRatio: 4/3, borderRadius: 12 }}
+                        contentFit="cover"
+                        cachePolicy="disk"
+                        transition={200}
+                      />
+                    </View>
+                  ) : null}
+                </View>
+              </Card>
+            )}
+
+            {/* ───── BƯỚC TIẾP THEO: XÁC NHẬN BẰNG ẢNH CHỤP ───── */}
+            {(status === 'PICKED' || status === 'READY_TO_SHIP' || status === 'DELIVERING') && (
+              <Card className="p-5 rounded-[30px] border border-primary/20 bg-[#EDF7F1]">
+                <View className="flex-row items-center mb-4">
+                  <View className="w-9 h-9 rounded-full bg-white items-center justify-center mr-3 border border-primary/10">
+                    <Camera size={18} color="#16A34A" />
+                  </View>
+                  <Text className="font-inter-bold text-text text-[17px]">Quy trình xử lý tiếp theo</Text>
+                </View>
+
+                {status === 'PICKED' ? (
+                  <View className="bg-white rounded-2xl px-4 py-4 border border-slate-100">
+                    <Text className="font-inter-bold text-[#0F172A] text-sm">Bước 1: Chụp ảnh Đóng gói sản phẩm</Text>
+                    <Text className="font-inter text-slate-500 text-xs mt-1 leading-5">
+                      Vui lòng chụp ảnh kiện hàng sau khi đóng gói. Xác nhận sẽ tự động chuyển đơn hàng sang trạng thái "Đang giao".
+                    </Text>
+
+                    {/* Camera upload box */}
                     <Pressable
-                      key={it.orderItemId}
-                      onPress={() => !isPacked && togglePicked(it)}
-                      className="flex-row items-center"
+                      onPress={() => handleSelectPhoto('pack')}
+                      className="mt-4 aspect-video rounded-xl bg-slate-50 border border-dashed border-slate-300 items-center justify-center overflow-hidden"
                     >
-                      {/* Product Image */}
-                      <View className="w-16 h-16 rounded-[18px] bg-[#F3F4F6] overflow-hidden mr-4">
-                        {it.imageUrl ? (
-                          <Image
-                            source={{ uri: it.imageUrl }}
-                            className="w-full h-full"
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View className="w-full h-full items-center justify-center">
-                            <ShoppingBag size={24} color="#94A3B8" />
-                          </View>
-                        )}
-                      </View>
-
-                      {/* Product Info */}
-                      <View className="flex-1 justify-center">
-                        <Text className="font-inter-bold text-[#111827] text-[16px] mb-1" numberOfLines={1}>
-                          {it.productName}
-                        </Text>
-                        <Text className="text-[13px] font-inter text-[#64748B]">
-                          SL: {it.orderedQuantity} × {formatMoney(it.unitPrice)}
-                        </Text>
-                      </View>
-
-                      {/* Price & Checkmark */}
-                      <View className="items-end justify-between py-1">
-                        <Text className="font-outfit-bold text-[#16A34A] text-[17px]">
-                          {formatMoney(lineTotal)}
-                        </Text>
-                        
-                        <View 
-                          className="mt-2 w-7 h-7 rounded-full items-center justify-center"
-                          style={{
-                            backgroundColor: checked ? '#16A34A' : '#E5E7EB',
-                          }}
-                        >
-                          <CheckCircle2 size={16} color="#FFFFFF" />
+                      {localPackingPhoto ? (
+                        <Image source={{ uri: localPackingPhoto }} className="w-full h-full" contentFit="cover" />
+                      ) : (
+                        <View className="items-center">
+                          <Camera size={28} color="#94A3B8" />
+                          <Text className="text-xs font-inter text-muted mt-1.5">Nhấp để chụp hoặc tải ảnh lên</Text>
                         </View>
-                      </View>
+                      )}
                     </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-=======
-            <View style={{ gap: 8 }}>
+
+                    <Pressable
+                      onPress={() => packMutation.mutate(localPackingPhoto || undefined)}
+                      disabled={!localPackingPhoto || packMutation.isPending}
+                      className={`mt-4 w-full py-3.5 rounded-xl items-center justify-center flex-row ${
+                        !localPackingPhoto || packMutation.isPending ? 'bg-slate-200' : 'bg-primary'
+                      }`}
+                    >
+                      {packMutation.isPending ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Check size={16} color="#FFFFFF" className="mr-1.5" />
+                          <Text className="font-outfit-bold text-white text-[13px]">Xác nhận đóng gói & Đi giao</Text>
+                        </>
+                      )}
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View className="bg-white rounded-2xl px-4 py-4 border border-slate-100">
+                    <Text className="font-inter-bold text-[#0F172A] text-sm">Bước 2: Xác nhận Giao hàng thành công</Text>
+                    <Text className="font-inter text-slate-500 text-xs mt-1 leading-5">
+                      Chụp ảnh xác nhận (Proof of Delivery / POD) khi đã giao hàng đầy đủ cho khách hàng.
+                    </Text>
+
+                    {/* Camera upload box */}
+                    <Pressable
+                      onPress={() => handleSelectPhoto('deliver')}
+                      className="mt-4 aspect-video rounded-xl bg-slate-50 border border-dashed border-slate-300 items-center justify-center overflow-hidden"
+                    >
+                      {localDeliveryPhoto ? (
+                        <Image source={{ uri: localDeliveryPhoto }} className="w-full h-full" contentFit="cover" />
+                      ) : (
+                        <View className="items-center">
+                          <Camera size={28} color="#94A3B8" />
+                          <Text className="text-xs font-inter text-muted mt-1.5">Nhấp để chụp hoặc tải ảnh giao hàng</Text>
+                        </View>
+                      )}
+                    </Pressable>
+
+                    {/* Display photos taken */}
+                    <View className="flex-row mt-3 mb-1" style={{ gap: 8 }}>
+                      {localPackingPhoto && (
+                        <View className="flex-1">
+                          <Text className="text-[10px] font-inter text-muted mb-1">Ảnh đóng gói</Text>
+                          <Image source={{ uri: localPackingPhoto }} className="w-full aspect-video rounded-lg" contentFit="cover" />
+                        </View>
+                      )}
+                    </View>
+
+                    <Pressable
+                      onPress={() => completeDeliveryMutation.mutate(localDeliveryPhoto || undefined)}
+                      disabled={!localDeliveryPhoto || completeDeliveryMutation.isPending}
+                      className={`mt-4 w-full py-3.5 rounded-xl items-center justify-center flex-row ${
+                        !localDeliveryPhoto || completeDeliveryMutation.isPending ? 'bg-slate-200' : 'bg-emerald-600'
+                      }`}
+                    >
+                      {completeDeliveryMutation.isPending ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Check size={16} color="#FFFFFF" className="mr-1.5" />
+                          <Text className="font-outfit-bold text-white text-[13px]">Giao thành công & Hoàn tất</Text>
+                        </>
+                      )}
+                    </Pressable>
+                  </View>
+                )}
+              </Card>
+            )}
+
+            {/* ───── Product list card (Flat List styled like Customer Cart) ───── */}
+            <View style={{ gap: 10 }}>
               {pickItems.map((it) => {
                 const state = session.itemsById[it.orderItemId];
                 if (!state) return null;
 
-                const isFullyPicked = state.pickedQuantity >= it.orderedQuantity || state.isSubstituted;
-                const isZero = state.pickedQuantity === 0 && !state.isSubstituted;
-                const leftBorderColor = isFullyPicked ? '#4ade80' : isZero ? '#fca5a5' : '#fbbf24';
+                const isFullyPicked = state.pickedQuantity >= it.orderedQuantity;
+                const isZero = state.pickedQuantity === 0;
+                const leftBorderColor = isFullyPicked ? '#10B981' : isZero ? '#EF4444' : '#F59E0B';
 
                 return (
                   <View
                     key={it.orderItemId}
-                    style={{ borderLeftWidth: 4, borderLeftColor: leftBorderColor, borderRadius: 16, overflow: 'hidden' }}
+                    style={{ borderLeftWidth: 4, borderLeftColor: leftBorderColor, borderRadius: 24, overflow: 'hidden' }}
                   >
-                    <Card className="p-4">
-                      {/* Thông tin sản phẩm */}
-                      <View className="flex-row items-start justify-between">
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <Text className="font-inter-bold text-text" numberOfLines={2}>
+                    <Card className="p-4 flex-row items-center bg-white border border-slate-50 shadow-sm" style={{ elevation: 1 }}>
+                      {/* Left: Product Image */}
+                      <View className="w-20 h-20 rounded-2xl bg-slate-50 overflow-hidden border border-slate-100 mr-4 items-center justify-center">
+                        {(!it.imageUrl || brokenImageIds[it.orderItemId]) ? (
+                          <View className="w-full h-full bg-[#16A34A] items-center justify-center">
+                            <Text className="text-white text-lg font-outfit-bold">
+                              {(it.productName || 'S').trim().charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                        ) : (
+                          <Image
+                            source={{ uri: it.imageUrl }}
+                            style={{ width: '100%', height: '100%' }}
+                            contentFit="cover"
+                            cachePolicy="disk"
+                            transition={200}
+                            onError={() => setBrokenImageIds((prev) => ({ ...prev, [it.orderItemId]: true }))}
+                          />
+                        )}
+                      </View>
+
+                      {/* Middle: Product Name, Variant, SKU & Shelf Location */}
+                      <View className="flex-1 justify-between py-1">
+                        <View>
+                          <Text className="text-[14px] font-outfit-bold text-[#0F172A]" numberOfLines={2}>
                             {it.productName}
                           </Text>
-                          <Text className="text-xs font-inter text-muted mt-0.5" numberOfLines={1}>
-                            {it.variantName ?? '—'} • SKU: {it.sku}
+                          <Text className="text-[11px] font-inter text-slate-400 mt-1" numberOfLines={1}>
+                            {it.variantName ?? '-'} • SKU: {it.sku}
                           </Text>
                           {it.aisleLocation ? (
-                            <Text className="text-xs font-inter mt-0.5" style={{ color: '#16a34a' }}>
-                              📍 Kệ: {it.aisleLocation}
-                            </Text>
+                            <View className="bg-emerald-50 self-start px-2 py-0.5 rounded-md mt-1.5 border border-emerald-100">
+                              <Text className="text-[10px] font-inter-bold text-[#16A34A]">
+                                Kệ: {it.aisleLocation}
+                              </Text>
+                            </View>
                           ) : null}
-                          {state.isSubstituted ? (
-                            <Text className="text-xs font-inter mt-1" style={{ color: '#d97706' }}>
-                              🔄 Đã chọn hàng thay thế
-                            </Text>
-                          ) : null}
-                        </View>
-                        {/* Số lượng cần nhặt */}
-                        <View className="items-end">
-                          <Text className="text-xs font-inter text-muted">Cần</Text>
-                          <Text className="font-outfit-bold text-text">{it.orderedQuantity}</Text>
                         </View>
                       </View>
 
-                      {/* Điều chỉnh số lượng đã nhặt */}
-                      {!state.isSubstituted ? (
-                        <View className="mt-3 flex-row items-center justify-between">
-                          <Text className="text-sm font-inter text-text">Đã nhặt:</Text>
-                          <View className="flex-row items-center" style={{ gap: 16 }}>
+                      {/* Right: Needs count & Picking controls */}
+                      <View className="items-end justify-between py-1 pl-2">
+                        <View className="flex-row items-center mb-3">
+                          <Text className="text-[11px] font-inter text-slate-400 mr-1.5">Cần:</Text>
+                          <Text className="text-[14px] font-outfit-bold text-[#0F172A]">{it.orderedQuantity}</Text>
+                        </View>
+
+                        {(status === 'ASSIGNED' || status === 'PICKING') ? (
+                          <View className="flex-row items-center" style={{ gap: 8 }}>
                             <Pressable
                               onPress={() => updateQty(it.orderItemId, -1)}
                               disabled={state.pickedQuantity <= 0}
-                              style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 18,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: state.pickedQuantity <= 0 ? '#f1f5f9' : '#16A34A',
-                              }}
+                              style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: state.pickedQuantity <= 0 ? '#F1F5F9' : '#16A34A' }}
                             >
-                              <Text
-                                style={{
-                                  fontWeight: '700',
-                                  fontSize: 20,
-                                  color: state.pickedQuantity <= 0 ? '#94a3b8' : '#ffffff',
-                                  lineHeight: 24,
-                                }}
-                              >
-                                −
-                              </Text>
+                              <Text style={{ fontWeight: '700', fontSize: 16, color: state.pickedQuantity <= 0 ? '#94A3B8' : '#FFFFFF', lineHeight: 20 }}>-</Text>
                             </Pressable>
-                            <Text className="font-outfit-bold text-text text-xl" style={{ minWidth: 28, textAlign: 'center' }}>
+                            <Text className="font-outfit-bold text-[#0F172A] text-[15px]" style={{ minWidth: 20, textAlign: 'center' }}>
                               {state.pickedQuantity}
                             </Text>
                             <Pressable
                               onPress={() => updateQty(it.orderItemId, 1)}
                               disabled={state.pickedQuantity >= it.orderedQuantity}
-                              style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 18,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: state.pickedQuantity >= it.orderedQuantity ? '#f1f5f9' : '#16A34A',
-                              }}
+                              style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: state.pickedQuantity >= it.orderedQuantity ? '#F1F5F9' : '#16A34A' }}
                             >
-                              <Text
-                                style={{
-                                  fontWeight: '700',
-                                  fontSize: 20,
-                                  color: state.pickedQuantity >= it.orderedQuantity ? '#94a3b8' : '#ffffff',
-                                  lineHeight: 24,
-                                }}
-                              >
-                                +
-                              </Text>
+                              <Text style={{ fontWeight: '700', fontSize: 16, color: state.pickedQuantity >= it.orderedQuantity ? '#94A3B8' : '#FFFFFF', lineHeight: 20 }}>+</Text>
                             </Pressable>
                           </View>
-                        </View>
-                      ) : (
-                        <Pressable
-                          onPress={() => cancelSubstitution(it.orderItemId)}
-                          className="mt-3 px-3 py-2 rounded-xl bg-surface border border-border items-center"
-                        >
-                          <Text className="text-xs font-inter text-muted">Hủy thay thế</Text>
-                        </Pressable>
-                      )}
->>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
-
-                      {/* Nút chọn hàng thay thế */}
-                      {state.pickedQuantity < it.orderedQuantity && !state.isSubstituted ? (
-                        <Pressable
-                          onPress={() => setSubModal({ orderItemId: it.orderItemId, item: it })}
-                          style={{
-                            marginTop: 8,
-                            paddingHorizontal: 12,
-                            paddingVertical: 8,
-                            borderRadius: 12,
-                            backgroundColor: '#fffbeb',
-                            borderWidth: 1,
-                            borderColor: '#fde68a',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#b45309' }}>
-                            🔄 Chọn hàng thay thế
-                          </Text>
-                        </Pressable>
-                      ) : null}
+                        ) : (
+                          <View className="flex-row items-center bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                            <Text className="text-[12px] font-outfit-bold text-[#16A34A] mr-1">{state.pickedQuantity} / {it.orderedQuantity}</Text>
+                            <View className="w-4 h-4 rounded-full bg-[#16A34A] items-center justify-center">
+                              <Text className="text-white text-[9px] font-bold">✓</Text>
+                            </View>
+                          </View>
+                        )}
+                      </View>
                     </Card>
                   </View>
                 );
@@ -877,119 +801,32 @@ export default function StaffOrderDetailScreen() {
           </ScrollView>
 
           {/* ───── Fixed bottom action bar ───── */}
-          <View
-            className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 pb-8 pt-5"
-            style={{ elevation: 10 }}
-          >
-            <Pressable
-              onPress={handleComplete}
-              disabled={completeMutation.isPending}
-              style={{
-                paddingVertical: 16,
-                borderRadius: 16,
-                alignItems: 'center',
-                backgroundColor: completeMutation.isPending ? '#e2e8f0' : '#16A34A',
-              }}
+          {(status === 'ASSIGNED' || status === 'PICKING') && (
+            <View
+              className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 pb-8 pt-5"
+              style={{ elevation: 10 }}
             >
-              {completeMutation.isPending ? (
-                <ActivityIndicator color="#16A34A" />
-              ) : (
-                <Text style={{ fontWeight: '700', fontSize: 16, color: '#ffffff' }}>
-                  {progress.allDone ? '✓ Hoàn thành nhặt hàng' : `Hoàn thành (${progress.done}/${progress.total})`}
-                </Text>
-              )}
-            </Pressable>
-          </View>
-
-          {/* Modal chọn hàng thay thế */}
-          <Modal
-            visible={!!subModal}
-            animationType="slide"
-            transparent
-            onRequestClose={() => {
-              setSubModal(null);
-              setSubReason('');
-            }}
-          >
-            <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-              <View
-                className="bg-background"
-                style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '78%' }}
+              <Pressable
+                onPress={handleComplete}
+                disabled={completeMutation.isPending}
+                style={{
+                  paddingVertical: 16,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  backgroundColor: completeMutation.isPending ? '#e2e8f0' : '#16A34A',
+                }}
               >
-                {/* Modal header */}
-                <View className="flex-row items-center justify-between mb-3">
-                  <Text className="font-outfit-bold text-text text-base">Chọn hàng thay thế</Text>
-                  <Pressable
-                    onPress={() => {
-                      setSubModal(null);
-                      setSubReason('');
-                    }}
-                  >
-                    <Text className="font-inter text-muted">Đóng</Text>
-                  </Pressable>
-                </View>
-
-                {subModal ? (
-                  <Text className="text-xs font-inter text-muted mb-3" numberOfLines={2}>
-                    Thay thế cho: {subModal.item.productName}
-                  </Text>
-                ) : null}
-
-                {/* Lý do thay thế */}
-                <TextInput
-                  value={subReason}
-                  onChangeText={setSubReason}
-                  placeholder="Lý do thay thế (tùy chọn)"
-                  className="bg-surface border border-border rounded-xl px-3 text-text font-inter"
-                  style={{ paddingVertical: 10, fontSize: 14, marginBottom: 12 }}
-                  placeholderTextColor="#94a3b8"
-                />
-
-                {subsQuery.isLoading ? (
-                  <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-                    <ActivityIndicator color="#16A34A" />
-                    <Text className="text-xs font-inter text-muted mt-2">Đang tải gợi ý…</Text>
-                  </View>
-                ) : subsQuery.isError || !subsQuery.data?.length ? (
-                  <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-                    <Text className="text-sm font-inter text-muted">Không có sản phẩm thay thế phù hợp.</Text>
-                  </View>
+                {completeMutation.isPending ? (
+                  <ActivityIndicator color="#16A34A" />
                 ) : (
-                  <ScrollView style={{ maxHeight: 320 }} contentContainerStyle={{ gap: 8 }}>
-                    {subsQuery.data.map((sub) => (
-                      <Pressable
-                        key={sub.variantId}
-                        onPress={() => subModal && applySubstitution(subModal.orderItemId, sub.variantId)}
-                        className="p-3 bg-surface border border-border rounded-2xl flex-row items-center justify-between"
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text className="font-inter-bold text-text" numberOfLines={2}>
-                            {sub.name}
-                          </Text>
-                          <Text className="text-xs font-inter text-muted mt-0.5">
-                            {formatMoney(sub.price)} • Tồn kho: {sub.stock}
-                          </Text>
-                        </View>
-                        {sub.isRecommended ? (
-                          <View
-                            style={{
-                              marginLeft: 8,
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: 99,
-                              backgroundColor: '#dcfce7',
-                            }}
-                          >
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#15803d' }}>Gợi ý</Text>
-                          </View>
-                        ) : null}
-                      </Pressable>
-                    ))}
-                  </ScrollView>
+                  <Text style={{ fontWeight: '700', fontSize: 16, color: '#ffffff' }}>
+                    {progress.allDone ? '✓ Hoàn thành nhặt hàng' : `Hoàn thành (${progress.done}/${progress.total})`}
+                  </Text>
                 )}
-              </View>
+              </Pressable>
             </View>
-          </Modal>
+          )}
+
         </>
       )}
     </SafeAreaView>

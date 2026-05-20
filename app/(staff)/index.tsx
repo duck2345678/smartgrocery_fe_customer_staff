@@ -4,13 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Package, ClipboardList, Clock, User, TrendingUp, BookOpen, CalendarDays, ChevronRight, DollarSign, ShieldCheck, ShieldAlert } from 'lucide-react-native';
+import { Package, ClipboardList, Clock, User, TrendingUp, BookOpen, CalendarDays, ChevronRight, DollarSign, ShieldCheck, ShieldAlert, Bell } from 'lucide-react-native';
 import Card from '../../src/components/ui/Card';
 import { useAuthStore } from '../../src/store/authStore';
 import { staffOrdersApi } from '../../src/api/staffOrders';
-import { getTodayStatus } from '../../src/api/staffAttendance';
+import { getTodayStatus, getMonthlyStats } from '../../src/api/staffAttendance';
 import { useStaffHomeStore } from '../../src/store/staffHomeStore';
 import { formatVND, getCurrentMonthPayslip } from '../../src/utils/staffPayslip';
+import { notificationsApi } from '../../src/api/notifications';
 
 export default function StaffHomeScreen() {
   const router = useRouter();
@@ -41,14 +42,45 @@ export default function StaffHomeScreen() {
     queryKey: ['staff-attendance-today'],
     queryFn: () => getTodayStatus(),
   });
-  const currentPayslip = useMemo(() => getCurrentMonthPayslip(), []);
+
+  const notificationsQuery = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationsApi.list(),
+    refetchInterval: 15000,
+    enabled: !!user?.id,
+  });
+  const unreadCount = notificationsQuery.data?.filter(n => !n.isRead).length || 0;
+
+  const now = useMemo(() => new Date(), []);
+  const currentYear = useMemo(() => now.getFullYear(), [now]);
+  const currentMonth = useMemo(() => now.getMonth() + 1, [now]);
+
+  const monthlyStatsQuery = useQuery({
+    queryKey: ['staff-attendance-stats', currentYear, currentMonth],
+    queryFn: () => getMonthlyStats(currentYear, currentMonth),
+    enabled: !!user?.id,
+  });
+
+  const salaryValue = useMemo(() => {
+    if (monthlyStatsQuery.isLoading) return '...';
+    if (monthlyStatsQuery.isError || !monthlyStatsQuery.data) return '—';
+    
+    const stats = monthlyStatsQuery.data;
+    const HOURLY_RATE = 30000;
+    const grossPay = (stats.totalWorkedMinutes || 0) / 60 * HOURLY_RATE;
+    const deduction = (stats.lateCheckIns || 0) * (8 * HOURLY_RATE * 0.5); // 120k penalty per late day
+    const netPay = Math.max(0, grossPay - deduction);
+    return formatVND(netPay);
+  }, [monthlyStatsQuery.isLoading, monthlyStatsQuery.isError, monthlyStatsQuery.data]);
 
   const refreshKpis = useCallback(() => {
     void myActiveQuery.refetch();
     void performanceDailyQuery.refetch();
     void performanceSummaryQuery.refetch();
     void attendanceQuery.refetch();
-  }, [myActiveQuery, performanceDailyQuery, performanceSummaryQuery, attendanceQuery]);
+    void notificationsQuery.refetch();
+    void monthlyStatsQuery.refetch();
+  }, [myActiveQuery, performanceDailyQuery, performanceSummaryQuery, attendanceQuery, notificationsQuery, monthlyStatsQuery]);
 
   useFocusEffect(
     useCallback(() => {
@@ -95,6 +127,20 @@ export default function StaffHomeScreen() {
               Xin chào, {user?.fullName ?? 'nhân viên'}
             </Text>
           </View>
+          <Pressable
+            onPress={() => router.push('/(staff)/notifications' as any)}
+            style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#EAF8F0', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+            hitSlop={8}
+          >
+            <Bell size={22} color="#16A34A" />
+            {unreadCount > 0 && (
+              <View className="absolute top-1 right-1 bg-red-500 min-w-[16px] h-[16px] rounded-full items-center justify-center px-1 border border-white">
+                <Text className="text-[9px] font-inter-bold text-white text-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </Pressable>
         </View>
 
         <View className="mt-4 rounded-[28px] overflow-hidden" style={{ backgroundColor: '#EAF8F0' }}>
@@ -157,7 +203,7 @@ export default function StaffHomeScreen() {
             value={isClockedIn ? 'Sẵn sàng' : 'Chưa vào ca'} 
             onPress={() => {}} 
           />
-          <StatPill testID="stat-salary" icon={<DollarSign size={18} color="#16A34A" />} label="Lương tháng này" value={formatVND(currentPayslip.calc.netPay)} onPress={() => router.push('/(staff)/profile/payslip' as never)} />
+          <StatPill testID="stat-salary" icon={<DollarSign size={18} color="#16A34A" />} label="Lương tháng này" value={salaryValue} onPress={() => router.push('/(staff)/profile/payslip' as never)} />
         </View>
 
         <View className="mt-6">

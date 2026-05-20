@@ -1,4 +1,4 @@
-import { useState, useCallback, ReactNode } from 'react';
+import React, { useState, useCallback } from 'react';
 import { AppError, createAppError, logError } from '../utils/errorHandler';
 
 interface UseErrorHandlerReturn {
@@ -197,10 +197,6 @@ export function useErrorCallback(): UseErrorCallbackReturn {
   };
 }
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-}
-
 /**
  * HOC for wrapping functional components with error boundary behavior
  * Note: This is a workaround as functional components can't use getDerivedStateFromError
@@ -213,18 +209,8 @@ export function withErrorHandler<P extends object>(
   Component: React.ComponentType<P & { error: AppError | null; clearError: () => void }>
 ) {
   return function SafeComponent(props: P) {
-    const { error, clearError, handleError } = useErrorHandler();
+    const { error, clearError } = useErrorHandler();
 
-    return (
-      <>
-        {error && (
-          <div role="alert" className="error-alert">
-            <p>{error.message}</p>
-            <button onClick={clearError}>Dismiss</button>
-          </div>
-        )}
-        <Component {...props} error={error} clearError={clearError} />
-      </>
-    );
+    return React.createElement(Component, { ...props, error, clearError });
   };
 }

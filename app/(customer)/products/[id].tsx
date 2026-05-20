@@ -8,6 +8,7 @@ import CartButton from '../../../src/components/customer/CartButton';
 import Button from '../../../src/components/ui/Button';
 import { useCart } from '../../../src/hooks/useCart';
 import { Minus, Plus, X } from 'lucide-react-native';
+import { WishlistButton } from '../../../src/components/customer/WishlistButton';
 
 export default function ProductDetail() {
   const router = useRouter();
@@ -93,7 +94,12 @@ export default function ProductDetail() {
           title: 'Chi tiết sản phẩm',
           headerStyle: { backgroundColor: '#FBFBFC' },
           headerTitleStyle: { fontFamily: 'Outfit-Bold', fontSize: 18 },
-          headerRight: () => <CartButton />,
+          headerRight: () => (
+            <View className="flex-row items-center gap-x-2">
+              <WishlistButton productId={productId} />
+              <CartButton />
+            </View>
+          ),
           headerShadowVisible: false,
         }}
       />

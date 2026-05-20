@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { productApi, type Category } from '../../../src/api/products';
 import { type Product } from '../../../src/types/product';
 import { Search, RefreshCw, X, Plus } from 'lucide-react-native';
+import { FlashSaleTimer } from '../../../src/components/customer/FlashSaleTimer';
 import { useRef, useEffect } from 'react';
 import { useDebounce } from '../../../src/hooks/useDebounce';
 import { useCart } from '../../../src/hooks/useCart';
@@ -104,6 +105,11 @@ export default function CustomerShop() {
                   KHO: {item.stock}
                 </Text>
               </View>
+              {item.flashSaleEndsAt && (
+                <View className="mt-2">
+                  <FlashSaleTimer endTime={item.flashSaleEndsAt} compact />
+                </View>
+              )}
               <Text className="text-base font-outfit-bold text-slate-900 mt-1" numberOfLines={1}>
                 {item.name}
               </Text>
@@ -180,7 +186,12 @@ export default function CustomerShop() {
           placeholderTextColor="#94A3B8"
           style={{ paddingVertical: 0 }}
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+            if (text.length > 0) {
+              setCategoryOverride(null);
+            }
+          }}
           returnKeyType="search"
           clearButtonMode="while-editing"
         />

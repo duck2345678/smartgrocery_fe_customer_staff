@@ -40,12 +40,14 @@ export const orderApi = {
     paymentMethod: 'COD' | 'VNPAY';
     note?: string;
     voucherCode?: string;
+    items?: { variantId: number; quantity: number }[];
   }): Promise<Order> => {
     const response = await apiClient.post('/orders/checkout', {
       addressId: input.addressId,
       paymentMethod: input.paymentMethod,
       customerNote: input.note,
       voucherCode: input.voucherCode,
+      items: input.items,
     });
     return response.data as Order;
   },

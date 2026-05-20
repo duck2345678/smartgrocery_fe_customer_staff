@@ -18,6 +18,7 @@ import {
   Search
 } from 'lucide-react-native';
 import { clsx } from 'clsx';
+import { resolveImageUrl } from '../../../src/utils/imageUtils';
 
 const STATUS_TABS = [
   { id: 'ALL', label: 'Tất cả', icon: ShoppingBag, color: '#64748B' },
@@ -31,8 +32,10 @@ const STATUS_MAP: Record<string, { label: string; icon: any; color: string; bg: 
   PENDING: { label: 'Chờ xử lý', icon: Clock, color: '#EAB308', bg: '#FEF9C3' },
   ASSIGNED: { label: 'Đã tiếp nhận', icon: Package, color: '#3B82F6', bg: '#DBEAFE' },
   PICKING: { label: 'Đang lấy hàng', icon: Package, color: '#3B82F6', bg: '#DBEAFE' },
+  PICKED: { label: 'Đã soạn xong', icon: Package, color: '#3B82F6', bg: '#DBEAFE' },
   READY_TO_SHIP: { label: 'Đã đóng gói', icon: Package, color: '#3B82F6', bg: '#DBEAFE' },
   SHIPPED: { label: 'Đang giao', icon: Truck, color: '#8B5CF6', bg: '#EDE9FE' },
+  DELIVERING: { label: 'Đang giao', icon: Truck, color: '#8B5CF6', bg: '#EDE9FE' },
   DELIVERED: { label: 'Đã giao', icon: CheckCircle2, color: '#16A34A', bg: '#DCFCE7' },
   CANCELLED: { label: 'Đã hủy', icon: XCircle, color: '#EF4444', bg: '#FEE2E2' },
 };
@@ -50,11 +53,15 @@ export default function OrdersScreen() {
   );
 
   const filteredOrders = useMemo(() => {
-    if (activeTab === 'ALL') return orders;
+    const list = orders || [];
+    if (activeTab === 'ALL') return list;
     if (activeTab === 'PREPARING') {
-      return orders.filter(o => ['PENDING', 'ASSIGNED', 'PICKING'].includes(o.status));
+      return list.filter(o => ['PENDING', 'ASSIGNED', 'PICKING', 'PICKED', 'READY_TO_SHIP'].includes(o.status));
     }
-    return orders.filter(o => o.status === activeTab);
+    if (activeTab === 'SHIPPED') {
+      return list.filter(o => ['SHIPPED', 'DELIVERING'].includes(o.status));
+    }
+    return list.filter(o => o.status === activeTab);
   }, [orders, activeTab]);
 
   const renderItem = ({ item }: { item: Order }) => {
@@ -99,7 +106,7 @@ export default function OrdersScreen() {
             <View className="w-16 h-16 rounded-2xl bg-slate-50 overflow-hidden border border-slate-100">
               {firstItem?.imageUrl ? (
                 <Image
-                  source={{ uri: firstItem.imageUrl }}
+                  source={{ uri: resolveImageUrl(firstItem.imageUrl, firstItem.productName) ?? undefined }}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
                   cachePolicy="disk"
@@ -115,7 +122,7 @@ export default function OrdersScreen() {
             <View className="flex-1 ml-4 justify-center">
               <Text className="text-[15px] font-outfit-bold text-slate-900" numberOfLines={1}>
                 {firstItem ? firstItem.productName : 'Đơn hàng'}
-                {item.items.length > 1 ? ` (+${item.items.length - 1} món khác)` : ''}
+                {(item.items ?? []).length > 1 ? ` (+${(item.items ?? []).length - 1} món khác)` : ''}
               </Text>
               <Text className="text-[11px] font-inter text-slate-400 mt-1">
                 {dateStr}
@@ -124,7 +131,7 @@ export default function OrdersScreen() {
 
             <View className="items-end">
               <Text className="text-[16px] font-outfit-bold text-primary">
-                {item.totalAmount.toLocaleString('vi-VN')}₫
+                {(item.totalAmount ?? 0).toLocaleString('vi-VN')}₫
               </Text>
               <ChevronRight size={16} color="#CBD5E1" className="mt-1" />
             </View>

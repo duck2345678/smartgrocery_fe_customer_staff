@@ -15,7 +15,8 @@ import {
   CreditCard,
   X,
   Bell,
-  Heart
+  Heart,
+  Ticket
 } from 'lucide-react-native';
 import { clsx } from 'clsx';
 
@@ -106,6 +107,15 @@ export default function CustomerProfile() {
           <View className="h-[1px] bg-[#F8FAFC] mx-4" />
           
           <MenuItem 
+            icon={Heart} 
+            iconBg="#FFF1F2" 
+            iconColor="#F43F5E" 
+            label="Danh sách yêu thích" 
+            onPress={() => router.push('/(customer)/wishlist' as never)} 
+          />
+          <View className="h-[1px] bg-[#F8FAFC] mx-4" />
+
+          <MenuItem 
             icon={History} 
             iconBg="#F0FDF4" 
             iconColor="#16A34A" 
@@ -120,6 +130,15 @@ export default function CustomerProfile() {
             iconColor="#3B82F6" 
             label="Sổ địa chỉ" 
             onPress={() => router.push('/(customer)/profile/addresses' as never)} 
+          />
+          <View className="h-[1px] bg-[#F8FAFC] mx-4" />
+
+          <MenuItem 
+            icon={Ticket} 
+            iconBg="#FEF3C7" 
+            iconColor="#D97706" 
+            label="Mã giảm giá & Ưu đãi" 
+            onPress={() => router.push('/(customer)/vouchers' as never)} 
           />
           <View className="h-[1px] bg-[#F8FAFC] mx-4" />
           
@@ -141,7 +160,7 @@ export default function CustomerProfile() {
             iconBg="#FFF7ED" 
             iconColor="#EA580C" 
             label="Thông báo" 
-            onPress={() => Alert.alert('Thông báo', 'Tính năng đang được phát triển.')} 
+            onPress={() => router.push('/(customer)/notifications' as any)} 
           />
           <View className="h-[1px] bg-[#F8FAFC] mx-4" />
           

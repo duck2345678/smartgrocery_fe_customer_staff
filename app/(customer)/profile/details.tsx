@@ -1,125 +1,348 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, Text, View, Pressable, TextInput, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
-import { ChevronLeft, User, Phone, Mail, Save } from 'lucide-react-native';
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  ShieldCheck, 
+  Calendar, 
+  BadgeCheck, 
+  ChevronLeft,
+  Camera,
+  PencilLine,
+  Shield
+} from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../src/store/authStore';
+import Card from '../../../src/components/ui/Card';
 import { userApi } from '../../../src/api/users';
+import { fileApi } from '../../../src/api/file';
 
-export default function ProfileDetailsScreen() {
+export default function CustomerProfileDetailScreen() {
   const router = useRouter();
-  const { user, setUser } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   
-  const [fullName, setFullName] = useState(user?.fullName || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [loading, setLoading] = useState(false);
+  const [avatar, setAvatar] = useState(user?.avatarUrl || null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Editable fields states
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    fullName: user?.fullName || 'Khách hàng',
+    phone: user?.phone || 'Chưa cung cấp',
+  });
 
-  const handleSave = async () => {
-    if (!user?.id) return;
-    if (!fullName.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập họ tên đầy đủ.');
+  const [errors, setErrors] = useState<{ fullName?: string; phone?: string }>({});
+
+  useEffect(() => {
+    setAvatar(user?.avatarUrl || null);
+    setFormData({
+      fullName: user?.fullName || 'Khách hàng',
+      phone: user?.phone || 'Chưa cung cấp',
+    });
+    setErrors({});
+  }, [user?.avatarUrl, user?.fullName, user?.phone]);
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Vui lòng cho phép quyền truy cập thư viện ảnh để cập nhật ảnh đại diện.');
       return;
     }
 
-    setLoading(true);
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const newAvatarLocal = result.assets[0].uri;
+      const oldAvatar = avatar;
+      
+      if (user) {
+        setIsSaving(true);
+        setAvatar(newAvatarLocal); // Optimistic UI: display immediately
+        try {
+          // 1. Upload file to Supabase storage to get public URL
+          const uploadRes = await fileApi.upload(newAvatarLocal);
+          const publicUrl = uploadRes.url;
+
+          // 2. Save only the avatarUrl to database via profile update API
+          const updatedUser = await userApi.updateProfile(user.id, {
+            avatarUrl: publicUrl
+          });
+          
+          setUser({ ...user, avatarUrl: publicUrl });
+          setAvatar(publicUrl);
+          Alert.alert('Thành công', 'Đã cập nhật ảnh đại diện mới.');
+        } catch (error) {
+          setAvatar(oldAvatar); // Rollback on error
+          Alert.alert('Lỗi', error instanceof Error ? error.message : 'Không thể tải ảnh lên.');
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    }
+  };
+
+  const saveField = async (field: 'fullName' | 'phone') => {
+    const hasError = field === 'fullName' ? errors.fullName : errors.phone;
+    if (hasError) return;
+
+    if (field === 'fullName' && !formData.fullName.trim()) {
+      Alert.alert('Lỗi', 'Họ và tên không được để trống.');
+      return;
+    }
+
+    if (!user) return;
+
+    setIsSaving(true);
     try {
       const updatedUser = await userApi.updateProfile(user.id, {
-        fullName: fullName.trim(),
-        phone: phone.trim()
+        fullName: formData.fullName.trim(),
+        phone: formData.phone.trim(),
       });
-      setUser(updatedUser);
-      Alert.alert('Thành công', 'Thông tin hồ sơ của bạn đã được cập nhật.');
-      router.back();
-    } catch (error: any) {
-      Alert.alert('Lỗi', error.message || 'Không thể cập nhật hồ sơ lúc này.');
+      setUser({ ...user, ...updatedUser });
+      if (field === 'fullName') setIsEditingName(false);
+      if (field === 'phone') setIsEditingPhone(false);
+      Alert.alert('Thành công', `Đã cập nhật ${field === 'fullName' ? 'họ tên' : 'số điện thoại'}.`);
+    } catch (error) {
+      Alert.alert('Lỗi', error instanceof Error ? error.message : 'Không thể lưu thay đổi.');
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-      <Stack.Screen options={{ headerShown: false }} />
+    <SafeAreaView className="flex-1 bg-[#F8FAFC]">
+      <Stack.Screen options={{ title: 'Hồ sơ cá nhân', headerShown: false }} />
       
-      {/* ───── Header ───── */}
-      <View className="px-5 py-4 flex-row items-center border-b border-slate-100">
+      {/* Header */}
+      <View className="px-6 py-4 flex-row items-center border-b border-slate-100 bg-white">
         <Pressable 
-          onPress={() => router.back()} 
-          className="w-10 h-10 rounded-full bg-slate-50 items-center justify-center mr-3"
+          onPress={() => router.back()}
+          className="w-12 h-12 rounded-full bg-slate-50 items-center justify-center border border-slate-100 active:bg-slate-100"
+          hitSlop={8}
         >
-          <ChevronLeft size={24} color="#0F172A" />
+          <ChevronLeft size={24} color="#1E293B" />
         </Pressable>
-        <View>
-          <Text className="text-[18px] font-outfit-bold text-slate-900">Hồ sơ cá nhân</Text>
-          <Text className="text-[12px] font-inter text-slate-500">Chỉnh sửa thông tin tài khoản của bạn</Text>
-        </View>
+        <Text className="text-[20px] font-outfit-bold text-[#1E293B] ml-4">Hồ sơ cá nhân</Text>
       </View>
 
-      <ScrollView 
-        className="flex-1 px-6 pt-8"
-        contentContainerStyle={{ paddingBottom: 40 }}
-      >
-        <View className="gap-y-6">
-          {/* Full Name Input */}
-          <View>
-            <Text className="text-[13px] font-inter-bold text-slate-500 mb-2 ml-1">Họ và tên</Text>
-            <View className="flex-row items-center px-4 py-3.5 bg-slate-50 rounded-2xl border border-slate-100">
-              <User size={20} color="#94A3B8" />
-              <TextInput
-                className="flex-1 ml-3 font-inter text-[15px] text-slate-900"
-                placeholder="Nhập họ tên của bạn"
-                value={fullName}
-                onChangeText={setFullName}
-              />
-            </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        
+        {/* Section: THÔNG TIN CÁ NHÂN */}
+        <View className="px-5 mt-6 mb-8">
+          <View className="flex-row items-center mb-4 ml-1">
+            <User size={20} color="#10B981" />
+            <Text className="text-[14px] font-outfit-bold text-[#475569] ml-2 tracking-wide uppercase">THÔNG TIN CÁ NHÂN</Text>
           </View>
-
-          {/* Email Input (Disabled) */}
-          <View>
-            <Text className="text-[13px] font-inter-bold text-slate-500 mb-2 ml-1">Email (Không thể sửa)</Text>
-            <View className="flex-row items-center px-4 py-3.5 bg-slate-100 rounded-2xl border border-slate-200">
-              <Mail size={20} color="#CBD5E1" />
-              <TextInput
-                className="flex-1 ml-3 font-inter text-[15px] text-slate-400"
-                value={user?.email}
-                editable={false}
-              />
-            </View>
-          </View>
-
-          {/* Phone Input */}
-          <View>
-            <Text className="text-[13px] font-inter-bold text-slate-500 mb-2 ml-1">Số điện thoại</Text>
-            <View className="flex-row items-center px-4 py-3.5 bg-slate-50 rounded-2xl border border-slate-100">
-              <Phone size={20} color="#94A3B8" />
-              <TextInput
-                className="flex-1 ml-3 font-inter text-[15px] text-slate-900"
-                placeholder="Nhập số điện thoại"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-            </View>
-          </View>
+          <Card className="rounded-[32px] p-2 bg-white shadow-sm border-0">
+            <EditableRow 
+              icon={User} 
+              label="Họ và tên" 
+              value={formData.fullName} 
+              isEditing={isEditingName}
+              onEdit={() => setIsEditingName(true)}
+              onSave={() => saveField('fullName')}
+              onCancel={() => { 
+                setFormData(p => ({ ...p, fullName: user?.fullName || 'Khách hàng' })); 
+                setErrors(p => ({ ...p, fullName: undefined }));
+                setIsEditingName(false); 
+              }}
+              onChangeText={(t: string) => {
+                setFormData(p => ({ ...p, fullName: t }));
+                if (!t.trim()) {
+                  setErrors(p => ({ ...p, fullName: 'Họ và tên không được để trống.' }));
+                } else {
+                  setErrors(p => ({ ...p, fullName: undefined }));
+                }
+              }}
+              iconColor="#4F46E5"
+              iconBg="#EEF2FF"
+              isSaving={isSaving}
+              imageUri={avatar}
+              onImagePress={pickImage}
+              error={errors.fullName}
+              isSaveDisabled={Boolean(errors.fullName)}
+            />
+            <View className="h-[1px] bg-[#F8FAFC] mx-6" />
+            <EditableRow 
+              icon={Phone} 
+              label="Số điện thoại" 
+              value={formData.phone} 
+              isEditing={isEditingPhone}
+              onEdit={() => setIsEditingPhone(true)}
+              onSave={() => saveField('phone')}
+              onCancel={() => { 
+                setFormData(p => ({ ...p, phone: user?.phone || 'Chưa cung cấp' })); 
+                setErrors(p => ({ ...p, phone: undefined }));
+                setIsEditingPhone(false); 
+              }}
+              onChangeText={(t: string) => {
+                setFormData(p => ({ ...p, phone: t }));
+                const cleanPhone = t.trim();
+                if (!cleanPhone) {
+                  setErrors(p => ({ ...p, phone: 'Số điện thoại không được để trống.' }));
+                } else if (!/^(0[3|5|7|8|9])[0-9]{8}$/.test(cleanPhone)) {
+                  setErrors(p => ({ ...p, phone: 'Số điện thoại 10 số không hợp lệ (Bắt đầu với 03/05/07/08/09).' }));
+                } else {
+                  setErrors(p => ({ ...p, phone: undefined }));
+                }
+              }}
+              keyboardType="phone-pad"
+              iconColor="#10B981"
+              iconBg="#ECFDF5"
+              isSaving={isSaving}
+              error={errors.phone}
+              isSaveDisabled={Boolean(errors.phone)}
+            />
+          </Card>
         </View>
 
-        {/* ───── Save Button ───── */}
-        <Pressable
-          onPress={handleSave}
-          disabled={loading}
-          className="mt-12 bg-primary py-4 rounded-[24px] flex-row items-center justify-center shadow-lg shadow-emerald-500/30"
-          style={{ elevation: 5 }}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Save size={20} color="#FFFFFF" className="mr-2" />
-              <Text className="text-white font-inter-bold text-[16px] ml-2">Lưu thay đổi</Text>
-            </>
-          )}
-        </Pressable>
+        {/* Section: THÔNG TIN ĐỊNH DANH */}
+        <View className="px-5">
+          <View className="flex-row items-center mb-4 ml-1">
+            <Shield size={20} color="#10B981" />
+            <Text className="text-[14px] font-outfit-bold text-[#475569] ml-2 tracking-wide uppercase">THÔNG TIN ĐỊNH DANH</Text>
+          </View>
+          <Card className="rounded-[32px] p-2 bg-white shadow-sm border-0">
+            <StaticRow 
+              icon={Mail} 
+              label="Email liên kết" 
+              value={user?.email || 'customer@smartgrocery.com'} 
+              iconColor="#8B5CF6"
+              iconBg="#F5F3FF"
+            />
+            <View className="h-[1px] bg-[#F8FAFC] mx-6" />
+            <StaticRow 
+              icon={ShieldCheck} 
+              label="Mã khách hàng" 
+              value={user?.id ? `KH-${String(user.id).padStart(4, '0')}` : 'KH-0000'} 
+              iconColor="#F59E0B"
+              iconBg="#FFFBEB"
+            />
+            <View className="h-[1px] bg-[#F8FAFC] mx-6" />
+            <StaticRow 
+              icon={BadgeCheck} 
+              label="Hạng thành viên" 
+              value="Thành viên Bạc" 
+              iconColor="#10B981"
+              iconBg="#EDF7F1"
+            />
+            <View className="h-[1px] bg-[#F8FAFC] mx-6" />
+            <StaticRow 
+              icon={Calendar} 
+              label="Ngày tham gia" 
+              value="18/05/2026" 
+              iconColor="#3B82F6"
+              iconBg="#EFF6FF"
+            />
+          </Card>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function EditableRow({ 
+  icon: Icon, 
+  label, 
+  value, 
+  isEditing, 
+  onEdit, 
+  onSave, 
+  onCancel, 
+  onChangeText,
+  keyboardType = 'default',
+  iconColor, 
+  iconBg,
+  isSaving,
+  imageUri,
+  onImagePress,
+  error,
+  isSaveDisabled
+}: any) {
+  return (
+    <View className="flex-row items-center p-4">
+      <Pressable 
+        onPress={onImagePress} 
+        disabled={!onImagePress}
+        className="w-14 h-14 rounded-full items-center justify-center mr-4 overflow-hidden relative" 
+        style={{ backgroundColor: iconBg }}
+      >
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} className="w-full h-full" />
+        ) : (
+          <Icon size={26} color={iconColor} strokeWidth={1.5} />
+        )}
+        {onImagePress && (
+          <View className="absolute bottom-0 right-0 w-4 h-4 bg-[#10B981] rounded-full items-center justify-center border border-white">
+            <Camera size={8} color="#fff" />
+          </View>
+        )}
+      </Pressable>
+      <View style={{ flex: 1 }}>
+        <Text className="text-[13px] font-inter text-[#64748B]">{label}</Text>
+        {isEditing ? (
+          <>
+            <TextInput
+              value={value}
+              onChangeText={onChangeText}
+              keyboardType={keyboardType}
+              className="text-[17px] font-inter-bold text-[#1E293B] mt-0.5 p-0 border-b border-[#10B981]"
+              autoFocus
+            />
+            {error && <Text className="text-[11px] font-inter-bold text-red-500 mt-1">{error}</Text>}
+          </>
+        ) : (
+          <Text className="text-[17px] font-inter-bold text-[#1E293B] mt-0.5">{value}</Text>
+        )}
+      </View>
+      {isEditing ? (
+        <View className="flex-row" style={{ gap: 8 }}>
+          <Pressable onPress={onCancel} className="px-3 py-2 bg-slate-50 rounded-full">
+            <Text className="text-slate-500 font-inter-bold text-[12px]">Hủy</Text>
+          </Pressable>
+          <Pressable 
+            onPress={onSave} 
+            disabled={isSaveDisabled || isSaving}
+            className="px-4 py-2 rounded-full min-w-[60px] items-center"
+            style={{ 
+              backgroundColor: isSaveDisabled ? '#CBD5E1' : '#10B981',
+              opacity: isSaveDisabled ? 0.6 : 1
+            }}
+          >
+            {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-white font-inter-bold text-[12px]">Lưu</Text>}
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable onPress={onEdit} className="flex-row items-center bg-[#F8FAFC] px-4 py-2 rounded-2xl">
+          <PencilLine size={16} color="#10B981" />
+          <Text className="text-[14px] font-inter-bold text-[#10B981] ml-2">Sửa</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+function StaticRow({ icon: Icon, label, value, iconColor, iconBg }: any) {
+  return (
+    <View className="flex-row items-center p-4">
+      <View className="w-14 h-14 rounded-full items-center justify-center mr-4" style={{ backgroundColor: iconBg }}>
+        <Icon size={26} color={iconColor} strokeWidth={1.5} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text className="text-[13px] font-inter text-[#64748B]">{label}</Text>
+        <Text className="text-[17px] font-inter-bold text-[#1E293B] mt-0.5">{value}</Text>
+      </View>
+    </View>
   );
 }

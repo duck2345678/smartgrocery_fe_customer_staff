@@ -1,6 +1,10 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Home, Package, ClipboardList, Clock, User } from 'lucide-react-native';
+import { Home, Package, ClipboardList, Clock, User, Ticket } from 'lucide-react-native';
+
+const HIDDEN_TAB_OPTIONS = {
+  href: null,
+} as const;
 
 export default function StaffLayout() {
   return (
@@ -49,11 +53,6 @@ export default function StaffLayout() {
           title: 'Sản phẩm',
           tabBarIcon: ({ color, size, focused }) => <Package size={size ?? 21} color={focused ? '#16A34A' : color} strokeWidth={focused ? 2.5 : 2} />,
         }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            navigation.navigate('products');
-          },
-        })}
       />
       <Tabs.Screen
         name="orders"
@@ -61,11 +60,6 @@ export default function StaffLayout() {
           title: 'Đơn hàng',
           tabBarIcon: ({ color, size, focused }) => <ClipboardList size={size ?? 21} color={focused ? '#16A34A' : color} strokeWidth={focused ? 2.5 : 2} />,
         }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            navigation.navigate('orders');
-          },
-        })}
       />
       <Tabs.Screen
         name="attendance"
@@ -73,11 +67,13 @@ export default function StaffLayout() {
           title: 'Chấm công',
           tabBarIcon: ({ color, size, focused }) => <Clock size={size ?? 21} color={focused ? '#16A34A' : color} strokeWidth={focused ? 2.5 : 2} />,
         }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            navigation.navigate('attendance');
-          },
-        })}
+      />
+      <Tabs.Screen
+        name="vouchers"
+        options={{
+          title: 'Voucher',
+          tabBarIcon: ({ color, size, focused }) => <Ticket size={size ?? 21} color={focused ? '#16A34A' : color} strokeWidth={focused ? 2.5 : 2} />,
+        }}
       />
       <Tabs.Screen
         name="profile"
@@ -85,21 +81,14 @@ export default function StaffLayout() {
           title: 'Cá nhân',
           tabBarIcon: ({ color, size, focused }) => <User size={size ?? 21} color={focused ? '#16A34A' : color} strokeWidth={focused ? 2.5 : 2} />,
         }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            navigation.navigate('profile');
-          },
-        })}
       />
-      {/* Hidden routes — accessible via navigation but not shown in tab bar */}
-      <Tabs.Screen name="admin-queue" options={{ href: null }} />
-      <Tabs.Screen name="products/scan" options={{ href: null }} />
-      <Tabs.Screen name="products/[id]" options={{ href: null }} />
-      <Tabs.Screen name="orders/[id]" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="handbook" options={{ href: null }} />
-      <Tabs.Screen name="performance" options={{ href: null }} />
-      <Tabs.Screen name="profile/payslip" options={{ href: null }} />
+
+      <Tabs.Screen name="delivered-orders" options={HIDDEN_TAB_OPTIONS} />
+      <Tabs.Screen name="handbook" options={HIDDEN_TAB_OPTIONS} />
+      <Tabs.Screen name="issues" options={HIDDEN_TAB_OPTIONS} />
+      <Tabs.Screen name="notifications" options={HIDDEN_TAB_OPTIONS} />
+      <Tabs.Screen name="performance" options={HIDDEN_TAB_OPTIONS} />
+      <Tabs.Screen name="users" options={HIDDEN_TAB_OPTIONS} />
     </Tabs>
   );
 }

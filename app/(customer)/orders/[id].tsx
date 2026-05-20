@@ -18,6 +18,7 @@ import {
 } from 'lucide-react-native';
 import Card from '../../../src/components/ui/Card';
 import { orderApi } from '../../../src/api/orders';
+import { resolveImageUrl } from '../../../src/utils/imageUtils';
 
 /* ─── helpers ─── */
 function formatCurrency(amount?: number | null) {
@@ -52,9 +53,12 @@ function getStatusInfo(status: string) {
       return { label: 'Đã tiếp nhận đơn', icon: Package, color: '#3B82F6', bg: '#DBEAFE' };
     case 'PICKING':
       return { label: 'Đang chuẩn bị hàng', icon: Package, color: '#3B82F6', bg: '#DBEAFE' };
+    case 'PICKED':
+      return { label: 'Đã soạn xong', icon: Package, color: '#3B82F6', bg: '#DBEAFE' };
     case 'READY_TO_SHIP':
       return { label: 'Đã đóng gói xong', icon: Package, color: '#3B82F6', bg: '#DBEAFE' };
     case 'SHIPPED':
+    case 'DELIVERING':
       return { label: 'Đang giao hàng', icon: Truck, color: '#8B5CF6', bg: '#EDE9FE' };
     case 'DELIVERED':
       return { label: 'Giao thành công', icon: CheckCircle2, color: '#16A34A', bg: '#DCFCE7' };
@@ -236,16 +240,16 @@ export default function OrderDetail() {
                 <Text className="font-inter-bold text-slate-900 text-[17px]">Danh sách mặt hàng</Text>
               </View>
               <View className="px-3 py-1 rounded-full bg-[#EDF7F1]">
-                <Text className="text-[11px] font-inter-bold text-[#16A34A]">{order.items.length} món</Text>
+                <Text className="text-[11px] font-inter-bold text-[#16A34A]">{(order.items ?? []).length} món</Text>
               </View>
             </View>
 
             <View style={{ gap: 14 }}>
-              {order.items.map((it) => (
+              {(order.items ?? []).map((it) => (
                 <View key={it.id} className="flex-row items-center">
                   <View className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border border-slate-100">
                     <Image
-                      source={{ uri: it.imageUrl }}
+                      source={{ uri: resolveImageUrl(it.imageUrl, it.productName) ?? undefined }}
                       style={{ width: '100%', height: '100%' }}
                       contentFit="cover"
                       cachePolicy="disk"
@@ -261,13 +265,13 @@ export default function OrderDetail() {
                       <Text className="text-[12px] font-inter text-slate-500">
                         SL: {it.quantity} × 
                       </Text>
-                      {it.discountAmount > 0 && (
+                      {(it.discountAmount ?? 0) > 0 && (
                         <Text className="text-[11px] font-inter text-slate-400 line-through ml-1">
                           {formatCurrency(it.unitPrice)}
                         </Text>
                       )}
                       <Text className="text-[12px] font-inter-bold text-slate-700 ml-1">
-                        {formatCurrency(it.totalPrice / it.quantity)}
+                        {formatCurrency((it.totalPrice ?? 0) / (it.quantity ?? 1))}
                       </Text>
                     </View>
                   </View>
@@ -276,7 +280,7 @@ export default function OrderDetail() {
                     <Text className="font-inter-bold text-primary text-[15px]">
                       {formatCurrency(it.totalPrice)}
                     </Text>
-                    {it.discountAmount > 0 && (
+                    {(it.discountAmount ?? 0) > 0 && (
                       <Text className="text-[10px] font-inter text-red-500 mt-0.5">
                         Giảm {formatCurrency(it.discountAmount)}
                       </Text>

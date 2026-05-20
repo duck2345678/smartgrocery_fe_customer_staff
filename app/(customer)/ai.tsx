@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
-import { Brain, Sparkles, Wand2, ClipboardList, Bot } from 'lucide-react-native';
+import { Brain, Sparkles, Wand2, ClipboardList, MessageSquare } from 'lucide-react-native';
 import Card from '../../src/components/ui/Card';
 import Button from '../../src/components/ui/Button';
 import { aiApi } from '../../src/api/ai';
@@ -73,6 +73,15 @@ export default function CustomerAIHub() {
 
         <View className="mt-6 gap-y-3">
           <InstructionCard
+            icon={<MessageSquare size={20} color="#2563EB" />}
+            title="Trợ lý AI Chat"
+            subtitle="Hỏi đáp món ăn, tư vấn sản phẩm thông minh thời gian thực."
+            actionLabel="Trò chuyện ngay"
+            loading={false}
+            onPress={() => router.push('/(customer)/(tabs)/ai-chat' as never)}
+          />
+
+          <InstructionCard
             icon={<Wand2 size={20} color="#16A34A" />}
             title="Basket Optimizer"
             subtitle="Tối ưu giỏ hàng theo ngân sách và nhu cầu dinh dưỡng."
@@ -96,14 +105,7 @@ export default function CustomerAIHub() {
             loading={false}
             onPress={() => router.push('/(customer)/smart-lists' as never)}
           />
-          <InstructionCard
-            icon={<Bot size={20} color="#8B5CF6" />}
-            title="Trợ lý AI"
-            subtitle="Hỏi đáp về sản phẩm, dinh dưỡng, và thực đơn."
-            actionLabel="Mở chat"
-            loading={false}
-            onPress={() => router.push('/(customer)/ai-chat' as never)}
-          />
+
           <InstructionCard
             icon={<Sparkles size={20} color="#16A34A" />}
             title="Discover"

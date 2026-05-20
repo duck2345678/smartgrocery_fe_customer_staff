@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { View, Text, Alert, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import Button from '../../src/components/ui/Button';
 import Card from '../../src/components/ui/Card';
@@ -13,12 +13,28 @@ import { type UserAddress } from '../../src/types/address';
 import { useAddressStore } from '../../src/store/addressStore';
 import { orderApi } from '../../src/api/orders';
 import { type Voucher } from '../../src/types/order';
+import { ChevronDown, ChevronUp, Ticket } from 'lucide-react-native';
 
 const SHIPPING_FEE = 15000;
 
 export default function CheckoutScreen() {
   const router = useRouter();
-  const { items, subtotal } = useCart();
+  const { selectedIds } = useLocalSearchParams<{ selectedIds?: string }>();
+  const selectedIdSet = useMemo(() => {
+    if (!selectedIds) return null;
+    return new Set(selectedIds.split(',').map(Number));
+  }, [selectedIds]);
+
+  const { items: allItems } = useCart();
+  const items = useMemo(() => {
+    if (!selectedIdSet) return allItems;
+    return allItems.filter(item => selectedIdSet.has(item.cartItemId));
+  }, [allItems, selectedIdSet]);
+
+  const subtotal = useMemo(() => {
+    return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }, [items]);
+
   const { createOrder, isPlacingOrder } = useCheckout();
   const userId = useAuthStore((s) => s.user?.id);
   const { addresses, isLoading: isLoadingAddresses, isError: isAddressError, refetch: refetchAddresses } = useAddresses(
@@ -33,10 +49,22 @@ export default function CheckoutScreen() {
 
   const [addressId, setAddressId] = useState<number | undefined>(undefined);
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'VNPAY'>('COD');
+
+  const handlePaymentMethodSelect = (method: 'COD' | 'VNPAY') => {
+    if (method !== 'COD') {
+      Alert.alert(
+        'Thông báo',
+        'Tính năng thanh toán online đang được phát triển. Vui lòng sử dụng phương thức thanh toán khi nhận hàng (COD)!'
+      );
+      return;
+    }
+    setPaymentMethod(method);
+  };
   const [note, setNote] = useState('');
   const [selectedVoucherCode, setSelectedVoucherCode] = useState<string>('');
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherApplyError, setVoucherApplyError] = useState<string | null>(null);
+  const [showVoucherList, setShowVoucherList] = useState(false);
 
   const vouchersQuery = useQuery({
     queryKey: ['available-vouchers'],
@@ -121,6 +149,7 @@ export default function CheckoutScreen() {
         paymentMethod,
         note: note.trim() ? note.trim() : undefined,
         voucherCode: selectedVoucherCode && !minOrderMessage ? selectedVoucherCode : undefined,
+        items: items.map(item => ({ variantId: item.variantId!, quantity: item.quantity })),
       });
       router.replace({
         pathname: '/(customer)/order-success',
@@ -186,72 +215,101 @@ export default function CheckoutScreen() {
         <Card className="p-4 border border-border mb-4">
           <Text className="text-sm font-inter-bold text-text">Phương thức thanh toán</Text>
           <View className="mt-3 gap-y-2">
-            <PaymentOption method="COD" label="COD (Thanh toán khi nhận hàng)" selected={paymentMethod} onSelect={setPaymentMethod} />
-            <PaymentOption method="VNPAY" label="VNPAY (Chuyển khoản)" selected={paymentMethod} onSelect={setPaymentMethod} />
+            <PaymentOption method="COD" label="COD (Thanh toán khi nhận hàng)" selected={paymentMethod} onSelect={handlePaymentMethodSelect} />
+            <PaymentOption method="VNPAY" label="VNPAY (Chuyển khoản)" selected={paymentMethod} onSelect={handlePaymentMethodSelect} />
           </View>
         </Card>
 
         <Card className="p-4 border border-border mb-4">
-          <Text className="text-sm font-inter-bold text-text">Voucher</Text>
-          <View className="mt-3 flex-row items-end gap-x-2">
-            <View className="flex-1">
-              <Input
-                label="Nhập mã voucher"
-                placeholder="Ví dụ: GIAM50K"
-                value={voucherInput}
-                onChangeText={(text) => {
-                  setVoucherInput(text);
-                  if (voucherApplyError) setVoucherApplyError(null);
-                }}
-              />
+          <Pressable
+            onPress={() => setShowVoucherList(!showVoucherList)}
+            className="flex-row items-center justify-between"
+            hitSlop={8}
+          >
+            <View className="flex-row items-center">
+              <Ticket size={18} color="#16A34A" className="mr-2" />
+              <Text className="text-sm font-inter-bold text-text">Voucher & Khuyến mãi</Text>
+              {selectedVoucherCode ? (
+                <View className="ml-3 px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-100">
+                  <Text className="text-[10px] font-inter-bold text-emerald-700">{selectedVoucherCode}</Text>
+                </View>
+              ) : null}
             </View>
-            <Pressable
-              onPress={handleApplyVoucherCode}
-              className="px-3 py-3 rounded-xl border border-primary/20 bg-primary/5"
-            >
-              <Text className="text-xs font-inter-bold text-primary">Áp dụng</Text>
-            </Pressable>
-          </View>
-          {voucherApplyError ? (
-            <Text className="text-xs font-inter text-red-500 mt-2">{voucherApplyError}</Text>
-          ) : null}
-          {vouchersQuery.isLoading ? (
-            <Text className="text-xs font-inter text-muted mt-2">Đang tải voucher…</Text>
-          ) : vouchersQuery.isError ? (
-            <Pressable onPress={() => vouchersQuery.refetch()} className="mt-2">
-              <Text className="text-xs font-inter-bold text-text">Không tải được voucher. Nhấn để thử lại.</Text>
-            </Pressable>
-          ) : (vouchersQuery.data ?? []).length === 0 ? (
-            <Text className="text-xs font-inter text-muted mt-2">Hiện chưa có voucher khả dụng.</Text>
-          ) : (
-            <View className="mt-3 gap-y-2">
-              <Pressable
-                onPress={() => {
-                  setSelectedVoucherCode('');
-                  setVoucherInput('');
-                  setVoucherApplyError(null);
-                }}
-                className={`px-3 py-3 rounded-xl border ${selectedVoucherCode === '' ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border'}`}
-              >
-                <Text className="text-sm font-inter-bold text-text">Không áp dụng voucher</Text>
-              </Pressable>
-              {(vouchersQuery.data ?? []).map((v: Voucher) => (
+            <View className="flex-row items-center">
+              {!selectedVoucherCode && !showVoucherList && (
+                <Text className="text-xs font-inter text-muted mr-1">Chọn hoặc nhập mã</Text>
+              )}
+              {showVoucherList ? (
+                <ChevronUp size={18} color="#94A3B8" />
+              ) : (
+                <ChevronDown size={18} color="#94A3B8" />
+              )}
+            </View>
+          </Pressable>
+
+          {showVoucherList && (
+            <View className="mt-4 pt-4 border-t border-slate-100">
+              <View className="flex-row items-end gap-x-2">
+                <View className="flex-1">
+                  <Input
+                    label="Nhập mã voucher"
+                    placeholder="Ví dụ: GIAM50K"
+                    value={voucherInput}
+                    onChangeText={(text) => {
+                      setVoucherInput(text);
+                      if (voucherApplyError) setVoucherApplyError(null);
+                    }}
+                  />
+                </View>
                 <Pressable
-                  key={v.id}
-                  onPress={() => {
-                    setSelectedVoucherCode(v.voucherCode);
-                    setVoucherInput(v.voucherCode);
-                    setVoucherApplyError(null);
-                  }}
-                  className={`px-3 py-3 rounded-xl border ${selectedVoucherCode === v.voucherCode ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border'}`}
+                  onPress={handleApplyVoucherCode}
+                  className="px-3 py-3 rounded-xl border border-primary/20 bg-primary/5"
                 >
-                  <Text className="text-sm font-inter-bold text-text">{v.voucherCode}</Text>
-                  <Text className="text-xs font-inter text-muted mt-1">{v.description ?? 'Giảm giá đơn hàng'}</Text>
-                  {selectedVoucherCode === v.voucherCode && minOrderMessage ? (
-                    <Text className="text-xs font-inter text-amber-700 mt-1">{minOrderMessage}</Text>
-                  ) : null}
+                  <Text className="text-xs font-inter-bold text-primary">Áp dụng</Text>
                 </Pressable>
-              ))}
+              </View>
+              {voucherApplyError ? (
+                <Text className="text-xs font-inter text-red-500 mt-2">{voucherApplyError}</Text>
+              ) : null}
+              {vouchersQuery.isLoading ? (
+                <Text className="text-xs font-inter text-muted mt-2">Đang tải voucher…</Text>
+              ) : vouchersQuery.isError ? (
+                <Pressable onPress={() => vouchersQuery.refetch()} className="mt-2">
+                  <Text className="text-xs font-inter-bold text-text">Không tải được voucher. Nhấn để thử lại.</Text>
+                </Pressable>
+              ) : (vouchersQuery.data ?? []).length === 0 ? (
+                <Text className="text-xs font-inter text-muted mt-2">Hiện chưa có voucher khả dụng.</Text>
+              ) : (
+                <View className="mt-3 gap-y-2">
+                  <Pressable
+                    onPress={() => {
+                      setSelectedVoucherCode('');
+                      setVoucherInput('');
+                      setVoucherApplyError(null);
+                    }}
+                    className={`px-3 py-3 rounded-xl border ${selectedVoucherCode === '' ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border'}`}
+                  >
+                    <Text className="text-sm font-inter-bold text-text">Không áp dụng voucher</Text>
+                  </Pressable>
+                  {(vouchersQuery.data ?? []).map((v: Voucher) => (
+                    <Pressable
+                      key={v.id}
+                      onPress={() => {
+                        setSelectedVoucherCode(v.voucherCode);
+                        setVoucherInput(v.voucherCode);
+                        setVoucherApplyError(null);
+                      }}
+                      className={`px-3 py-3 rounded-xl border ${selectedVoucherCode === v.voucherCode ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border'}`}
+                    >
+                      <Text className="text-sm font-inter-bold text-text">{v.voucherCode}</Text>
+                      <Text className="text-xs font-inter text-muted mt-1">{v.description ?? 'Giảm giá đơn hàng'}</Text>
+                      {selectedVoucherCode === v.voucherCode && minOrderMessage ? (
+                        <Text className="text-xs font-inter text-amber-700 mt-1">{minOrderMessage}</Text>
+                      ) : null}
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </View>
           )}
         </Card>

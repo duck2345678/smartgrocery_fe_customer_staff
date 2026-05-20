@@ -19,6 +19,9 @@ type CartItemDto = {
   subtotal: number;
   imageUrl?: string | null;
   stock?: number | null;
+  source?: string | null;
+  aiListCode?: string | null;
+  aiListName?: string | null;
 };
 
 type CartDto = {
@@ -80,6 +83,9 @@ const mapCartDto = (value: unknown): CartResponse => {
       imageUrl: resolveImageUrl(i.imageUrl),
       stock: typeof i.stock === 'number' ? i.stock : 0,
       quantity: i.quantity,
+      source: typeof i.source === 'string' ? i.source : 'MANUAL',
+      aiListCode: typeof i.aiListCode === 'string' ? i.aiListCode : '',
+      aiListName: typeof i.aiListName === 'string' ? i.aiListName : null,
     })),
   };
 };
@@ -90,9 +96,15 @@ export const cartApi = {
     return mapCartDto(response.data);
   },
 
-  addItem: async (input: { variantId: number; quantity: number } | { product: Product; quantity?: number }): Promise<CartResponse> => {
+  addItem: async (input: { variantId: number; quantity: number; source?: string; aiListCode?: string; aiListName?: string } | { product: Product; quantity?: number }): Promise<CartResponse> => {
     if ('variantId' in input) {
-      const response = await apiClient.post('/carts/add', { variantId: input.variantId, quantity: input.quantity });
+      const response = await apiClient.post('/carts/add', {
+        variantId: input.variantId,
+        quantity: input.quantity,
+        source: input.source,
+        aiListCode: input.aiListCode,
+        aiListName: input.aiListName,
+      });
       return mapCartDto(response.data);
     }
 
@@ -111,6 +123,11 @@ export const cartApi = {
 
   removeItem: async (input: { cartItemId: number }): Promise<CartResponse> => {
     const response = await apiClient.delete(`/carts/item/${input.cartItemId}`);
+    return mapCartDto(response.data);
+  },
+
+  batchAddItems: async (items: Array<{ variantId: number; quantity: number; source?: string; aiListCode?: string; aiListName?: string }>): Promise<CartResponse> => {
+    const response = await apiClient.post('/carts/batch-add', items);
     return mapCartDto(response.data);
   },
 };

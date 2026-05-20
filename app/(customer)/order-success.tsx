@@ -1,7 +1,7 @@
 import { View, Text } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import Button from '../../src/components/ui/Button';
-import { CheckCircle2 } from 'lucide-react-native';
+import { CheckCircle2, Gift } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { orderApi } from '../../src/api/orders';
@@ -53,23 +53,23 @@ export default function OrderSuccess() {
               <Text className="text-base font-inter text-text">Số sản phẩm: {itemCount}</Text>
               <Text className="text-base font-inter text-text">Thanh toán: {order.paymentMethod}</Text>
               <Text className="text-base font-inter text-text">Trạng thái: {order.status}</Text>
-              <Text className="text-base font-inter text-text">Tổng thanh toán: {order.totalAmount.toLocaleString('vi-VN')}₫</Text>
+              <Text className="text-base font-inter text-text">Tổng thanh toán: {(order.totalAmount ?? 0).toLocaleString('vi-VN')}₫</Text>
             </View>
-            {order.items?.length > 0 ? (
+            {(order.items ?? []).length > 0 ? (
               <View className="mt-4">
                 <Text className="text-sm font-inter-bold text-text mb-2">Mặt hàng</Text>
-                {order.items.slice(0, 3).map((item) => (
+                {(order.items ?? []).slice(0, 3).map((item) => (
                   <View key={item.id} className="flex-row items-center justify-between py-1">
                     <Text className="text-sm font-inter text-text" numberOfLines={1}>
                       {item.productName} x{item.quantity}
                     </Text>
                     <Text className="text-sm font-inter-bold text-text">
-                      {item.totalPrice.toLocaleString('vi-VN')}₫
+                      {(item.totalPrice ?? 0).toLocaleString('vi-VN')}₫
                     </Text>
                   </View>
                 ))}
-                {order.items.length > 3 ? (
-                  <Text className="text-xs font-inter text-muted mt-2">+ {order.items.length - 3} sản phẩm khác</Text>
+                {(order.items ?? []).length > 3 ? (
+                  <Text className="text-xs font-inter text-muted mt-2">+ {(order.items ?? []).length - 3} sản phẩm khác</Text>
                 ) : null}
               </View>
             ) : null}
@@ -78,6 +78,22 @@ export default function OrderSuccess() {
           <Text className="text-sm font-inter text-muted mt-6">Đang tải chi tiết đơn hàng…</Text>
         ) : isError ? (
           <Text className="text-sm font-inter text-muted mt-6">Không thể tải chi tiết đơn hàng.</Text>
+        ) : null}
+
+        {order?.rewardVoucher ? (
+          <View className="mt-4 rounded-3xl border border-emerald-100 bg-emerald-50 p-4">
+            <View className="flex-row items-center">
+              <View className="w-11 h-11 rounded-2xl bg-white items-center justify-center mr-3">
+                <Gift size={21} color="#059669" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-outfit-bold text-emerald-900">Voucher an da duoc mo khoa</Text>
+                <Text className="text-xs font-inter text-emerald-700 mt-1">
+                  {order.rewardVoucher.voucherCode} se hien trong kho voucher cua ban.
+                </Text>
+              </View>
+            </View>
+          </View>
         ) : null}
       </View>
 

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -251,7 +252,7 @@ export default function StaffPerformanceOrderDetailScreen() {
                 <View className="flex-1 rounded-[30px] p-4 bg-[#EDF7F1] border border-[#D1EAD9]">
                   <Text className="font-inter-bold text-[#111827] text-[13px] mb-2 text-center">Ảnh đóng gói</Text>
                   <View className="w-full aspect-square rounded-[20px] bg-white overflow-hidden">
-                    <Image source={{ uri: order.packingPhotoUrl }} className="w-full h-full" resizeMode="cover" />
+                    <Image source={{ uri: order.packingPhotoUrl }} className="w-full h-full" contentFit="cover" cachePolicy="disk" transition={200} />
                   </View>
                 </View>
               )}
@@ -259,7 +260,7 @@ export default function StaffPerformanceOrderDetailScreen() {
                 <View className="flex-1 rounded-[30px] p-4 bg-[#EDF7F1] border border-[#D1EAD9]">
                   <Text className="font-inter-bold text-[#111827] text-[13px] mb-2 text-center">Ảnh giao hàng</Text>
                   <View className="w-full aspect-square rounded-[20px] bg-white overflow-hidden">
-                    <Image source={{ uri: order.deliveryPhotoUrl }} className="w-full h-full" resizeMode="cover" />
+                    <Image source={{ uri: order.deliveryPhotoUrl }} className="w-full h-full" contentFit="cover" cachePolicy="disk" transition={200} />
                   </View>
                 </View>
               )}
@@ -286,7 +287,9 @@ export default function StaffPerformanceOrderDetailScreen() {
                       <Image
                         source={{ uri: it.imageUrl as string }}
                         className="w-full h-full"
-                        resizeMode="cover"
+                        contentFit="cover"
+                        cachePolicy="disk"
+                        transition={200}
                         onError={() => setBrokenImageIds((prev) => ({ ...prev, [it.orderItemId]: true }))}
                       />
                     ) : (

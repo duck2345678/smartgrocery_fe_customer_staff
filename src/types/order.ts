@@ -36,6 +36,10 @@ export type Order = {
   paymentStatus: string;
   customerNote: string | null;
   items: OrderItem[];
+  aiGenerated?: boolean;
+  aiListCode?: string | null;
+  aiListName?: string | null;
+  rewardVoucher?: Voucher | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,4 +53,8 @@ export type Voucher = {
   minOrderAmount: number | null;
   maxDiscountAmount: number | null;
   validUntil: string | null;
+  hidden?: boolean;
+  revealTrigger?: string;
+  assignedUserId?: number | null;
+  unlockedByOrderId?: number | null;
 };

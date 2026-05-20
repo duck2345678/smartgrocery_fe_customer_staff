@@ -51,7 +51,7 @@ export default function AiNudge() {
           <Text style={{ marginLeft: 6, fontSize: 15, fontFamily: 'Outfit-Bold', color: '#16A34A' }}>AI Assistant</Text>
         </View>
         <Text style={{ marginTop: 4, fontSize: 13, fontFamily: 'Inter-Medium', color: '#1E293B' }}>
-          Chào bạn, đây là gợi ý từ AI
+          Sản phẩm yêu thích của bạn đang giảm giá! 🔥
         </Text>
 
         <View style={{ marginTop: 12 }}>

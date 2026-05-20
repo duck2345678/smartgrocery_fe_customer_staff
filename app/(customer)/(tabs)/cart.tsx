@@ -1,19 +1,57 @@
-import { View, Text, Pressable, Alert } from 'react-native';
+import { View, Text, Pressable, Alert, SectionList } from 'react-native';
 import { useRouter } from 'expo-router';
-import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
-import { useMemo, useState } from 'react';
-import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, ShoppingCart, RefreshCw } from 'lucide-react-native';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, ShoppingCart, RefreshCw, Sparkles, Check } from 'lucide-react-native';
 import Button from '../../../src/components/ui/Button';
 import { useCart } from '../../../src/hooks/useCart';
 import { CartItem } from '../../../src/types/cart';
 
 export default function CartScreen() {
   const router = useRouter();
-  const { items, subtotal, isLoading, isError, refetch, updateQuantity, removeItem, isUpdating } =
+  const { items, isLoading, isError, refetch, updateQuantity, removeItem, isUpdating } =
     useCart();
   
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
+
+  // Auto-initialize: select all items by default on initial load
+  useEffect(() => {
+    if (items.length > 0 && !hasInitializedSelection) {
+      setSelectedIds(new Set(items.map(i => i.cartItemId as number).filter(Boolean)));
+      setHasInitializedSelection(true);
+    }
+  }, [items, hasInitializedSelection]);
+
+  // Compute selected items and subtotal
+  const selectedItems = useMemo(() => {
+    return items.filter(item => selectedIds.has(item.cartItemId as number));
+  }, [items, selectedIds]);
+
+  const selectedSubtotal = useMemo(() => {
+    return selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  }, [selectedItems]);
+
+  const sections = useMemo(() => {
+    const manual = items.filter((item) => item.source !== 'AI');
+    const aiGroups = new Map<string, CartItem[]>();
+    items.filter((item) => item.source === 'AI').forEach((item) => {
+      const key = item.aiListCode || 'AI-GENERATED';
+      aiGroups.set(key, [...(aiGroups.get(key) ?? []), item]);
+    });
+
+    return [
+      ...(manual.length ? [{ key: 'manual', title: 'Giỏ hàng thủ công', subtitle: 'Sản phẩm bạn tự thêm', type: 'MANUAL' as const, data: manual }] : []),
+      ...Array.from(aiGroups.entries()).map(([key, data], index) => ({
+        key,
+        title: data[0]?.aiListName || `Danh sách AI ${index + 1}`,
+        subtitle: `${data.length} sản phẩm do AI gợi ý`,
+        type: 'AI' as const,
+        data,
+      })),
+    ];
+  }, [items]);
 
   const toggleProcessing = (id: number, active: boolean) => {
     setProcessingIds(prev => {
@@ -22,6 +60,71 @@ export default function CartScreen() {
       else next.delete(id);
       return next;
     });
+  };
+
+  // Section checkbox helpers
+  const isSectionAllSelected = useCallback((sectionData: CartItem[]) => {
+    const ids = sectionData.map(i => i.cartItemId as number).filter(Boolean);
+    if (ids.length === 0) return false;
+    return ids.every(id => selectedIds.has(id));
+  }, [selectedIds]);
+
+  const toggleSection = useCallback((sectionData: CartItem[]) => {
+    const ids = sectionData.map(i => i.cartItemId as number).filter(Boolean);
+    const allSel = isSectionAllSelected(sectionData);
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allSel) {
+        ids.forEach(id => next.delete(id));
+      } else {
+        ids.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  }, [isSectionAllSelected]);
+
+  // Overall select all helpers
+  const allItemsSelected = items.length > 0 && items.every(i => selectedIds.has(i.cartItemId as number));
+  const toggleSelectAll = () => {
+    if (allItemsSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(items.map(i => i.cartItemId as number).filter(Boolean)));
+    }
+  };
+
+  const renderSectionHeader = ({ section }: { section: { title: string; subtitle: string; type: 'MANUAL' | 'AI'; data: CartItem[] } }) => {
+    const allSel = isSectionAllSelected(section.data);
+    return (
+      <View className="mb-3 mt-4 rounded-3xl border border-slate-100 bg-white px-4 py-3 flex-row items-center justify-between">
+        <View className="flex-row items-center flex-1">
+          {/* Section Checkbox */}
+          <Pressable
+            onPress={() => toggleSection(section.data)}
+            className={`w-5 h-5 rounded-full mr-3 items-center justify-center border ${
+              allSel 
+                ? 'bg-primary border-primary' 
+                : 'border-slate-300 bg-white'
+            }`}
+          >
+            {allSel && <Check size={11} color="#FFF" />}
+          </Pressable>
+
+          <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${section.type === 'AI' ? 'bg-emerald-50' : 'bg-slate-50'}`}>
+            {section.type === 'AI' ? <Sparkles size={18} color="#059669" /> : <ShoppingBag size={18} color="#475569" />}
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-outfit-bold text-slate-900">{section.title}</Text>
+            <Text className="text-xs font-inter text-slate-500 mt-0.5">{section.subtitle}</Text>
+          </View>
+        </View>
+        {section.type === 'AI' ? (
+          <View className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100">
+            <Text className="text-[10px] font-inter-bold text-emerald-700">GỢI Ý AI</Text>
+          </View>
+        ) : null}
+      </View>
+    );
   };
 
   const handleUpdate = async (cid: number, newQty: number) => {
@@ -57,6 +160,11 @@ export default function CartScreen() {
             toggleProcessing(cid, true);
             try {
               await removeItem({ cartItemId: cid });
+              setSelectedIds(prev => {
+                const next = new Set(prev);
+                next.delete(cid);
+                return next;
+              });
             } catch (e) {
               const msg = e instanceof Error ? e.message : '';
               if (msg.includes('not found') || msg.includes('404')) {
@@ -79,10 +187,20 @@ export default function CartScreen() {
     const cid = item.cartItemId as number;
     const isProcessing = cid ? processingIds.has(cid) : false;
     const isDisabled = !cid || isProcessing || isUpdating;
+    const isSelected = selectedIds.has(cid);
+
+    const toggleSelectItem = () => {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        if (next.has(cid)) next.delete(cid);
+        else next.add(cid);
+        return next;
+      });
+    };
 
     return (
       <View 
-        className="mb-4 bg-white rounded-[28px] p-4 border border-slate-50 flex-row"
+        className="mb-4 bg-white rounded-[28px] p-4 border border-slate-50 flex-row items-center"
         style={{ 
           opacity: isDisabled ? 0.6 : 1,
           shadowColor: '#000',
@@ -92,8 +210,21 @@ export default function CartScreen() {
           elevation: 2
         }}
       >
+        {/* Item Checkbox */}
+        <Pressable
+          onPress={toggleSelectItem}
+          disabled={isDisabled}
+          className={`w-5 h-5 rounded-full mr-3 items-center justify-center border ${
+            isSelected 
+              ? 'bg-primary border-primary' 
+              : 'border-slate-300 bg-white'
+          }`}
+        >
+          {isSelected && <Check size={11} color="#FFF" />}
+        </Pressable>
+
         {/* Product Image */}
-        <View className="w-24 h-24 rounded-2xl bg-slate-50 overflow-hidden border border-slate-100">
+        <View className="w-20 h-20 rounded-2xl bg-slate-50 overflow-hidden border border-slate-100">
           <Image
             source={{ uri: item.imageUrl }}
             style={{ width: '100%', height: '100%' }}
@@ -201,16 +332,36 @@ export default function CartScreen() {
         </Pressable>
       </View>
 
+      {/* Select All Row */}
+      {items.length > 0 && (
+        <Pressable
+          onPress={toggleSelectAll}
+          className="flex-row items-center px-6 py-3 bg-white border-b border-slate-100"
+        >
+          <View
+            className={`w-5 h-5 rounded-full mr-3 items-center justify-center border ${
+              allItemsSelected 
+                ? 'bg-primary border-primary' 
+                : 'border-slate-300 bg-white'
+            }`}
+          >
+            {allItemsSelected && <Check size={11} color="#FFF" />}
+          </View>
+          <Text className="text-sm font-inter-semibold text-slate-700">Chọn tất cả ({items.length} sản phẩm)</Text>
+        </Pressable>
+      )}
+
       <View className="flex-1 px-6">
         {items.length > 0 ? (
-          <FlashList
-            data={items}
+          <SectionList
+            sections={sections}
             renderItem={renderItem}
             keyExtractor={(item) => String(item.cartItemId ?? item.productId)}
-            estimatedItemSize={140}
+            renderSectionHeader={renderSectionHeader}
             showsVerticalScrollIndicator={false}
             onRefresh={refetch}
             refreshing={isLoading}
+            stickySectionHeadersEnabled={false}
             contentContainerStyle={{ paddingBottom: 20 }}
           />
         ) : (
@@ -242,9 +393,9 @@ export default function CartScreen() {
         >
           <View className="flex-row items-center justify-between mb-6">
             <View>
-              <Text className="text-sm font-inter text-slate-500">Tổng cộng</Text>
+              <Text className="text-sm font-inter text-slate-500">Tổng cộng ({selectedItems.length} món)</Text>
               <Text className="text-[28px] font-outfit-bold text-slate-900">
-                {subtotal.toLocaleString('vi-VN')}₫
+                {selectedSubtotal.toLocaleString('vi-VN')}₫
               </Text>
             </View>
             <View className="bg-slate-50 px-4 py-2 rounded-xl">
@@ -253,8 +404,18 @@ export default function CartScreen() {
           </View>
           
           <Button
-            label="Thanh toán ngay"
-            onPress={() => router.push('/(customer)/checkout' as never)}
+            label={selectedItems.length === 0 ? "Chọn sản phẩm" : "Thanh toán ngay"}
+            onPress={() => {
+              if (selectedIds.size === 0) {
+                Alert.alert('Thông báo', 'Vui lòng chọn ít nhất 1 sản phẩm để thanh toán.');
+                return;
+              }
+              router.push({
+                pathname: '/(customer)/checkout',
+                params: { selectedIds: Array.from(selectedIds).join(',') }
+              } as never);
+            }}
+            disabled={selectedIds.size === 0 || isUpdating}
             loading={isUpdating}
             className="h-14 rounded-2xl"
           />

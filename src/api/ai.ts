@@ -1,16 +1,18 @@
-<<<<<<< HEAD
-import { AiChatRequest, AiChatResponse, ChatHistoryItem, MealPlanGenerateResponse } from '../types/ai';
-=======
-import { AINudge, AIResult, BasketOptimizePayload, ChatSession, DiscoverPayload, MealPlannerPayload, PersonalisedRec } from '../types/ai';
->>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
+import {
+  AINudge,
+  AIResult,
+  BasketOptimizePayload,
+  DiscoverPayload,
+  MealPlanGenerateResponse,
+  MealPlannerPayload,
+  PersonalisedRec,
+} from '../types/ai';
 import apiClient from './client';
 
 const toNum = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? 0));
+const AI_CHAT_TIMEOUT_MS = 20_000;
 
 export const aiApi = {
-<<<<<<< HEAD
-  getNudges: async (): Promise<Array<{ productId: number; name: string; image: string | null; price: number; reason: string; confidenceScore: number }>> => {
-=======
   optimizeBasket: async (payload: BasketOptimizePayload): Promise<AIResult> => {
     const response = await apiClient.post<AIResult>('/recommendations/basket-optimize', payload);
     return response.data;
@@ -49,26 +51,9 @@ export const aiApi = {
     });
   },
 
-  createChatSession: async (userId: number): Promise<ChatSession> => {
-    const res = await apiClient.post('/ai/session', null, { params: { userId } });
-    const o = (res.data ?? {}) as Record<string, unknown>;
-    return {
-      id: toNum(o.id),
-      title: String(o.title ?? ''),
-      createdAt: String(o.createdAt ?? ''),
-    };
-  },
 
-  askChat: async (query: string, sessionId: number): Promise<string> => {
-    const res = await apiClient.get('/ai/ask', {
-      params: { query, sessionId },
-      timeout: 30000,
-    });
-    return typeof res.data === 'string' ? res.data : String(res.data ?? '');
-  },
 
   getNudges: async (): Promise<AINudge[]> => {
->>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
     const response = await apiClient.get('/ai/nudges');
     const raw = Array.isArray(response.data) ? response.data : [];
     return raw.map((x) => ({
@@ -81,31 +66,33 @@ export const aiApi = {
     }));
   },
 
-  chatWithAi: async (payload: AiChatRequest, options?: { clientRawText?: string }): Promise<AiChatResponse> => {
-    const config: Record<string, unknown> = { timeout: 45000 };
-    if (options?.clientRawText) {
-      config.headers = { 'X-Client-Raw-Text': options.clientRawText };
-    }
-    const response = await apiClient.post<AiChatResponse>('/ai/chat', payload, config);
-    return response.data;
-  },
 
-  getChatHistory: async (): Promise<ChatHistoryItem[]> => {
-    const response = await apiClient.get<ChatHistoryItem[]>('/ai/chat/history');
-    return response.data;
-  },
 
   generateMealPlan: async (goal: string): Promise<MealPlanGenerateResponse> => {
     const response = await apiClient.post<MealPlanGenerateResponse>('/meal-plans/generate', { goal });
     return response.data;
   },
 
-  submitFeedback: async (messageId: string, feedbackType: 'HELPFUL' | 'NOT_HELPFUL', reason?: string): Promise<{ status: string }> => {
-    const response = await apiClient.post<{ status: string }>('/ai/chat/feedback', {
-      messageId,
-      feedbackType,
-      reason,
-    });
+  askChat: async (
+    messages: Array<{ role: string; content: string }>,
+    userId?: number,
+    systemPrompt?: string,
+    sessionId?: number
+  ): Promise<{
+    reply: string;
+    success: boolean;
+    shoppingItems?: Array<{
+      productId: number;
+      variantId: number | null;
+      name: string;
+      imageUrl: string | null;
+      price: number | null;
+      unit: string;
+      role: string;
+    }>;
+    sessionId?: number;
+  }> => {
+    const response = await apiClient.post('/chat', { systemPrompt, messages, userId, sessionId }, { timeout: AI_CHAT_TIMEOUT_MS });
     return response.data;
   },
 };

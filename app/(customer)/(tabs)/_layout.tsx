@@ -72,25 +72,11 @@ export default function CustomerTabsLayout() {
           tabBarIcon: ({ color }: { color: string }) => <Store size={24} color={color} />,
         }}
       />
-
       <Tabs.Screen
-        name="ai"
+        name="ai-chat"
         options={{
-          title: 'AI Trợ lý',
-          tabBarIcon: ({ color }: { color: string }) => (
-            <View style={{ 
-              backgroundColor: color === '#16A34A' ? '#F0FDF4' : 'transparent',
-              padding: 8,
-              borderRadius: 16,
-              marginTop: -10, // Slightly lifted
-              shadowColor: color === '#16A34A' ? '#16A34A' : 'transparent',
-              shadowOpacity: 0.2,
-              shadowRadius: 8,
-              elevation: 4
-            }}>
-              <Brain size={28} color={color} />
-            </View>
-          ),
+          title: 'Trợ lý AI',
+          tabBarIcon: ({ color }: { color: string }) => <Brain size={24} color={color} />,
         }}
       />
       <Tabs.Screen

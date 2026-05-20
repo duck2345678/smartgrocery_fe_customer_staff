@@ -12,4 +12,7 @@ export type CartItem = {
   quantity: number;
   originalPrice?: number;
   discountPercent?: number;
+  source?: 'MANUAL' | 'AI' | string;
+  aiListCode?: string;
+  aiListName?: string | null;
 };

@@ -38,20 +38,13 @@ export default function StaffOrdersScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      if (!myActive) {
-        // If free, try to auto-assign one
-        await autoAssignMutation.mutateAsync();
-      } else {
-        // Just refresh current status
-        await Promise.all([queueQuery.refetch(), myActiveQuery.refetch(), attendanceQuery.refetch()]);
-      }
-    } catch (err) {
-      // In case of error (e.g. no orders), just refetch to update UI
       await Promise.all([queueQuery.refetch(), myActiveQuery.refetch(), attendanceQuery.refetch()]);
+    } catch (err) {
+      // Ignore
     } finally {
       setRefreshing(false);
     }
-  }, [queueQuery, myActiveQuery, attendanceQuery, myActive]);
+  }, [queueQuery, myActiveQuery, attendanceQuery]);
 
   const autoAssignMutation = useMutation({
     mutationFn: () => staffOrdersApi.autoAssign(),
@@ -241,6 +234,23 @@ export default function StaffOrdersScreen() {
               <Text className="font-outfit-bold text-primary-fg">Tải lại trang</Text>
             </Pressable>
           </Card>
+        ) : !isClockedIn ? (
+          /* Case 4: Absolutely offline/not ready - show placeholder, hide all orders */
+          <View className="py-20 items-center justify-center">
+            <View className="w-20 h-20 rounded-full bg-[#FFF7ED] items-center justify-center mb-4">
+              <ShieldAlert size={32} color="#F97316" strokeWidth={1.5} />
+            </View>
+            <Text className="text-[15px] font-outfit-bold text-text text-center">Bạn đang ngoại tuyến</Text>
+            <Text className="text-xs font-inter text-muted mt-2 text-center px-10 leading-5">
+              Bạn đang ở trạng thái chưa sẵn sàng. Hãy vào ca để có thể nhận và xử lý đơn hàng.
+            </Text>
+            <Pressable 
+              onPress={() => router.push('/(staff)/attendance' as never)}
+              className="mt-6 bg-orange-500 px-6 py-3.5 rounded-2xl shadow-sm shadow-orange-300"
+            >
+              <Text className="text-[13px] font-outfit-bold text-white uppercase tracking-wider">Đi tới Chấm công</Text>
+            </Pressable>
+          </View>
         ) : (
           <View style={{ gap: 14 }}>
             {myActive ? (

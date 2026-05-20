@@ -6,7 +6,10 @@ import {
   Pressable,
   Text,
   View,
+  TextInput,
   useWindowDimensions,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -21,12 +24,27 @@ import {
   ShoppingBag,
   Sun,
   ChevronRight,
+  Keyboard,
+  Search,
+  X,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { safeImpact, ImpactFeedbackStyle } from '../../../src/utils/safeHaptics';
 import { useStaffProductsStore } from '../../../src/store/staffProductsStore';
 
-const PRIMARY_GREEN = '#22C55E';
+const PRIMARY_GREEN = '#10B981'; // Sync with app theme green
+
+// Common Vietnamese fresh produce PLU lookup items (no barcode in supermarket)
+const POPULAR_FRESH_ITEMS = [
+  { name: 'Rau muống', code: 'RAU-01', category: 'Rau củ' },
+  { name: 'Cà chua', code: 'QUA-02', category: 'Rau củ' },
+  { name: 'Bắp cải', code: 'RAU-03', category: 'Rau củ' },
+  { name: 'Cà rốt', code: 'RAU-04', category: 'Rau củ' },
+  { name: 'Thịt ba rọi', code: 'THIT-01', category: 'Thịt tươi' },
+  { name: 'Cá hồi', code: 'HAIS-01', category: 'Hải sản' },
+  { name: 'Trứng gà', code: 'TRUNG-01', category: 'Trứng sữa' },
+  { name: 'Hành lá', code: 'GIAVI-01', category: 'Gia vị' },
+];
 
 export default function StaffBarcodeScanScreen() {
   const router = useRouter();
@@ -35,7 +53,8 @@ export default function StaffBarcodeScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [torchEnabled, setTorchEnabled] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualInput, setManualInput] = useState('');
   const scanningLockedRef = useRef(false);
 
   /* Animation for scanning line */
@@ -107,6 +126,15 @@ export default function StaffBarcodeScanScreen() {
     setTimeout(() => router.back(), 300);
   };
 
+  const handleManualSearch = (keyword: string) => {
+    const val = keyword.trim();
+    if (!val) return;
+    void safeImpact(ImpactFeedbackStyle.Medium);
+    setShowManualModal(false);
+    setSearch(val);
+    router.back();
+  };
+
   if (!permission?.granted) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -148,9 +176,9 @@ export default function StaffBarcodeScanScreen() {
               <ChevronLeft size={24} color="#fff" />
             </Pressable>
             
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Quét mã đơn hàng</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 }}>Đưa mã vạch vào khung để quét</Text>
+            <View style={{ alignItems: 'center', flex: 1, paddingHorizontal: 20 }}>
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Quét mã sản phẩm</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4, textAlign: 'center' }}>Đưa mã vạch vào khung để nhận diện</Text>
             </View>
 
             <Pressable
@@ -198,23 +226,23 @@ export default function StaffBarcodeScanScreen() {
             <View style={{ marginTop: 40, flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999, alignItems: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <CheckCircle2 size={16} color={PRIMARY_GREEN} />
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Tự động nhận mã</Text>
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Tự động quét</Text>
               </View>
               <View style={{ width: 1, height: 12, backgroundColor: 'rgba(255,255,255,0.3)' }} />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <ShoppingBag size={16} color={PRIMARY_GREEN} />
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Giữ máy ổn định</Text>
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Để thẳng góc</Text>
               </View>
               <View style={{ width: 1, height: 12, backgroundColor: 'rgba(255,255,255,0.3)' }} />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Sun size={16} color={PRIMARY_GREEN} />
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Ánh sáng đầy đủ</Text>
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Đủ ánh sáng</Text>
               </View>
             </View>
           </View>
 
           {/* Bottom Controls */}
-          <View style={{ paddingBottom: 40, paddingHorizontal: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ paddingBottom: 30, paddingHorizontal: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Pressable
               onPress={pickImage}
               style={{ alignItems: 'center', gap: 8 }}
@@ -241,24 +269,154 @@ export default function StaffBarcodeScanScreen() {
             </Pressable>
           </View>
 
-          {/* Floating Info Card */}
+          {/* Redesigned Interactive Bottom Button for Barcodeless Products */}
           <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable 
+              onPress={() => {
+                void safeImpact(ImpactFeedbackStyle.Medium);
+                setShowManualModal(true);
+              }}
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.95)',
+                borderRadius: 24,
+                padding: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 6,
+                elevation: 4
+              })}
+            >
               <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: PRIMARY_GREEN, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                <Scan size={24} color="#fff" />
+                <Keyboard size={24} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>Đưa mã vạch vào khung</Text>
-                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>Hỗ trợ mã 1D/2D, QR</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>Không có mã vạch?</Text>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>Tìm bằng Tên hoặc Mã số nhanh (PLU)</Text>
               </View>
               <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
                 <ChevronRight size={18} color="#9CA3AF" />
               </View>
-            </View>
+            </Pressable>
           </View>
 
         </SafeAreaView>
       </View>
+
+      {/* Manual Search Modal (Slide up) */}
+      <Modal
+        visible={showManualModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowManualModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <View style={{ 
+            backgroundColor: '#fff', 
+            borderTopLeftRadius: 32, 
+            borderTopRightRadius: 32, 
+            paddingTop: 24, 
+            paddingHorizontal: 20, 
+            paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+            maxHeight: '80%'
+          }}>
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <View>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#1E293B' }}>Tìm kiếm thủ công</Text>
+                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Dành cho sản phẩm không có mã vạch</Text>
+              </View>
+              <Pressable 
+                onPress={() => setShowManualModal(false)} 
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={18} color="#64748B" />
+              </Pressable>
+            </View>
+
+            {/* Search Input */}
+            <View style={{ 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              backgroundColor: '#F8FAFC', 
+              borderWidth: 1, 
+              borderColor: '#E2E8F0', 
+              borderRadius: 20, 
+              paddingHorizontal: 16, 
+              paddingVertical: 12,
+              marginBottom: 20
+            }}>
+              <Search size={18} color="#64748B" />
+              <TextInput
+                value={manualInput}
+                onChangeText={setManualInput}
+                placeholder="Nhập tên sản phẩm hoặc mã PLU..."
+                placeholderTextColor="#94A3B8"
+                returnKeyType="search"
+                onSubmitEditing={() => handleManualSearch(manualInput)}
+                autoFocus
+                style={{ flex: 1, marginLeft: 10, fontSize: 15, color: '#0F172A', padding: 0 }}
+              />
+              {manualInput.length > 0 && (
+                <Pressable onPress={() => setManualInput('')}>
+                  <X size={16} color="#94A3B8" />
+                </Pressable>
+              )}
+            </View>
+
+            {/* Quick Select Grid (PLU Vietnamese Fresh Goods) */}
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 12, marginLeft: 4 }}>
+              🏷️ Chọn nhanh sản phẩm tươi sống phổ biến:
+            </Text>
+            
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                {POPULAR_FRESH_ITEMS.map((item, idx) => (
+                  <Pressable
+                    key={idx}
+                    onPress={() => handleManualSearch(item.name)}
+                    style={({ pressed }) => ({
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      borderRadius: 16,
+                      backgroundColor: pressed ? '#E6FDF5' : '#F1F5F9',
+                      borderWidth: 1,
+                      borderColor: pressed ? PRIMARY_GREEN : '#E2E8F0',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 8
+                    })}
+                  >
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: PRIMARY_GREEN }} />
+                    <View>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>{item.name}</Text>
+                      <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 1 }}>{item.code} • {item.category}</Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Action Button */}
+              <Pressable
+                onPress={() => handleManualSearch(manualInput)}
+                disabled={!manualInput.trim()}
+                style={({ pressed }) => ({
+                  marginTop: 24,
+                  backgroundColor: manualInput.trim() ? PRIMARY_GREEN : '#E2E8F0',
+                  paddingVertical: 16,
+                  borderRadius: 24,
+                  alignItems: 'center',
+                  opacity: pressed ? 0.9 : 1
+                })}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Tìm kiếm ngay</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

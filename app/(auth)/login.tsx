@@ -55,10 +55,24 @@ export default function LoginScreen() {
       setTokens(response.token, response.refreshToken);
       setUser(response.user);
     } catch (e) {
-      const message =
-        e instanceof Error
-          ? e.message
-          : 'Không thể đăng nhập. Vui lòng thử lại.';
+      const message = e instanceof Error ? e.message : 'Không thể đăng nhập. Vui lòng thử lại.';
+      
+      // Nếu tài khoản chưa xác nhận email, điều hướng tới màn verify
+      if (message.includes('PENDING_VERIFY')) {
+        Alert.alert(
+          'Chưa xác nhận email',
+          'Tài khoản của bạn chưa được xác nhận email. Bạn có muốn nhận lại mã xác nhận không?',
+          [
+            { text: 'Để sau' },
+            {
+              text: 'Gửi lại mã',
+              onPress: () => router.push({ pathname: '/(auth)/verify-email', params: { email: email.trim() } }),
+            },
+          ]
+        );
+        return;
+      }
+      
       Alert.alert('Đăng nhập thất bại', message, [{ text: 'Đóng' }]);
     } finally {
       setLoading(false);
@@ -119,12 +133,21 @@ export default function LoginScreen() {
             }
           />
 
+          {/* Quên mật khẩu */}
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/forgot-password')}
+            activeOpacity={0.7}
+            style={{ alignSelf: 'flex-end', marginTop: 6, marginBottom: 4 }}
+          >
+            <Text className="text-primary font-inter" style={{ fontSize: 13 }}>Quên mật khẩu?</Text>
+          </TouchableOpacity>
+
           <Button 
             label="Đăng nhập" 
             onPress={handleLogin}
             loading={loading}
             disabled={isSubmitDisabled}
-            className="mt-6 w-full"
+            className="mt-4 w-full"
             hapticVariant="medium"
           />
 

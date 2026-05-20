@@ -3,24 +3,16 @@ import { Animated, RefreshControl, Text, useWindowDimensions, View, Pressable } 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
-<<<<<<< HEAD:app/(customer)/(tabs)/index.tsx
+import { Ticket } from 'lucide-react-native';
+import { FlashSaleTimer } from '../../../src/components/customer/FlashSaleTimer';
 import HomeHeader from '../../../src/components/customer/home/HomeHeader';
 import SearchBar from '../../../src/components/customer/home/SearchBar';
 import BannerCarousel from '../../../src/components/customer/home/BannerCarousel';
 import AiNudge from '../../../src/components/customer/home/AiNudge';
+import PersonalisedRecs from '../../../src/components/customer/home/PersonalisedRecs';
 import DealsRow from '../../../src/components/customer/home/DealsRow';
 import Button from '../../../src/components/ui/Button';
 import Skeleton from '../../../src/components/ui/Skeleton';
-=======
-import HomeHeader from '../../src/components/customer/home/HomeHeader';
-import SearchBar from '../../src/components/customer/home/SearchBar';
-import BannerCarousel from '../../src/components/customer/home/BannerCarousel';
-import AiNudge from '../../src/components/customer/home/AiNudge';
-import PersonalisedRecs from '../../src/components/customer/home/PersonalisedRecs';
-import DealsRow from '../../src/components/customer/home/DealsRow';
-import Button from '../../src/components/ui/Button';
-import Skeleton from '../../src/components/ui/Skeleton';
->>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e:app/(customer)/index.tsx
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { productApi } from '../../../src/api/products';
 import { type Product } from '../../../src/types/product';
@@ -28,7 +20,7 @@ import { type Product } from '../../../src/types/product';
 function ProductTile({ item, onPress }: { item: Product; onPress: () => void }) {
   const discountPercent = item.discountPercent ?? 0;
   const hasDiscount = discountPercent > 0;
-  const stockRatio = Math.min(item.stock / 50, 1); // Mock max stock of 50 for the progress bar
+  const stockRatio = Math.min(item.stock / 50, 1);
 
   return (
     <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' }}>
@@ -47,7 +39,6 @@ function ProductTile({ item, onPress }: { item: Product; onPress: () => void }) 
         <Text style={{ fontSize: 11, fontFamily: 'Inter-Regular', color: '#64748B', marginTop: 2 }} numberOfLines={1}>
           {item.category}
         </Text>
-        
         <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
           <Text style={{ fontSize: 14, fontFamily: 'Outfit-Bold', color: '#0F172A' }}>{item.price.toLocaleString('vi-VN')}₫</Text>
           {hasDiscount ? (
@@ -56,14 +47,12 @@ function ProductTile({ item, onPress }: { item: Product; onPress: () => void }) 
             </Text>
           ) : null}
         </View>
-
         <View style={{ marginTop: 8 }}>
           <Text style={{ fontSize: 11, fontFamily: 'Inter-Medium', color: '#334155' }}>Còn {item.stock}</Text>
           <View style={{ width: '100%', height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, marginTop: 4 }}>
             <View style={{ width: `${stockRatio * 100}%`, height: '100%', backgroundColor: '#16A34A', borderRadius: 2 }} />
           </View>
         </View>
-
         <Pressable 
           onPress={onPress} 
           style={{ marginTop: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#16A34A', alignItems: 'center' }}
@@ -90,13 +79,10 @@ export default function CustomerHome() {
     useCallback(() => {
       anim.setValue(0);
       Animated.timing(anim, { toValue: 1, duration: 260, useNativeDriver: true }).start();
-      
-      // Auto refresh data when returning to home
       queryClient.invalidateQueries({ queryKey: ['home-daily-products'] });
       queryClient.invalidateQueries({ queryKey: ['home-deals'] });
       queryClient.invalidateQueries({ queryKey: ['home-ai-nudge'] });
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-
       return () => {};
     }, [anim, queryClient])
   );
@@ -128,7 +114,6 @@ export default function CustomerHome() {
   });
 
   const dailyProducts = dailyQuery.data?.pages.flat() ?? [];
-
   const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
   const opacity = anim;
 
@@ -139,6 +124,24 @@ export default function CustomerHome() {
       <AiNudge />
       <PersonalisedRecs />
       <DealsRow />
+      
+      {/* Vouchers Entry */}
+      <Pressable 
+        onPress={() => router.push('/(customer)/vouchers' as never)}
+        className="mx-6 mb-6 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex-row items-center p-4"
+      >
+        <View className="w-12 h-12 bg-primary/10 rounded-2xl items-center justify-center mr-4">
+          <Ticket size={24} color="#16A34A" />
+        </View>
+        <View className="flex-1">
+          <Text className="text-base font-outfit-bold text-slate-900">Mã giảm giá & Ưu đãi</Text>
+          <Text className="text-xs font-inter text-slate-500">Lưu ngay mã giảm giá đến 50% hôm nay</Text>
+        </View>
+        <View className="bg-primary/5 px-3 py-1.5 rounded-full">
+          <Text className="text-[10px] font-inter-bold text-primary uppercase">Nhận ngay</Text>
+        </View>
+      </Pressable>
+
       <View className="px-6 pb-3 flex-row items-center justify-between">
         <Text className="text-base font-outfit-bold text-text">Sản phẩm hằng ngày</Text>
         <View className="px-3 py-1 rounded-full border border-border bg-surface">
@@ -150,7 +153,6 @@ export default function CustomerHome() {
 
   return (
     <View className="flex-1 bg-background">
-      {/* Decorative light green background top section */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 240, backgroundColor: '#EBF5EC', borderBottomLeftRadius: 40, borderBottomRightRadius: 40 }} />
       <HomeHeader />
       <Animated.View style={{ flex: 1, opacity, transform: [{ translateY }] }}>

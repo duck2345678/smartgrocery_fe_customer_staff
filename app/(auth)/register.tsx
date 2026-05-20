@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '../../src/store/authStore';
 import { authApi } from '../../src/api/auth';
 import Input from '../../src/components/ui/Input';
 import Button from '../../src/components/ui/Button';
@@ -42,7 +41,6 @@ const isRegisterFormValid = (input: { fullName: string; email: string; password:
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { setTokens, setUser } = useAuthStore();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -79,13 +77,10 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       const response = await authApi.register(fullName.trim(), email.trim(), password);
-      if (!response || !response.token || !response.user) {
-        Alert.alert('Đăng ký thất bại', 'Phản hồi từ máy chủ không hợp lệ.', [{ text: 'Đóng' }]);
-        return;
+      if (response.requiresEmailVerification) {
+        // Chuyển sang màn xác nhận OTP với email đã đăng ký
+        router.push({ pathname: '/(auth)/verify-email', params: { email: email.trim() } });
       }
-
-      setTokens(response.token, response.refreshToken);
-      setUser(response.user);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Không thể đăng ký. Vui lòng thử lại.';
       Alert.alert('Đăng ký thất bại', message, [{ text: 'Đóng' }]);

@@ -13,6 +13,13 @@ type AuthResponse = {
   user: UserDto;
 };
 
+export type RegistrationPendingResponse = {
+  email: string;
+  requiresEmailVerification: boolean;
+  expiresInSeconds: number;
+  message: string;
+};
+
 const normalizeUser = (value: unknown): UserDto => {
   const v = value as Record<string, unknown>;
   const role = (v.role ?? v.roleName ?? v.role_code ?? v.roleCode) as unknown;
@@ -22,9 +29,7 @@ const normalizeUser = (value: unknown): UserDto => {
     ? 'ADMIN'
     : roleUpper.includes('STAFF')
       ? 'STAFF'
-      : roleUpper.includes('CUSTOMER')
-        ? 'CUSTOMER'
-        : 'CUSTOMER';
+      : 'CUSTOMER';
 
   return {
     id: Number(v.id ?? 0),
@@ -49,17 +54,12 @@ export const authApi = {
   normalizeAuthResponse,
 
   login: async (email: string, password: string): Promise<AuthResponse> => {
-    const response = await apiClient.post<RawAuthResponse>('/auth/login', {
-      email,
-      password,
-    });
+    const response = await apiClient.post<RawAuthResponse>('/auth/login', { email, password });
     return normalizeAuthResponse(response.data);
   },
-  
+
   refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
-    const response = await apiClient.post<RawAuthResponse>('/auth/refresh', {
-      refreshToken,
-    });
+    const response = await apiClient.post<RawAuthResponse>('/auth/refresh', { refreshToken });
     return normalizeAuthResponse(response.data);
   },
 
@@ -77,12 +77,34 @@ export const authApi = {
     await apiClient.post('/auth/logout', { refreshToken });
   },
 
-  register: async (fullName: string, email: string, password: string): Promise<AuthResponse> => {
-    const response = await apiClient.post<RawAuthResponse>('/auth/register', {
+  // Register → returns pending verification (không cấp JWT ngay)
+  register: async (fullName: string, email: string, password: string): Promise<RegistrationPendingResponse> => {
+    const response = await apiClient.post<RegistrationPendingResponse>('/auth/register', {
       fullName,
       email,
       password,
     });
+    return response.data;
+  },
+
+  // Xác nhận OTP sau đăng ký → cấp JWT
+  verifyEmail: async (email: string, otp: string): Promise<AuthResponse> => {
+    const response = await apiClient.post<RawAuthResponse>('/auth/verify-email', { email, otp });
     return normalizeAuthResponse(response.data);
+  },
+
+  // Gửi lại mã OTP xác nhận email
+  resendEmailVerification: async (email: string): Promise<void> => {
+    await apiClient.post('/auth/resend-email-verification', { email });
+  },
+
+  // Quên mật khẩu: gửi OTP reset về email
+  forgotPassword: async (email: string): Promise<void> => {
+    await apiClient.post('/auth/forgot-password', { email });
+  },
+
+  // Đặt lại mật khẩu bằng OTP
+  resetPassword: async (email: string, otp: string, newPassword: string): Promise<void> => {
+    await apiClient.post('/auth/reset-password', { email, otp, newPassword });
   },
 };

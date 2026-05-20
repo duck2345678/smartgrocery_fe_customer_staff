@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import { ScanLine, Search } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -131,6 +132,7 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 
 /* ── Product row (matches reference design) ────────────── */
 function ProductRow({ product, onPress }: { product: Product; onPress: () => void }) {
+  const [imgFailed, setImgFailed] = useState(false);
   const isLowStock = typeof product.stock === 'number' && product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD;
   const isOutOfStock = typeof product.stock === 'number' && product.stock <= 0;
 
@@ -157,11 +159,22 @@ function ProductRow({ product, onPress }: { product: Product; onPress: () => voi
               marginRight: 12,
             }}
           >
-            <Image
-              source={{ uri: product.imageUrl }}
-              style={{ width: 64, height: 64 }}
-              resizeMode="cover"
-            />
+            {(!product.imageUrl || imgFailed) ? (
+              <View className="w-full h-full bg-[#10B981] items-center justify-center">
+                <Text className="text-white text-base font-outfit-bold">
+                  {(product.name || 'S').trim().charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            ) : (
+              <Image
+                source={{ uri: product.imageUrl }}
+                style={{ width: 64, height: 64 }}
+                contentFit="cover"
+                cachePolicy="disk"
+                transition={200}
+                onError={() => setImgFailed(true)}
+              />
+            )}
           </View>
 
           {/* Name + category/unit */}

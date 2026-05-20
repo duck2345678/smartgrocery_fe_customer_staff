@@ -7,6 +7,8 @@ import { useAddresses } from '../../../hooks/useAddresses';
 import { useAddressStore } from '../../../store/addressStore';
 import Skeleton from '../../ui/Skeleton';
 import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+import { notificationsApi } from '../../../api/notifications';
 
 
 export default function HomeHeader() {
@@ -15,6 +17,15 @@ export default function HomeHeader() {
   const { addresses, isLoading, isError, refetch } = useAddresses(userId);
   const selectedAddressId = useAddressStore((s) => s.selectedAddressId);
   const setSelectedAddressId = useAddressStore((s) => s.setSelectedAddressId);
+
+  // Unread notifications count query
+  const notificationsQuery = useQuery({
+    queryKey: ['notifications'],
+    queryFn: notificationsApi.list,
+    refetchInterval: 15000,
+    enabled: !!userId,
+  });
+  const unreadCount = notificationsQuery.data?.filter(n => !n.isRead).length || 0;
 
   const [open, setOpen] = useState(false);
 
@@ -52,11 +63,18 @@ export default function HomeHeader() {
           {/* Right: notification + cart + orders */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Pressable
-              onPress={() => Alert.alert('Thông báo', 'Tính năng đang được phát triển.', [{ text: 'Đóng' }])}
-              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
+              onPress={() => router.push('/(customer)/notifications' as any)}
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1, position: 'relative' }}
               hitSlop={8}
             >
               <Bell size={20} color="#0F172A" />
+              {unreadCount > 0 && (
+                <View className="absolute top-1.5 right-1.5 bg-red-500 min-w-[14px] h-[14px] rounded-full items-center justify-center px-1 border border-white">
+                  <Text className="text-[8px] font-inter-bold text-white text-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              )}
             </Pressable>
 
 

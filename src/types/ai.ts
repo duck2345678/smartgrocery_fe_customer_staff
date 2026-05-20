@@ -59,18 +59,14 @@ export type AINudge = {
   confidenceScore: number;
 };
 
-<<<<<<< HEAD
-export type AiChatRequest = {
-  message: string;
-  sessionId?: number | null;
-};
+
 
 export type ProposedItem = {
   productId: number;
   variantId?: number;
   quantity: number;
   note?: string;
-  reason?: string; // Explainable AI: why this product was suggested
+  reason?: string;
   allergyWarning?: string;
   nutritionFacts?: {
     calories?: number;
@@ -79,7 +75,7 @@ export type ProposedItem = {
   };
   dayNo?: number;
   mealSlot?: string;
-  substitutionFor?: number; // If this is a replacement for another product
+  substitutionFor?: number;
 };
 
 export type MealPlanGenerateResponse = {
@@ -96,38 +92,12 @@ export type MealPlanGenerateResponse = {
   proposedItems?: ProposedItem[];
 };
 
-export type AiChatResponse = {
-  sessionId: number;
-  aiMessageId?: string;
-  reply: string;
-  recommendedProductIds: number[];
-  proposedItems?: ProposedItem[];
-  removeVariantIds?: number[];
-  removeReasons?: Record<number, string>;
-  rewardVoucherId: number | null;
-  explanations?: Record<number, string>; // productId -> explanation mapping
-  trustScore?: number; // 0-100: confidence in recommendations (for transparency)
-  expectationPrompt?: string;
-};
 
-export type ChatMessageFeedback = {
-  chatMessageId: number;
-  messageId: string;
-  feedbackType: 'HELPFUL' | 'NOT_HELPFUL' | 'CONFUSING';
-  reason?: string;
-  createdAt: string;
-};
 
-export type ChatHistoryItem = {
-  type: 'session' | 'message';
-  sessionId?: number;
-  title?: string;
-  id?: number;
-  role?: string;
-  content?: string;
-  createdAt?: string;
-};
-=======
+
+
+
+
 export type PersonalisedRec = {
   id: number;
   variantId: number;
@@ -141,9 +111,4 @@ export type PersonalisedRec = {
   reasonText: string;
 };
 
-export type ChatSession = {
-  id: number;
-  title: string;
-  createdAt: string;
-};
->>>>>>> f26a6e062fc801d8eee52e3422eb308860d35c4e
+
