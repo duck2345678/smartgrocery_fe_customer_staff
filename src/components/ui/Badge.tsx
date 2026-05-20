@@ -23,18 +23,18 @@ const Badge: React.FC<BadgeProps> = ({
   textClassName
 }) => {
   const variantStyles = {
-    success: 'bg-green-100 border-green-200',
-    warning: 'bg-amber-100 border-amber-200',
-    danger: 'bg-red-100 border-red-200',
-    info: 'bg-blue-100 border-blue-200',
-    neutral: 'bg-slate-100 border-slate-200',
+    success: 'bg-emerald-50 border-emerald-200',
+    warning: 'bg-amber-50 border-amber-200',
+    danger: 'bg-rose-50 border-rose-200',
+    info: 'bg-sky-50 border-sky-200',
+    neutral: 'bg-slate-50 border-slate-200',
   };
 
   const textStyles = {
-    success: 'text-green-700',
+    success: 'text-emerald-700',
     warning: 'text-amber-700',
-    danger: 'text-red-700',
-    info: 'text-blue-700',
+    danger: 'text-rose-700',
+    info: 'text-sky-700',
     neutral: 'text-slate-700',
   };
 

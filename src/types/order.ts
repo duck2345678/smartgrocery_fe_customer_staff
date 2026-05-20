@@ -1,0 +1,60 @@
+export type OrderStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED'
+  | string;
+
+export type OrderItem = {
+  id: number;
+  variantId: number;
+  productName: string;
+  variantName: string;
+  sku: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+  discountAmount: number;
+  totalPrice: number;
+  imageUrl?: string;
+};
+
+export type Order = {
+  id: number;
+  userId: number;
+  addressId: number;
+  addressLine?: string;
+  orderNumber: string;
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  shippingFee: number;
+  totalAmount: number;
+  status: OrderStatus;
+  paymentMethod: string;
+  paymentStatus: string;
+  customerNote: string | null;
+  items: OrderItem[];
+  aiGenerated?: boolean;
+  aiListCode?: string | null;
+  aiListName?: string | null;
+  rewardVoucher?: Voucher | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Voucher = {
+  id: number;
+  voucherCode: string;
+  description: string | null;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT' | string;
+  discountValue: number;
+  minOrderAmount: number | null;
+  maxDiscountAmount: number | null;
+  validUntil: string | null;
+  hidden?: boolean;
+  revealTrigger?: string;
+  assignedUserId?: number | null;
+  unlockedByOrderId?: number | null;
+};

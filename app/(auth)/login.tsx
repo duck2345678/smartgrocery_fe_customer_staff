@@ -1,52 +1,79 @@
-import React, { useState } from 'react';
-import { View, Text, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { authApi } from '../../src/api/auth';
 import Input from '../../src/components/ui/Input';
 import Button from '../../src/components/ui/Button';
-import { Mail, Lock } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import BrandMark from '../../src/components/ui/BrandMark';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { getEmailError, getPasswordError, isLoginFormValid } from '../../src/utils/loginValidation';
 
 export default function LoginScreen() {
-  const { setTokens, setUser } = useAuthStore();
+  const { setTokens, setUser, authNotice, setAuthNotice } = useAuthStore();
+  const authNoticeShown = useRef(false);
   const router = useRouter();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [touched, setTouched] = useState({ email: false, password: false });
+  const [focused, setFocused] = useState({ email: false, password: false });
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-  const validate = () => {
-    const newErrors: { email?: string; password?: string } = {};
-    if (!email) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Invalid email format';
-    
-    if (!password) newErrors.password = 'Password is required';
-    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const emailError = useMemo(
+    () => getEmailError({ email, touched: touched.email, focused: focused.email }),
+    [email, focused.email, touched.email]
+  );
+  const passwordError = useMemo(
+    () => getPasswordError({ password, touched: touched.password, focused: focused.password }),
+    [focused.password, password, touched.password]
+  );
+
+  const isFormValid = useMemo(() => isLoginFormValid({ email, password }), [email, password]);
+  const isSubmitDisabled = loading || !isFormValid;
+
+  useEffect(() => {
+    if (!authNotice || authNoticeShown.current) return;
+    authNoticeShown.current = true;
+    Alert.alert('Đăng xuất khỏi thiết bị khác', authNotice, [{ text: 'Đóng', onPress: () => setAuthNotice(null) }]);
+  }, [authNotice, setAuthNotice]);
 
   const handleLogin = async () => {
-    if (!validate()) return;
+    setTouched({ email: true, password: true });
+    if (!isLoginFormValid({ email, password })) return;
     
     setLoading(true);
     try {
       const response = await authApi.login(email, password);
       
-      // Save to store
+      if (!response || !response.token || !response.user) {
+        Alert.alert('Đăng nhập thất bại', 'Phản hồi từ máy chủ không hợp lệ.', [{ text: 'Đóng' }]);
+        return;
+      }
+
       setTokens(response.token, response.refreshToken);
       setUser(response.user);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Không thể đăng nhập. Vui lòng thử lại.';
       
-      // Navigation is handled by Auth Guard in root layout
-      // so we don't necessarily need to push here
-    } catch (error: any) {
-      console.error('Login error:', error);
-      Alert.alert(
-        'Login Failed',
-        error.response?.data?.message || 'Invalid email or password. Please try again.'
-      );
+      // Nếu tài khoản chưa xác nhận email, điều hướng tới màn verify
+      if (message.includes('PENDING_VERIFY')) {
+        Alert.alert(
+          'Chưa xác nhận email',
+          'Tài khoản của bạn chưa được xác nhận email. Bạn có muốn nhận lại mã xác nhận không?',
+          [
+            { text: 'Để sau' },
+            {
+              text: 'Gửi lại mã',
+              onPress: () => router.push({ pathname: '/(auth)/verify-email', params: { email: email.trim() } }),
+            },
+          ]
+        );
+        return;
+      }
+      
+      Alert.alert('Đăng nhập thất bại', message, [{ text: 'Đóng' }]);
     } finally {
       setLoading(false);
     }
@@ -57,11 +84,12 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-background"
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <View className="flex-1 justify-center p-6 mt-12">
-          <View className="mb-10 items-center">
-            <Text className="text-4xl font-outfit-bold text-primary">SmartGrocery</Text>
-            <Text className="text-slate-500 font-inter mt-2">Đăng nhập để bắt đầu phiên làm việc</Text>
+          <View className="mb-12 items-center">
+            <BrandMark size={300} />
+            <Text className="text-4xl font-outfit-bold text-primary mt-2">SmartGrocery</Text>
+            <Text className="text-slate-500 font-inter mt-3">Chào mừng bạn quay trở lại!</Text>
           </View>
 
           <Input 
@@ -72,7 +100,12 @@ export default function LoginScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
             icon={<Mail size={20} color="#94A3B8" />}
-            error={errors.email}
+            error={emailError}
+            onFocus={() => setFocused((s) => ({ ...s, email: true }))}
+            onBlur={() => {
+              setFocused((s) => ({ ...s, email: false }));
+              setTouched((s) => ({ ...s, email: true }));
+            }}
           />
 
           <Input 
@@ -80,33 +113,50 @@ export default function LoginScreen() {
             placeholder="••••••••"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            secureTextEntry={!isPasswordVisible}
             icon={<Lock size={20} color="#94A3B8" />}
-            error={errors.password}
+            error={passwordError}
+            onFocus={() => setFocused((s) => ({ ...s, password: true }))}
+            onBlur={() => {
+              setFocused((s) => ({ ...s, password: false }));
+              setTouched((s) => ({ ...s, password: true }));
+            }}
+            rightElement={
+              <TouchableOpacity
+                onPress={() => setIsPasswordVisible((v) => !v)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}
+              >
+                {isPasswordVisible ? <EyeOff size={20} color="#64748B" /> : <Eye size={20} color="#64748B" />}
+              </TouchableOpacity>
+            }
           />
+
+          {/* Quên mật khẩu */}
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/forgot-password')}
+            activeOpacity={0.7}
+            style={{ alignSelf: 'flex-end', marginTop: 6, marginBottom: 4 }}
+          >
+            <Text className="text-primary font-inter" style={{ fontSize: 13 }}>Quên mật khẩu?</Text>
+          </TouchableOpacity>
 
           <Button 
             label="Đăng nhập" 
             onPress={handleLogin}
             loading={loading}
-            className="mt-6"
+            disabled={isSubmitDisabled}
+            className="mt-4 w-full"
             hapticVariant="medium"
           />
 
           <View className="flex-row justify-center mt-6">
             <Text className="text-slate-500 font-inter">Chưa có tài khoản? </Text>
-            <Text className="text-primary font-inter-bold">Đăng ký ngay</Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')} activeOpacity={0.7}>
+              <Text className="text-primary font-inter-bold">Đăng ký ngay</Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Quick link to Design System during dev */}
-          <Button 
-            label="Showcase Design System" 
-            variant="ghost" 
-            onPress={() => router.push('/(auth)/design-system' as any)}
-            className="mt-10"
-            textClassName="text-slate-400 text-sm"
-            hapticVariant="none"
-          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

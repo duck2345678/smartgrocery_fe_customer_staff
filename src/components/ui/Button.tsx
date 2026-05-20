@@ -1,6 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, TouchableOpacityProps, View } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { TouchableOpacity, Text, ActivityIndicator, TouchableOpacityProps, View, type GestureResponderEvent } from 'react-native';
+import { safeImpact, safeNotification, ImpactFeedbackStyle, NotificationFeedbackType } from '../../utils/safeHaptics';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -36,23 +36,22 @@ const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const handlePress = (event: any) => {
+  const handlePress = (event: GestureResponderEvent) => {
     if (loading || disabled) return;
 
-    // Trigger Haptics sparingly as per user's "bulletproof" advice
     if (hapticVariant !== 'none') {
       switch (hapticVariant) {
         case 'light':
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          void safeImpact(ImpactFeedbackStyle.Light);
           break;
         case 'medium':
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          void safeImpact(ImpactFeedbackStyle.Medium);
           break;
         case 'success':
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          void safeNotification(NotificationFeedbackType.Success);
           break;
         case 'error':
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          void safeNotification(NotificationFeedbackType.Error);
           break;
       }
     }
@@ -61,8 +60,8 @@ const Button: React.FC<ButtonProps> = ({
   };
 
   const variantStyles = {
-    solid: 'bg-primary',
-    outline: 'border-2 border-primary bg-transparent',
+    solid: 'bg-primary border border-primary',
+    outline: 'border border-primary bg-surface',
     ghost: 'bg-transparent',
   };
 
@@ -78,7 +77,7 @@ const Button: React.FC<ButtonProps> = ({
       onPress={handlePress}
       disabled={disabled || loading}
       className={cn(
-        'px-6 py-4 rounded-xl flex-row justify-center items-center',
+        'px-5 py-3.5 rounded-3xl flex-row justify-center items-center',
         variantStyles[variant],
         (disabled || loading) && 'opacity-50',
         className
@@ -86,14 +85,17 @@ const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'solid' ? 'white' : 'currentColor'} />
+        <ActivityIndicator color={variant === 'solid' ? '#ffffff' : undefined} />
       ) : (
         <>
           {icon && <View className={label ? 'mr-2' : ''}>{icon}</View>}
           {label ? (
             <Text 
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
               className={cn(
-                'text-lg font-outfit-bold text-center',
+                'text-base font-outfit-bold text-center',
                 textVariantStyles[variant],
                 textClassName
               )}

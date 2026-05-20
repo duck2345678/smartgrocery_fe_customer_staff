@@ -1,131 +1,341 @@
-import React, { useMemo } from 'react';
-import { View, Text, SafeAreaView } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { useAuthStore } from '../../src/store/authStore';
-import { useSLA } from './_layout';
-import { MOCK_ASSIGNMENTS } from '../../src/utils/mockFulfillmentData';
-import { AssignmentStatus, OrderAssignment } from '../../src/types/fulfillment';
-import OrderCard from '../../src/components/staff/OrderCard';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
+import { Package, ClipboardList, Clock, User, TrendingUp, BookOpen, CalendarDays, ChevronRight, DollarSign, ShieldCheck, ShieldAlert, Bell } from 'lucide-react-native';
 import Card from '../../src/components/ui/Card';
-import Button from '../../src/components/ui/Button';
-import { LogOut, Bell, AlertTriangle, Clock as ClockIcon, ClipboardList } from 'lucide-react-native';
-import { clsx } from 'clsx';
+import { useAuthStore } from '../../src/store/authStore';
+import { staffOrdersApi } from '../../src/api/staffOrders';
+import { getTodayStatus, getMonthlyStats } from '../../src/api/staffAttendance';
+import { useStaffHomeStore } from '../../src/store/staffHomeStore';
+import { formatVND, getCurrentMonthPayslip } from '../../src/utils/staffPayslip';
+import { notificationsApi } from '../../src/api/notifications';
 
-export default function StaffDashboard() {
-  const { user, logout } = useAuthStore();
-  const { now } = useSLA();
+export default function StaffHomeScreen() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const selectedDateIso = useStaffHomeStore((s) => s.selectedDateIso);
 
-  // Helper to calculate remaining SLA minutes
-  const getRemainingMinutes = (assignedAt: string) => {
-    const assignedTime = new Date(assignedAt).getTime();
-    const expiryTime = assignedTime + 30 * 60 * 1000; // 30 min SLA
-    return Math.max(0, Math.floor((expiryTime - now) / 60000));
-  };
+  const myActiveQuery = useQuery({
+    queryKey: ['staff-order-my-active'],
+    queryFn: () => staffOrdersApi.getMyActive(),
+    staleTime: 5000,
+  });
 
-  // Memoized stats to prevent recalculation on every tick
-  const stats = useMemo(() => {
-    const total = MOCK_ASSIGNMENTS.length;
-    const urgent = MOCK_ASSIGNMENTS.filter(o => getRemainingMinutes(o.assignedAt) <= 5).length;
-    const issues = MOCK_ASSIGNMENTS.filter(o => o.status === AssignmentStatus.CANCELLED).length;
-    return { total, urgent, issues };
-  }, [now]);
+  const todayIso = useMemo(() => toIsoLocal(new Date()), []);
 
-  const renderItem = ({ item }: { item: OrderAssignment }) => (
-    <OrderCard 
-      order={item} 
-      remainingMinutes={getRemainingMinutes(item.assignedAt)}
-      onAction={(ord) => console.log('Action on order:', ord.id)}
-    />
+  const performanceDailyQuery = useQuery({
+    queryKey: ['staff-performance-daily', todayIso],
+    queryFn: () => staffOrdersApi.getPerformanceDaily(todayIso),
+    staleTime: 30 * 1000,
+  });
+
+  const performanceSummaryQuery = useQuery({
+    queryKey: ['staff-performance-summary', todayIso],
+    queryFn: () => staffOrdersApi.getPerformanceSummary(todayIso),
+    staleTime: 30 * 1000,
+  });
+
+  const attendanceQuery = useQuery({
+    queryKey: ['staff-attendance-today'],
+    queryFn: () => getTodayStatus(),
+  });
+
+  const notificationsQuery = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationsApi.list(),
+    refetchInterval: 15000,
+    enabled: !!user?.id,
+  });
+  const unreadCount = notificationsQuery.data?.filter(n => !n.isRead).length || 0;
+
+  const now = useMemo(() => new Date(), []);
+  const currentYear = useMemo(() => now.getFullYear(), [now]);
+  const currentMonth = useMemo(() => now.getMonth() + 1, [now]);
+
+  const monthlyStatsQuery = useQuery({
+    queryKey: ['staff-attendance-stats', currentYear, currentMonth],
+    queryFn: () => getMonthlyStats(currentYear, currentMonth),
+    enabled: !!user?.id,
+  });
+
+  const salaryValue = useMemo(() => {
+    if (monthlyStatsQuery.isLoading) return '...';
+    if (monthlyStatsQuery.isError || !monthlyStatsQuery.data) return '—';
+    
+    const stats = monthlyStatsQuery.data;
+    const HOURLY_RATE = 30000;
+    const grossPay = (stats.totalWorkedMinutes || 0) / 60 * HOURLY_RATE;
+    const deduction = (stats.lateCheckIns || 0) * (8 * HOURLY_RATE * 0.5); // 120k penalty per late day
+    const netPay = Math.max(0, grossPay - deduction);
+    return formatVND(netPay);
+  }, [monthlyStatsQuery.isLoading, monthlyStatsQuery.isError, monthlyStatsQuery.data]);
+
+  const refreshKpis = useCallback(() => {
+    void myActiveQuery.refetch();
+    void performanceDailyQuery.refetch();
+    void performanceSummaryQuery.refetch();
+    void attendanceQuery.refetch();
+    void notificationsQuery.refetch();
+    void monthlyStatsQuery.refetch();
+  }, [myActiveQuery, performanceDailyQuery, performanceSummaryQuery, attendanceQuery, notificationsQuery, monthlyStatsQuery]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshKpis();
+    }, [refreshKpis])
   );
+
+  const isClockedIn = useMemo(() => {
+    if (!attendanceQuery.data) return false;
+    const activeRecords = attendanceQuery.data.records.filter(r => r.checkInAt && !r.checkOutAt);
+    if (activeRecords.length === 0) return false;
+
+    // Check if any active record is still within its shift time
+    const now = new Date();
+    const currentTimeVal = now.getHours() * 60 + now.getMinutes();
+
+    return activeRecords.some(r => {
+      let endTimeVal = 0;
+      if (r.shiftType === 'S') endTimeVal = 14 * 60 + 30; // 14:30
+      else if (r.shiftType === 'C') endTimeVal = 22 * 60 + 30; // 22:30
+      else if (r.shiftType === 'G') {
+        if (r.blockNumber === 1) endTimeVal = 10 * 60 + 30;
+        else if (r.blockNumber === 2) endTimeVal = 14 * 60 + 30;
+        else if (r.blockNumber === 3) endTimeVal = 18 * 60 + 30;
+        else if (r.blockNumber === 4) endTimeVal = 22 * 60 + 30;
+      }
+      return currentTimeVal < endTimeVal;
+    });
+  }, [attendanceQuery.data]);
+
+  const performanceDailyCount = performanceDailyQuery.data?.completedCount ?? null;
+  const performanceWeekCount = performanceSummaryQuery.data?.weekCompletedCount ?? null;
+  const performanceMonthCount = performanceSummaryQuery.data?.monthCompletedCount ?? null;
+
+  const todayLabel = useMemo(() => new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' }), []);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="p-6 pb-2 flex-row justify-between items-center">
-        <View>
-          <Text className="text-slate-500 font-inter">Cửa hàng: Quận 1, TP.HCM</Text>
-          <Text className="text-2xl font-outfit-bold text-slate-900">Chào, {user?.fullName}</Text>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+        <View className="flex-row items-start justify-between">
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text className="text-xs font-inter text-muted">{todayLabel}</Text>
+            <Text className="mt-1 text-2xl font-outfit-bold text-text" numberOfLines={1}>
+              Xin chào, {user?.fullName ?? 'nhân viên'}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => router.push('/(staff)/notifications' as any)}
+            style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#EAF8F0', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+            hitSlop={8}
+          >
+            <Bell size={22} color="#16A34A" />
+            {unreadCount > 0 && (
+              <View className="absolute top-1 right-1 bg-red-500 min-w-[16px] h-[16px] rounded-full items-center justify-center px-1 border border-white">
+                <Text className="text-[9px] font-inter-bold text-white text-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </Pressable>
         </View>
-        <Button 
-          label="" 
-          variant="ghost" 
-          onPress={() => logout()} 
-          icon={<LogOut size={24} color="#64748B" />} 
-        />
-      </View>
 
-      <View className="px-6 py-4 flex-row gap-x-3">
-        <MetricCard 
-          icon={<ClipboardList size={20} color="#2563EB" />} 
-          label="Cần làm" 
-          value={stats.total} 
-          subLabel="Đơn đã nhận"
-        />
-        <MetricCard 
-          icon={<AlertTriangle size={20} color="#DC2626" />} 
-          label="Sắp trễ" 
-          value={stats.urgent} 
-          subLabel="Dưới 5 phút"
-          isDanger={stats.urgent > 0}
-        />
-        <MetricCard 
-          icon={<Bell size={20} color="#F59E0B" />} 
-          label="Sự cố" 
-          value={stats.issues} 
-          subLabel="Cần xử lý"
-          isWarning={stats.issues > 0}
-        />
-      </View>
-
-      <View className="flex-1 px-6">
-        <Text className="text-lg font-outfit-bold text-slate-800 mb-4 mt-2">Hàng đợi ưu tiên</Text>
-        <FlashList
-          data={MOCK_ASSIGNMENTS}
-          renderItem={renderItem}
-          estimatedItemSize={200}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center pt-20">
-              <ClipboardList size={64} color="#CBD5E1" />
-              <Text className="text-slate-400 mt-4 font-inter">Hiện chưa có đơn hàng nào được gán</Text>
+        <View className="mt-4 rounded-[28px] overflow-hidden" style={{ backgroundColor: '#EAF8F0' }}>
+          <View
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundColor: '#EAF8F0',
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              right: -40,
+              top: -30,
+              width: 160,
+              height: 160,
+              borderRadius: 999,
+              backgroundColor: 'rgba(22, 163, 74, 0.16)',
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              left: -20,
+              bottom: -40,
+              width: 120,
+              height: 120,
+              borderRadius: 999,
+              backgroundColor: 'rgba(59, 130, 246, 0.12)',
+            }}
+          />
+          <View className="flex-row items-center justify-between px-5 py-5">
+            <View style={{ flex: 1, paddingRight: 16 }}>
+              <Text className="text-[20px] font-outfit-bold text-[#0F172A]">Nâng cao hiệu suất làm việc của bạn</Text>
+              <Text className="mt-2 text-[13px] font-inter text-[#64748B]">Theo dõi nhanh đơn hàng, chấm công và hiệu suất mỗi ngày.</Text>
             </View>
-          }
-        />
-      </View>
+            <View style={{ width: 106, height: 106, justifyContent: 'center', alignItems: 'center' }}>
+              <View
+                style={{
+                  position: 'absolute',
+                  right: 6,
+                  top: 0,
+                  width: 86,
+                  height: 86,
+                  borderRadius: 999,
+                  backgroundColor: 'rgba(255,255,255,0.55)',
+                }}
+              />
+              <TrendingUp size={58} color="#16A34A" strokeWidth={2.2} />
+            </View>
+          </View>
+        </View>
+
+        <View className="mt-4 flex-row" style={{ gap: 12 }}>
+          <StatPill 
+            testID="stat-attendance" 
+            icon={isClockedIn ? <ShieldCheck size={18} color="#16A34A" /> : <ShieldAlert size={18} color="#F59E0B" />} 
+            label="Trạng thái" 
+            value={isClockedIn ? 'Sẵn sàng' : 'Chưa vào ca'} 
+            onPress={() => {}} 
+          />
+          <StatPill testID="stat-salary" icon={<DollarSign size={18} color="#16A34A" />} label="Lương tháng này" value={salaryValue} onPress={() => router.push('/(staff)/profile/payslip' as never)} />
+        </View>
+
+        <View className="mt-6">
+          <Text className="text-sm font-inter-bold text-text">Truy cập nhanh</Text>
+          <View className="mt-3" style={{ gap: 12 }}>
+            <View className="flex-row" style={{ gap: 12 }}>
+              <QuickAction icon={<Package size={24} color="#16A34A" />} title="Sản phẩm" subtitle="Tra cứu nhanh" onPress={() => router.push('/(staff)/products' as never)} />
+              <QuickAction icon={<ClipboardList size={24} color="#16A34A" />} title="Đơn hàng" subtitle="Xử lý & Giao hàng" onPress={() => router.push('/(staff)/orders' as never)} />
+            </View>
+            <View className="flex-row" style={{ gap: 12 }}>
+              <QuickAction icon={<Clock size={24} color="#16A34A" />} title="Chấm công" subtitle="Vào ca / ra ca" onPress={() => router.push('/(staff)/attendance' as never)} />
+              <QuickAction icon={<User size={24} color="#16A34A" />} title="Cá nhân" subtitle="Tài khoản & tuỳ chọn" onPress={() => router.push('/(staff)/profile' as never)} />
+            </View>
+          </View>
+        </View>
+
+        <View className="mt-6">
+          <Pressable testID="btn-handbook" onPress={() => router.push('/(staff)/handbook' as never)}>
+            <Card className="p-4">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1" style={{ gap: 10 }}>
+                  <View className="w-10 h-10 rounded-2xl bg-[#DFF5E8] items-center justify-center">
+                    <BookOpen size={18} color="#16A34A" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[15px] font-inter-bold text-text">Sổ tay công việc</Text>
+                    <Text className="text-[13px] font-inter text-muted mt-0.5" numberOfLines={1}>Hướng dẫn nhanh theo từng nhóm tác vụ.</Text>
+                  </View>
+                </View>
+                <ChevronRight size={20} color="#94A3B8" />
+              </View>
+            </Card>
+          </Pressable>
+        </View>
+
+        <View className="mt-6">
+          <Pressable testID="btn-performance" onPress={() => router.push('/(staff)/performance' as never)}>
+            <Card className="p-4">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1" style={{ gap: 10 }}>
+                  <View className="w-10 h-10 rounded-2xl bg-[#DFF5E8] items-center justify-center">
+                    <CalendarDays size={18} color="#16A34A" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[15px] font-inter-bold text-text">Hiệu suất công việc</Text>
+                    <Text className="text-[13px] font-inter text-muted mt-0.5" numberOfLines={1}>Theo dõi đơn hoàn thành theo ngày/tuần/tháng.</Text>
+                  </View>
+                </View>
+                <ChevronRight size={20} color="#94A3B8" />
+              </View>
+
+              <View className="mt-4 flex-row" style={{ gap: 10 }}>
+                <MiniKpi
+                  label="Hôm nay"
+                  value={performanceDailyQuery.isLoading ? '...' : String(performanceDailyCount ?? '—')}
+                  hint={performanceDailyQuery.isError ? 'Lỗi tải dữ liệu' : 'Đơn hoàn thành'}
+                />
+                <MiniKpi
+                  label="Tuần này"
+                  value={performanceSummaryQuery.isLoading ? '...' : String(performanceWeekCount ?? '—')}
+                  hint={performanceSummaryQuery.isError ? 'Lỗi tải dữ liệu' : 'Đơn hoàn thành'}
+                />
+                <MiniKpi
+                  label="Tháng này"
+                  value={performanceSummaryQuery.isLoading ? '...' : String(performanceMonthCount ?? '—')}
+                  hint={performanceSummaryQuery.isError ? 'Lỗi tải dữ liệu' : 'Đơn hoàn thành'}
+                />
+              </View>
+            </Card>
+          </Pressable>
+        </View>
+
+        {myActiveQuery.isError || performanceDailyQuery.isError || performanceSummaryQuery.isError ? (
+          <Card className="p-4 mt-6">
+            <Text className="font-inter-bold text-text">Không tải được dữ liệu.</Text>
+            <Text className="text-xs font-inter text-muted mt-1">Kiểm tra mạng và thử lại.</Text>
+            <Pressable
+              onPress={refreshKpis}
+              className="mt-3 px-4 py-3 rounded-2xl bg-primary items-center"
+            >
+              <Text className="font-outfit-bold text-primary-fg">Tải lại</Text>
+            </Pressable>
+          </Card>
+        ) : null}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-function MetricCard({ 
-  icon, 
-  label, 
-  value, 
-  subLabel, 
-  isDanger, 
-  isWarning 
-}: { 
-  icon: React.ReactNode, 
-  label: string, 
-  value: number, 
-  subLabel: string,
-  isDanger?: boolean,
-  isWarning?: boolean
-}) {
+function StatPill({ icon, label, value, onPress, testID }: { icon: React.ReactNode; label: string; value: string; onPress: () => void; testID?: string }) {
   return (
-    <Card 
-      className={clsx(
-        'flex-1 p-3 border border-slate-100',
-        isDanger && 'bg-red-50 border-red-100',
-        isWarning && 'bg-amber-50 border-amber-100'
-      )}
-    >
-      <View className="flex-row items-center mb-1">
-        {icon}
-        <Text className="text-xs font-inter-bold text-slate-500 ml-1.5 uppercase">{label}</Text>
+    <Pressable testID={testID} onPress={onPress} className="flex-1 bg-[#EAF8F0] border border-[#D6EFD9] rounded-[22px] px-3 py-4">
+      <View className="items-start justify-between" style={{ minHeight: 72 }}>
+        <View className="w-10 h-10 rounded-2xl bg-[#DFF5E8] items-center justify-center">
+          {icon}
+        </View>
+        <View className="mt-2 w-full flex-col">
+          <Text className="text-[13px] font-inter-bold text-[#0F172A]" numberOfLines={1}>{label}</Text>
+          <Text className="text-[14px] leading-5 font-outfit-bold text-[#0F172A] mt-1" numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+        </View>
       </View>
-      <Text className={clsx('text-2xl font-outfit-bold', isDanger ? 'text-danger' : 'text-slate-900')}>
-        {value}
-      </Text>
-      <Text className="text-[10px] text-slate-400 font-inter">{subLabel}</Text>
-    </Card>
+    </Pressable>
   );
+}
+
+
+
+function QuickAction({ icon, title, subtitle, onPress }: { icon: React.ReactNode; title: string; subtitle: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} className="flex-1 bg-white border border-[#E5E7EB] rounded-[26px] p-4 shadow-sm" style={{ elevation: 2 }}>
+      <View className="w-12 h-12 rounded-2xl bg-[#DFF5E8] items-center justify-center">{icon}</View>
+      <Text className="mt-3 text-[16px] font-outfit-bold text-[#0F172A]">{title}</Text>
+      <Text className="mt-1 text-[13px] font-inter text-[#64748B]">{subtitle}</Text>
+    </Pressable>
+  );
+}
+
+function MiniKpi({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <View className="flex-1 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-3">
+      <Text className="text-[11px] font-inter text-muted">{label}</Text>
+      <Text className="mt-1 text-[20px] leading-6 font-outfit-bold text-[#0F172A]">{value}</Text>
+      <Text className="mt-1 text-[10px] font-inter text-[#64748B]" numberOfLines={1}>
+        {hint}
+      </Text>
+    </View>
+  );
+}
+
+function toIsoLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }

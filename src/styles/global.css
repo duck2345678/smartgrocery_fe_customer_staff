@@ -4,15 +4,44 @@
 
 @layer base {
   :root {
-    --color-primary: 34 197 94; /* Customer Green (#22C55E) */
+    --color-primary: 16 185 129;
     --color-primary-fg: 255 255 255;
-    --color-background: 248 250 252; /* Slate 50 */
+    --color-background: 243 248 246;
     --color-surface: 255 255 255;
-    --color-border: 226 232 240; /* Slate 200 */
+    --color-surface-2: 236 243 240;
+    --color-border: 208 223 216;
+    --color-text: 15 23 42;
+    --color-muted: 81 102 96;
+    --color-ring: var(--color-primary);
   }
 
   .theme-staff {
-    --color-primary: 37 99 235; /* Staff Blue (#2563EB) */
+    --color-primary: 22 163 74;
     --color-primary-fg: 255 255 255;
+    --color-background: 241 248 242;
+    --color-surface-2: 233 244 235;
+    --color-border: 198 226 203;
+    --color-ring: var(--color-primary);
+  }
+
+  .theme-admin {
+    --color-primary: 21 128 61;
+    --color-primary-fg: 255 255 255;
+    --color-background: 238 245 240;
+    --color-surface-2: 231 238 234;
+    --color-ring: var(--color-primary);
+  }
+
+  .theme-customer {
+    --color-primary: 22 163 74;
+    --color-primary-fg: 255 255 255;
+    --color-background: 241 248 242;
+    --color-surface-2: 233 244 235;
+    --color-border: 198 226 203;
+    --color-ring: var(--color-primary);
+  }
+
+  body {
+    background-color: rgb(var(--color-background));
   }
 }

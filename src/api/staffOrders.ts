@@ -1,0 +1,253 @@
+import apiClient from './client';
+import { type CompletePickingPayload, type StaffPickOrder, type StaffPickItem } from '../utils/staffPickingUtils';
+import { resolveImageUrl } from '../utils/imageUtils';
+export type { CompletePickingPayload, StaffPickOrder, StaffPickItem };
+
+export type StaffOrderQueueItem = {
+  id: number;
+  orderNumber: string;
+  status: string;
+  customerId?: number | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  addressLine?: string | null;
+  totalItems?: number | null;
+  totalAmount?: number | null;
+  assigneeId?: number | null;
+  assigneeName?: string | null;
+  leaseExpiresAt?: string | null;
+  createdAt?: string | null;
+};
+
+export type StaffCompletedOrderItem = {
+  orderId: number;
+  orderNumber: string;
+  completedAt: string;
+  status: string;
+};
+
+export type StaffPerformanceDaily = {
+  date: string;
+  completedCount: number;
+  orders: StaffCompletedOrderItem[];
+};
+
+export type StaffPerformanceSummary = {
+  date: string;
+  weekFrom: string;
+  weekTo: string;
+  weekCompletedCount: number;
+  monthFrom: string;
+  monthTo: string;
+  monthCompletedCount: number;
+};
+
+export type AssignOrderResponse = {
+  orderId: number;
+  assigneeId: number | null;
+  status: string;
+  leaseExpiresAt: string | null;
+};
+
+
+const toNumber = (v: unknown): number => {
+  if (typeof v === 'number') return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const mapQueueItem = (x: unknown): StaffOrderQueueItem => {
+  const o = x as Record<string, unknown>;
+  return {
+    id: toNumber(o.id),
+    orderNumber: String(o.orderNumber ?? ''),
+    status: String(o.status ?? ''),
+    customerId: typeof o.customerId === 'number' ? o.customerId : o.customerId != null ? toNumber(o.customerId) : null,
+    customerName: typeof o.customerName === 'string' ? o.customerName : null,
+    customerPhone: typeof o.customerPhone === 'string' ? o.customerPhone : null,
+    addressLine: typeof o.addressLine === 'string' ? o.addressLine : null,
+    totalItems: o.totalItems != null ? toNumber(o.totalItems) : null,
+    totalAmount: o.totalAmount != null ? toNumber(o.totalAmount) : null,
+    assigneeId: o.assigneeId != null ? toNumber(o.assigneeId) : null,
+    assigneeName: typeof o.assigneeName === 'string' ? o.assigneeName : null,
+    leaseExpiresAt: typeof o.leaseExpiresAt === 'string' ? o.leaseExpiresAt : null,
+    createdAt: typeof o.createdAt === 'string' ? o.createdAt : null,
+  };
+};
+
+const mapAssign = (x: unknown): AssignOrderResponse => {
+  const o = x as Record<string, unknown>;
+  return {
+    orderId: toNumber(o.orderId),
+    assigneeId: o.assigneeId != null ? toNumber(o.assigneeId) : null,
+    status: String(o.status ?? ''),
+    leaseExpiresAt: typeof o.leaseExpiresAt === 'string' ? o.leaseExpiresAt : null,
+  };
+};
+
+const mapPickOrder = (x: unknown): StaffPickOrder => {
+  const o = x as Record<string, unknown>;
+  const itemsRaw = Array.isArray(o.items)
+    ? o.items
+    : Array.isArray(o.orderItems)
+      ? o.orderItems
+      : Array.isArray(o.details)
+        ? o.details
+        : [];
+  return {
+    orderId: toNumber(o.orderId),
+    orderNumber: String(o.orderNumber ?? ''),
+    status: String(o.status ?? ''),
+    assigneeId: o.assigneeId != null ? toNumber(o.assigneeId) : null,
+    leaseExpiresAt: typeof o.leaseExpiresAt === 'string' ? o.leaseExpiresAt : null,
+    packingPhotoUrl: resolveImageUrl(o.packingPhotoUrl, 'Packing', false),
+    deliveryPhotoUrl: resolveImageUrl(o.deliveryPhotoUrl, 'Delivery', false),
+    customerName: typeof o.customerName === 'string' ? o.customerName : null,
+    customerPhone: typeof o.customerPhone === 'string' ? o.customerPhone : null,
+    customerEmail: typeof o.customerEmail === 'string' ? o.customerEmail : null,
+    addressLine: typeof o.addressLine === 'string' ? o.addressLine : null,
+    paymentMethod: typeof o.paymentMethod === 'string' ? o.paymentMethod : null,
+    subtotal: o.subtotal != null ? toNumber(o.subtotal) : null,
+    totalAmount: o.totalAmount != null ? toNumber(o.totalAmount) : null,
+    orderDate: typeof o.orderDate === 'string' ? o.orderDate : null,
+    deliveryDate: typeof o.deliveryDate === 'string' ? o.deliveryDate : null,
+    items: itemsRaw.map((it) => {
+      const i = it as Record<string, unknown>;
+      const product =
+        typeof i.product === 'object' && i.product !== null
+          ? (i.product as Record<string, unknown>)
+          : null;
+      const productName =
+        typeof i.productName === 'string'
+          ? i.productName
+          : typeof i.name === 'string'
+            ? i.name
+            : typeof product?.name === 'string'
+              ? String(product.name)
+              : '';
+      const imageSource = i.imageUrl ?? i.productImageUrl ?? product?.image ?? null;
+      return {
+        orderItemId: toNumber(i.orderItemId ?? i.id),
+        variantId: toNumber(i.variantId),
+        sku: String(i.sku ?? ''),
+        barcode: typeof i.barcode === 'string' ? i.barcode : null,
+        productName,
+        variantName: typeof i.variantName === 'string' ? i.variantName : null,
+        orderedQuantity: toNumber(i.orderedQuantity ?? i.quantity),
+        pickedQuantity: i.pickedQuantity != null ? toNumber(i.pickedQuantity) : null,
+        unitPrice: toNumber(i.unitPrice ?? i.price),
+        imageUrl: resolveImageUrl(imageSource, productName || 'Product'),
+        stockQuantity: i.stockQuantity != null ? toNumber(i.stockQuantity) : null,
+      };
+    }),
+  };
+};
+
+export const staffOrdersApi = {
+  getQueue: async (): Promise<StaffOrderQueueItem[]> => {
+    const res = await apiClient.get('/staff/orders/queue');
+    const data = Array.isArray(res.data) ? res.data : [];
+    return data.map(mapQueueItem);
+  },
+
+  getMyActive: async (): Promise<StaffOrderQueueItem | null> => {
+    try {
+      const res = await apiClient.get('/staff/orders/my-active');
+      if (!res.data) return null;
+      return mapQueueItem(res.data);
+    } catch (error: any) {
+      if (error.status === 404 || error.response?.status === 404) return null;
+      throw error;
+    }
+  },
+
+  assign: async (orderId: number): Promise<AssignOrderResponse> => {
+    const res = await apiClient.post(`/staff/orders/${orderId}/assign`);
+    return mapAssign(res.data);
+  },
+
+  autoAssign: async (): Promise<StaffOrderQueueItem> => {
+    const res = await apiClient.post('/staff/orders/auto-assign');
+    return mapQueueItem(res.data);
+  },
+
+  heartbeat: async (orderId: number): Promise<AssignOrderResponse> => {
+    const res = await apiClient.post(`/staff/orders/${orderId}/heartbeat`);
+    return mapAssign(res.data);
+  },
+
+  release: async (orderId: number): Promise<AssignOrderResponse> => {
+    const res = await apiClient.post(`/staff/orders/${orderId}/release`);
+    return mapAssign(res.data);
+  },
+
+  getPickList: async (orderId: number): Promise<StaffPickOrder> => {
+    const res = await apiClient.get(`/staff/orders/${orderId}/pick-list`);
+    return mapPickOrder(res.data);
+  },
+
+  getSubstitutions: async (orderId: number, orderItemId: number): Promise<Array<{ variantId: number; name: string; price: number; stock: number; isRecommended: boolean }>> => {
+    const res = await apiClient.get(`/staff/orders/${orderId}/substitutions`, { params: { orderItemId } });
+    const data = Array.isArray(res.data) ? res.data : [];
+    return data.map((x) => {
+      const o = x as Record<string, unknown>;
+      return {
+        variantId: toNumber(o.variantId),
+        name: String(o.name ?? ''),
+        price: toNumber(o.price),
+        stock: toNumber(o.stock),
+        isRecommended: Boolean(o.isRecommended),
+      };
+    });
+  },
+
+  completePicking: async (orderId: number, payload: CompletePickingPayload): Promise<StaffPickOrder> => {
+    const res = await apiClient.post(`/staff/orders/${orderId}/complete-picking`, payload);
+    return mapPickOrder(res.data);
+  },
+
+  getPerformanceDaily: async (dateIso: string): Promise<StaffPerformanceDaily> => {
+    const res = await apiClient.get('/staff/orders/performance/daily', { params: { date: dateIso } });
+    const o = (res.data ?? {}) as Record<string, unknown>;
+    const ordersRaw = Array.isArray(o.orders) ? o.orders : [];
+    return {
+      date: String(o.date ?? dateIso),
+      completedCount: toNumber(o.completedCount),
+      orders: ordersRaw.map((x) => {
+        const it = x as Record<string, unknown>;
+        return {
+          orderId: toNumber(it.orderId),
+          orderNumber: String(it.orderNumber ?? ''),
+          completedAt: String(it.completedAt ?? ''),
+          status: String(it.status ?? ''),
+        };
+      }),
+    };
+  },
+
+  getPerformanceSummary: async (dateIso: string): Promise<StaffPerformanceSummary> => {
+    const res = await apiClient.get('/staff/orders/performance/summary', { params: { date: dateIso } });
+    const o = (res.data ?? {}) as Record<string, unknown>;
+    return {
+      date: String(o.date ?? dateIso),
+      weekFrom: String(o.weekFrom ?? ''),
+      weekTo: String(o.weekTo ?? ''),
+      weekCompletedCount: toNumber(o.weekCompletedCount),
+      monthFrom: String(o.monthFrom ?? ''),
+      monthTo: String(o.monthTo ?? ''),
+      monthCompletedCount: toNumber(o.monthCompletedCount),
+    };
+  },
+
+  pack: async (orderId: number, packingPhotoUrl: string): Promise<void> => {
+    await apiClient.post(`/orders/${orderId}/pack`, null, { params: { packingPhotoUrl } });
+  },
+
+  deliver: async (orderId: number, deliveryPhotoUrl: string): Promise<void> => {
+    await apiClient.post(`/orders/${orderId}/deliver`, null, { params: { deliveryPhotoUrl } });
+  },
+
+  complete: async (orderId: number): Promise<void> => {
+    await apiClient.post(`/orders/${orderId}/complete`);
+  },
+};

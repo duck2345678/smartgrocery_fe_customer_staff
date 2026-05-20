@@ -1,20 +1,18 @@
-import { Tabs } from 'expo-router';
-import { Home, Search, Brain, History, User } from 'lucide-react-native';
+import { Stack } from 'expo-router';
+import { ProtectedRoute } from '../../src/components/auth/ProtectedRoute';
 
 export default function CustomerLayout() {
   return (
-    <Tabs screenOptions={{ 
-      tabBarActiveTintColor: '#22C55E',
-      headerShown: false 
-    }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <Home size={24} color={color} />,
-        }}
-      />
-      {/* Search, AI, Orders, Profile tabs to be added later */}
-    </Tabs>
+    <ProtectedRoute role="CUSTOMER">
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="products" />
+        <Stack.Screen name="search" />
+        <Stack.Screen name="checkout" />
+        <Stack.Screen name="order-success" />
+        <Stack.Screen name="orders" />
+        <Stack.Screen name="ai-meal-review" />
+      </Stack>
+    </ProtectedRoute>
   );
 }

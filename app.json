@@ -7,8 +7,7 @@
       "typedRoutes": true
     },
     "userInterfaceStyle": "light",
-    "orientation": "portrait",
-    "icon": "./public/icon.png",
+    "orientation": "default",
     "plugins": [
       "expo-router",
       "expo-font"

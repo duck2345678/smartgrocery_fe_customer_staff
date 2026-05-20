@@ -30,3 +30,6 @@ dist-ssr
 
 expo-env.d.ts
 # @end expo-cli
+
+# Test coverage output
+coverage/
