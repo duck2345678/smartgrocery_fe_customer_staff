@@ -59,8 +59,18 @@ export default function VouchersPage() {
         <View className="flex-1 flex-row bg-slate-50 p-1.5 rounded-2xl" style={{ gap: 6 }}>
           <Pressable 
             onPress={() => setActiveCategory('regular')}
-            className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${activeCategory === 'regular' ? 'bg-white shadow-sm shadow-slate-200' : ''}`}
-            style={{ gap: 6 }}
+            className="flex-1 py-3 rounded-xl items-center justify-center flex-row"
+            style={[
+              { gap: 6 },
+              activeCategory === 'regular' && {
+                backgroundColor: '#FFFFFF',
+                shadowColor: '#94A3B8',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2
+              }
+            ]}
           >
             <Tag size={15} color={activeCategory === 'regular' ? '#16A34A' : '#64748B'} />
             <Text className={`text-[12.5px] ${activeCategory === 'regular' ? 'font-outfit-bold text-slate-800' : 'font-inter text-slate-500'}`}>
@@ -70,8 +80,20 @@ export default function VouchersPage() {
           
           <Pressable 
             onPress={() => setActiveCategory('ai')}
-            className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${activeCategory === 'ai' ? 'bg-white shadow-sm shadow-slate-200 border border-purple-100/50' : ''}`}
-            style={{ gap: 6 }}
+            className="flex-1 py-3 rounded-xl items-center justify-center flex-row"
+            style={[
+              { gap: 6 },
+              activeCategory === 'ai' && {
+                backgroundColor: '#FFFFFF',
+                shadowColor: '#94A3B8',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2,
+                borderWidth: 1,
+                borderColor: '#FAE8FF'
+              }
+            ]}
           >
             <Sparkles size={14} color={activeCategory === 'ai' ? '#8B5CF6' : '#64748B'} />
             <Text className={`text-[12.5px] ${activeCategory === 'ai' ? 'font-outfit-bold text-slate-800' : 'font-inter text-slate-500'}`}>
@@ -107,7 +129,10 @@ export default function VouchersPage() {
               <View 
                 style={{
                   position: 'absolute',
-                  inset: -8,
+                  top: -8,
+                  left: -8,
+                  right: -8,
+                  bottom: -8,
                   borderRadius: 999,
                   borderWidth: 1.2,
                   borderColor: '#E2E8F0',

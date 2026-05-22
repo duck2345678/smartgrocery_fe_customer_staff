@@ -120,7 +120,17 @@ export default function StaffNotificationsScreen() {
         <View className="flex-1 flex-row bg-[#F1F5F9] p-1 rounded-2xl" style={{ gap: 4 }}>
           <Pressable 
             onPress={() => setActiveTab('all')}
-            className={`flex-1 py-2.5 rounded-xl items-center justify-center ${activeTab === 'all' ? 'bg-white shadow-sm shadow-slate-200' : ''}`}
+            className="flex-1 py-2.5 rounded-xl items-center justify-center"
+            style={[
+              activeTab === 'all' && {
+                backgroundColor: '#FFFFFF',
+                shadowColor: '#94A3B8',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2
+              }
+            ]}
           >
             <Text className={`text-[12.5px] ${activeTab === 'all' ? 'font-outfit-bold text-slate-800' : 'font-inter text-slate-500'}`}>
               Tất cả ({notifications.length})
@@ -128,7 +138,17 @@ export default function StaffNotificationsScreen() {
           </Pressable>
           <Pressable 
             onPress={() => setActiveTab('unread')}
-            className={`flex-1 py-2.5 rounded-xl items-center justify-center ${activeTab === 'unread' ? 'bg-white shadow-sm shadow-slate-200' : ''}`}
+            className="flex-1 py-2.5 rounded-xl items-center justify-center"
+            style={[
+              activeTab === 'unread' && {
+                backgroundColor: '#FFFFFF',
+                shadowColor: '#94A3B8',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2
+              }
+            ]}
           >
             <View className="flex-row items-center justify-center" style={{ gap: 6 }}>
               {unreadCount > 0 && <View className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
@@ -151,7 +171,10 @@ export default function StaffNotificationsScreen() {
             <View 
               style={{
                 position: 'absolute',
-                inset: -12,
+                top: -12,
+                left: -12,
+                right: -12,
+                bottom: -12,
                 borderRadius: 999,
                 borderWidth: 1.5,
                 borderColor: '#E2E8F0',
