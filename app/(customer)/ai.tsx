@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput } from 'react-native';
 import { Brain, Sparkles, Wand2, ClipboardList, MessageSquare } from 'lucide-react-native';
 import Card from '../../src/components/ui/Card';
 import Button from '../../src/components/ui/Button';
@@ -18,6 +18,7 @@ export default function CustomerAIHub() {
   const [loadingMode, setLoadingMode] = useState<Mode | null>(null);
   const [result, setResult] = useState<AIResult | null>(null);
   const [showReasons, setShowReasons] = useState(true);
+  const [customBudget, setCustomBudget] = useState<string>('200000');
 
   const cartItemIds = useMemo(() => cartItems.map((i) => i.productId), [cartItems]);
 
@@ -26,9 +27,10 @@ export default function CustomerAIHub() {
     setLoadingMode(mode);
     try {
       if (mode === 'BASKET_OPTIMIZER') {
+        const budgetVal = parseInt(customBudget.replace(/[^0-9]/g, '')) || 200000;
         const response = await aiApi.optimizeBasket({
           cartItemIds,
-          budgetLimit: subtotal > 0 ? subtotal : 200000,
+          budgetLimit: budgetVal,
           targetNutrition: { protein: 60 },
         });
         setResult(response);
@@ -88,7 +90,27 @@ export default function CustomerAIHub() {
             actionLabel="Phân tích giỏ hàng"
             loading={loadingMode === 'BASKET_OPTIMIZER'}
             onPress={() => runMode('BASKET_OPTIMIZER')}
-          />
+          >
+            <View className="mt-3 px-1">
+              <Text className="text-xs font-inter-semibold text-text mb-1.5">Ngân sách mục tiêu (VNĐ):</Text>
+              <TextInput
+                style={{
+                  height: 40,
+                  borderColor: '#E2E8F0',
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  fontSize: 14,
+                  color: '#1E293B',
+                  backgroundColor: '#F8FAFC'
+                }}
+                keyboardType="numeric"
+                value={customBudget}
+                onChangeText={setCustomBudget}
+                placeholder="Ví dụ: 150000"
+              />
+            </View>
+          </InstructionCard>
           <InstructionCard
             icon={<Brain size={20} color="#16A34A" />}
             title="Meal Planner"
@@ -166,6 +188,7 @@ function InstructionCard({
   actionLabel,
   onPress,
   loading,
+  children,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -173,6 +196,7 @@ function InstructionCard({
   actionLabel: string;
   onPress: () => void;
   loading: boolean;
+  children?: React.ReactNode;
 }) {
   return (
     <Card className="p-4 border border-border">
@@ -183,6 +207,7 @@ function InstructionCard({
           <Text className="text-xs font-inter text-muted mt-0.5">{subtitle}</Text>
         </View>
       </View>
+      {children}
       <View className="mt-4">
         <Button label={actionLabel} onPress={onPress} loading={loading} />
       </View>
