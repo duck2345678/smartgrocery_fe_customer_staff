@@ -29,6 +29,7 @@ vi.mock('lucide-react-native', () => {
     ClipboardList: Icon,
     Clock: Icon,
     User: Icon,
+    Ticket: Icon,
   };
 });
 
@@ -67,6 +68,7 @@ describe('StaffNavigation', () => {
       'products',
       'orders',
       'attendance',
+      'vouchers',
       'profile',
     ]);
   });
@@ -78,13 +80,12 @@ describe('StaffNavigation', () => {
     });
     
     const hiddenRoutes = [
-      'products/scan',
-      'products/[id]',
-      'orders/[id]',
-      'admin-queue',
       'handbook',
+      'issues',
       'performance',
       'notifications',
+      'delivered-orders',
+      'users',
     ];
 
     hiddenRoutes.forEach((route) => {

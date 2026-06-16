@@ -16,7 +16,6 @@ import {
   ChevronLeft,
   Flashlight,
   FlashlightOff,
-  Image as ImageIcon,
   CheckCircle2,
   Camera,
   Truck,
@@ -183,26 +182,7 @@ export default function PackingPhotoCapture({
     }
   }, [isBusy, showToast]);
 
-  /* ── Pick from library ── */
-  const pickFromLibrary = useCallback(async () => {
-    if (isBusy) return;
-    setIsBusy(true);
-    try {
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: false,
-        quality: 0.9,
-      });
-      if (!res.canceled && res.assets?.[0]?.uri) {
-        setPreviewUri(res.assets[0].uri);
-        setPreviewMode(true);
-      }
-    } catch {
-      showToast('Lỗi khi mở thư viện ảnh.');
-    } finally {
-      setIsBusy(false);
-    }
-  }, [isBusy, showToast]);
+
 
   const confirmPhoto = useCallback(() => {
     if (previewUri) {
@@ -697,24 +677,7 @@ export default function PackingPhotoCapture({
               backgroundColor: 'rgba(30,30,30,0.6)',
             }}
           >
-            <Pressable
-              onPress={pickFromLibrary}
-              disabled={isBusy}
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 32,
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: isBusy ? 0.4 : 1,
-              }}
-            >
-              <ImageIcon size={24} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 10, marginTop: 3, fontWeight: '500' }}>
-                Thư viện
-              </Text>
-            </Pressable>
+            <View style={{ width: 64, height: 64 }} />
 
             <Pressable
               onPress={capturePhoto}

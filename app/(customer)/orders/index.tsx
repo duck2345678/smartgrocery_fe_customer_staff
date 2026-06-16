@@ -78,22 +78,26 @@ export default function OrdersScreen() {
     return (
       <Pressable 
         onPress={() => router.push(`/(customer)/orders/${item.id}` as never)}
-        className="active:opacity-70 transition-opacity"
+        className="active:opacity-75 transition-opacity"
       >
-        <Card className="mb-4 p-4 border border-slate-50 bg-white rounded-[28px] shadow-sm">
-          <View className="flex-row justify-between items-center mb-3">
-            <View className="bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-               <Text className="text-[10px] font-inter-bold text-slate-400 uppercase tracking-tighter">
-                 #{item.orderNumber}
-               </Text>
+        <Card className="mb-4 p-4 border border-slate-100 bg-white rounded-3xl shadow-sm">
+          {/* Card Header */}
+          <View className="flex-row justify-between items-start mb-3">
+            <View>
+              <Text className="text-[14px] font-outfit-bold text-slate-900">
+                Mã đơn: {item.orderNumber || `#${item.id}`}
+              </Text>
+              <Text className="text-[11px] font-inter text-slate-400 mt-0.5">
+                {dateStr}
+              </Text>
             </View>
             <View 
-              className="flex-row items-center px-3 py-1 rounded-full" 
+              className="flex-row items-center px-2.5 py-1 rounded-full" 
               style={{ backgroundColor: status.bg }}
             >
-              <status.icon size={12} color={status.color} />
+              <status.icon size={10} color={status.color} />
               <Text 
-                className="text-[10px] font-inter-bold ml-1.5"
+                className="text-[10px] font-inter-bold ml-1"
                 style={{ color: status.color }}
               >
                 {status.label}
@@ -101,9 +105,10 @@ export default function OrdersScreen() {
             </View>
           </View>
 
+          {/* Card Body */}
           <View className="flex-row items-center">
             {/* First Item Image Preview */}
-            <View className="w-16 h-16 rounded-2xl bg-slate-50 overflow-hidden border border-slate-100">
+            <View className="w-14 h-14 rounded-2xl bg-slate-50 overflow-hidden border border-slate-100">
               {firstItem?.imageUrl ? (
                 <Image
                   source={{ uri: resolveImageUrl(firstItem.imageUrl, firstItem.productName) ?? undefined }}
@@ -114,26 +119,38 @@ export default function OrdersScreen() {
                 />
               ) : (
                 <View className="w-full h-full items-center justify-center bg-slate-100">
-                   <ShoppingBag size={20} color="#CBD5E1" />
+                   <ShoppingBag size={18} color="#CBD5E1" />
                 </View>
               )}
             </View>
 
-            <View className="flex-1 ml-4 justify-center">
-              <Text className="text-[15px] font-outfit-bold text-slate-900" numberOfLines={1}>
+            <View className="flex-1 ml-3.5 justify-center">
+              <Text className="text-[13px] font-inter-semibold text-slate-800" numberOfLines={1}>
                 {firstItem ? firstItem.productName : 'Đơn hàng'}
-                {(item.items ?? []).length > 1 ? ` (+${(item.items ?? []).length - 1} món khác)` : ''}
+                {(item.items ?? []).length > 1 ? ` (+${(item.items ?? []).length - 1} sản phẩm khác)` : ''}
               </Text>
-              <Text className="text-[11px] font-inter text-slate-400 mt-1">
-                {dateStr}
-              </Text>
+              <View className="flex-row items-center mt-1 flex-wrap" style={{ gap: 6 }}>
+                <View className="px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-md">
+                  <Text className="text-[10px] font-inter text-slate-500">
+                    {item.paymentMethod}
+                  </Text>
+                </View>
+                {item.addressLine ? (
+                  <Text className="text-[10px] font-inter text-slate-400 max-w-[150px]" numberOfLines={1}>
+                    Giao tới: {item.addressLine}
+                  </Text>
+                ) : null}
+              </View>
             </View>
 
-            <View className="items-end">
-              <Text className="text-[16px] font-outfit-bold text-primary">
+            <View className="items-end ml-2">
+              <Text className="text-[15px] font-outfit-bold text-primary">
                 {(item.totalAmount ?? 0).toLocaleString('vi-VN')}₫
               </Text>
-              <ChevronRight size={16} color="#CBD5E1" className="mt-1" />
+              <View className="flex-row items-center mt-1.5">
+                <Text className="text-[10px] font-inter text-slate-400 mr-0.5">Chi tiết</Text>
+                <ChevronRight size={12} color="#CBD5E1" />
+              </View>
             </View>
           </View>
         </Card>

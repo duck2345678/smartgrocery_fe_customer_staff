@@ -176,7 +176,12 @@ export default function HomeHeader() {
                                 )}
                               </View>
                               <Text className="text-xs font-inter text-muted mt-1" numberOfLines={2}>
-                                {a.streetAddress}, {a.ward}, {a.district}, {a.city}
+                                {[
+                                  a.streetAddress,
+                                  a.ward,
+                                  a.district && a.district.toLowerCase() !== a.city?.toLowerCase() ? a.district : null,
+                                  a.city
+                                ].filter(Boolean).join(', ')}
                               </Text>
                               <Text className="text-[11px] font-inter-bold text-slate-400 mt-1">
                                 {a.receiverName} • {a.receiverPhone}

@@ -15,6 +15,24 @@ import {
 import Card from '../../src/components/ui/Card';
 import { notificationsApi, Notification } from '../../src/api/notifications';
 
+const isOrderNotification = (item: Notification) =>
+  item.notificationType === 'ORDER_STATUS' ||
+  item.notificationType === 'NEW_ORDER' ||
+  item.notificationType === 'NEW_ORDER_ASSIGNED';
+
+const resolveCustomerNotificationRoute = (item: Notification) => {
+  if (typeof item.route === 'string' && item.route.startsWith('/')) {
+    return item.route;
+  }
+  if (isOrderNotification(item) && item.orderId) {
+    return `/(customer)/orders/${item.orderId}`;
+  }
+  if (isOrderNotification(item)) {
+    return '/(customer)/orders';
+  }
+  return null;
+};
+
 const formatTimeAgo = (dateStr: string) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
@@ -57,10 +75,10 @@ export default function CustomerNotificationsScreen() {
     if (!item.isRead) {
       markReadMutation.mutate(item.id);
     }
-    
-    // Deep link routing if it is an order status update
-    if (item.notificationType === 'ORDER_STATUS' || item.notificationType === 'NEW_ORDER') {
-      router.push('/(customer)/orders' as any);
+
+    const targetRoute = resolveCustomerNotificationRoute(item);
+    if (targetRoute) {
+      router.push(targetRoute as any);
     }
   };
 
@@ -193,7 +211,7 @@ export default function CustomerNotificationsScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 16 }}>
           <View className="px-4 gap-y-3.5">
             {filteredNotifications.map((item) => {
-              const isOrder = item.notificationType === 'NEW_ORDER' || item.notificationType === 'ORDER_STATUS';
+              const isOrder = isOrderNotification(item);
               const isShift = item.notificationType === 'SHIFT_UPDATE';
               
               let Icon = Info;

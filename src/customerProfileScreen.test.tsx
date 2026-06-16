@@ -1,12 +1,11 @@
 import React from 'react';
 import { describe, expect, test, vi, beforeEach } from 'vitest';
 import renderer from 'react-test-renderer';
-import CustomerProfile from '../app/(customer)/profile';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-globalThis.__DEV__ = true;
+;(globalThis as any).__DEV__ = true;
 (globalThis as any).window = (globalThis as any).window ?? {};
-globalThis.TurboModuleRegistry = globalThis.TurboModuleRegistry ?? {};
+;(globalThis as any).TurboModuleRegistry = (globalThis as any).TurboModuleRegistry ?? {};
 
 const pushMock = vi.fn();
 const logoutMock = vi.fn();

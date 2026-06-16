@@ -78,10 +78,11 @@ export const authApi = {
   },
 
   // Register → returns pending verification (không cấp JWT ngay)
-  register: async (fullName: string, email: string, password: string): Promise<RegistrationPendingResponse> => {
+  register: async (fullName: string, email: string, phone: string, password: string): Promise<RegistrationPendingResponse> => {
     const response = await apiClient.post<RegistrationPendingResponse>('/auth/register', {
       fullName,
       email,
+      phone,
       password,
     });
     return response.data;

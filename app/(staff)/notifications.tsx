@@ -15,6 +15,27 @@ import {
 import Card from '../../src/components/ui/Card';
 import { notificationsApi, Notification } from '../../src/api/notifications';
 
+const isOrderNotification = (item: Notification) =>
+  item.notificationType === 'ORDER_STATUS' ||
+  item.notificationType === 'NEW_ORDER' ||
+  item.notificationType === 'NEW_ORDER_ASSIGNED';
+
+const resolveStaffNotificationRoute = (item: Notification) => {
+  if (typeof item.route === 'string' && item.route.startsWith('/')) {
+    return item.route;
+  }
+  if (isOrderNotification(item) && item.orderId) {
+    return `/(staff)/orders/${item.orderId}`;
+  }
+  if (isOrderNotification(item)) {
+    return '/(staff)/orders';
+  }
+  if (item.notificationType === 'SHIFT_UPDATE') {
+    return '/(staff)/attendance';
+  }
+  return null;
+};
+
 const formatTimeAgo = (dateStr: string) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
@@ -57,12 +78,10 @@ export default function StaffNotificationsScreen() {
     if (!item.isRead) {
       markReadMutation.mutate(item.id);
     }
-    
-    // Custom staff navigation routing
-    if (item.notificationType === 'NEW_ORDER' || item.notificationType === 'ORDER_STATUS') {
-      router.push('/(staff)/orders' as any);
-    } else if (item.notificationType === 'SHIFT_UPDATE') {
-      router.push('/(staff)/attendance' as any);
+
+    const targetRoute = resolveStaffNotificationRoute(item);
+    if (targetRoute) {
+      router.push(targetRoute as any);
     }
   };
 
@@ -195,7 +214,7 @@ export default function StaffNotificationsScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 16 }}>
           <View className="px-4 gap-y-3.5">
             {filteredNotifications.map((item) => {
-              const isOrder = item.notificationType === 'NEW_ORDER' || item.notificationType === 'ORDER_STATUS';
+              const isOrder = isOrderNotification(item);
               const isShift = item.notificationType === 'SHIFT_UPDATE';
               
               let Icon = Info;

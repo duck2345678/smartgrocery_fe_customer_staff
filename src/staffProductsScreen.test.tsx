@@ -2,9 +2,8 @@ import React from 'react';
 import { describe, expect, test, vi } from 'vitest';
 import renderer from 'react-test-renderer';
 
-import StaffProductsScreen from '../app/(staff)/products/index';
-
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+;(globalThis as any).__DEV__ = true;
 
 vi.mock('expo-haptics', () => ({
   impactAsync: vi.fn(),
@@ -26,6 +25,10 @@ vi.mock('../src/api/products', () => ({
   },
 }));
 
+vi.mock('expo-image', () => ({
+  Image: ({ children, ...props }: { children?: React.ReactNode }) => React.createElement('img', props, children),
+}));
+
 vi.mock('react-native', async () => {
   const ReactActual = await vi.importActual<typeof import('react')>('react');
   const create = (type: string) => ({ children, ...props }: { children?: React.ReactNode }) =>
@@ -43,6 +46,7 @@ vi.mock('react-native', async () => {
     Switch: create('input'),
     TouchableOpacity: create('button'),
     Platform: { OS: 'ios', select: (v: Record<string, unknown>) => v.ios },
+    TurboModuleRegistry: { get: vi.fn(() => null), getEnforcing: vi.fn(() => null) },
   };
 });
 
@@ -91,7 +95,8 @@ const collectTextFromInstance = (node: renderer.ReactTestInstance | string, out:
 };
 
 describe('StaffProductsScreen', () => {
-  test('renders list with category chips', () => {
+  test('renders list with category chips', async () => {
+    const { default: StaffProductsScreen } = await import('../app/(staff)/products/index');
     let inst!: renderer.ReactTestRenderer;
     renderer.act(() => {
       inst = renderer.create(<StaffProductsScreen />);

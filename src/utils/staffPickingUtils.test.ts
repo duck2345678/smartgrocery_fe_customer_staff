@@ -10,7 +10,7 @@ describe('staffPickingUtils', () => {
     expect(clampInt('x', 1, 5)).toBe(1);
   });
 
-  test('buildInitialSession uses orderedQuantity as default picked', () => {
+  test('buildInitialSession starts unpicked items at zero', () => {
     const pickOrder: StaffPickOrder = {
       orderId: 1,
       orderNumber: 'ORD-1',
@@ -24,8 +24,8 @@ describe('staffPickingUtils', () => {
     };
 
     const session = buildInitialSession(pickOrder);
-    expect(session.itemsById[101].pickedQuantity).toBe(2);
-    expect(session.itemsById[102].pickedQuantity).toBe(1);
+    expect(session.itemsById[101].pickedQuantity).toBe(0);
+    expect(session.itemsById[102].pickedQuantity).toBe(0);
   });
 
   test('buildCompletePickingPayload includes substitution fields only when substituted', () => {
@@ -60,4 +60,3 @@ describe('staffPickingUtils', () => {
     expect(b.reason).toBe('oos');
   });
 });
-

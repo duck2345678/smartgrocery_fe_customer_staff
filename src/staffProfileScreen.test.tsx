@@ -23,6 +23,7 @@ vi.mock('lucide-react-native', () => {
     Lock: Icon,
     LogOut: Icon,
     ChevronRight: Icon,
+    X: Icon,
   };
 });
 
@@ -34,6 +35,8 @@ vi.mock('react-native', () => {
   return {
     Alert: { alert: vi.fn() },
     ActivityIndicator: create('div'),
+    Modal: ({ children, visible = true, ...props }: { children?: React.ReactNode; visible?: boolean } & Record<string, any>) =>
+      visible ? React.createElement('div', props, children) : null,
     Pressable: ({ children, onPress, ...props }: { children?: React.ReactNode; onPress?: () => void } & Record<string, any>) =>
       React.createElement('button', { ...props, onClick: onPress }, children),
     ScrollView: create('div'),
@@ -43,6 +46,7 @@ vi.mock('react-native', () => {
     Switch: create('input'),
     TouchableOpacity: create('button'),
     Platform: { OS: 'ios', select: (v: Record<string, any>) => v.ios },
+    StyleSheet: { create: (styles: unknown) => styles },
   };
 });
 

@@ -85,7 +85,7 @@ export default function RootLayout() {
   const user = useAuthStore((s) => s.user);
   const authNotice = useAuthStore((s) => s.authNotice);
   const setAuthNotice = useAuthStore((s) => s.setAuthNotice);
-  const [banner, setBanner] = useState<{ title: string; body: string; variant?: 'info' | 'error' } | null>(null);
+  const [banner, setBanner] = useState<{ title: string; body: string; route?: string; variant?: 'info' | 'error' } | null>(null);
   const themeClass = React.useMemo(() => {
     if (!isAuthenticated || !user || !user.role) return 'theme-customer';
     if (user.role === 'STAFF') return 'theme-staff';
@@ -123,6 +123,8 @@ export default function RootLayout() {
         Notifications.setNotificationHandler({
           handleNotification: async () => ({
             shouldShowAlert: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
             shouldPlaySound: true,
             shouldSetBadge: true,
           }),
@@ -131,10 +133,12 @@ export default function RootLayout() {
         sub1 = Notifications.addNotificationReceivedListener((n) => {
           const title = n.request.content.title ?? 'Thông báo';
           const body = n.request.content.body ?? '';
+          const route = (n.request.content.data as { route?: unknown } | undefined)?.route;
           const isSessionIssue = /thiết bị|đăng nhập|đăng nhập lại/i.test(`${title} ${body}`);
           setBanner({
             title,
             body,
+            route: typeof route === 'string' && route.startsWith('/') ? route : undefined,
             variant: isSessionIssue ? 'error' : 'info',
           });
           queryClient.invalidateQueries({ queryKey: ['staff-order-queue'] });
@@ -167,6 +171,7 @@ export default function RootLayout() {
       setBanner({
         title: 'Phiên đăng nhập bị thay thế',
         body: authNotice,
+        route: undefined,
         variant: 'error',
       });
       setAuthNotice(null);
@@ -204,6 +209,8 @@ export default function RootLayout() {
                       setBanner(null);
                       if (banner.variant === 'error') {
                         router.replace('/(auth)/login' as never);
+                      } else if (banner.route) {
+                        router.push(banner.route as never);
                       } else {
                         router.push('/(staff)/orders' as never);
                       }

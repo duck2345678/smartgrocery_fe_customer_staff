@@ -16,6 +16,7 @@ import { useAuthStore } from '../../src/store/authStore';
 import { useAddressStore } from '../../src/store/addressStore';
 import { userApi, type CreateAddressRequest } from '../../src/api/users';
 import { type UserAddress } from '../../src/types/address';
+import AddressLocationPicker from '../../src/components/customer/AddressLocationPicker';
 
 type AddressForm = {
   receiverName: string;
@@ -55,7 +56,6 @@ const isFormValid = (f: AddressForm) =>
   f.receiverPhone.trim() &&
   f.streetAddress.trim() &&
   f.ward.trim() &&
-  f.district.trim() &&
   f.city.trim() &&
   f.addressType.trim();
 
@@ -142,7 +142,7 @@ export default function AddressesScreen() {
       receiverPhone: form.receiverPhone.trim(),
       streetAddress: form.streetAddress.trim(),
       ward: form.ward.trim(),
-      district: form.district.trim(),
+      district: form.district.trim() || form.city.trim(),
       city: form.city.trim(),
       addressType: form.addressType.trim(),
       isDefault: form.isDefault,
@@ -267,7 +267,12 @@ export default function AddressesScreen() {
 
                     {/* Địa chỉ */}
                     <Text className="text-sm font-inter text-text">
-                      {address.streetAddress}, {address.ward}, {address.district}, {address.city}
+                      {[
+                        address.streetAddress,
+                        address.ward,
+                        address.district && address.district.toLowerCase() !== address.city?.toLowerCase() ? address.district : null,
+                        address.city
+                      ].filter(Boolean).join(', ')}
                     </Text>
                     <Text className="text-xs font-inter text-muted mt-1">
                       {address.addressType ?? 'Địa chỉ'}
@@ -348,24 +353,17 @@ export default function AddressesScreen() {
                 onChangeText={(v) => setField('streetAddress', v)}
                 placeholder="123 Nguyễn Huệ"
               />
-              <FormField
-                label="Phường/Xã *"
-                value={form.ward}
-                onChangeText={(v) => setField('ward', v)}
-                placeholder="Phường Bến Nghé"
-              />
-              <FormField
-                label="Quận/Huyện *"
-                value={form.district}
-                onChangeText={(v) => setField('district', v)}
-                placeholder="Quận 1"
-              />
-              <FormField
-                label="Tỉnh/Thành phố *"
-                value={form.city}
-                onChangeText={(v) => setField('city', v)}
-                placeholder="TP. Hồ Chí Minh"
-              />
+              <View className="mb-4">
+                <AddressLocationPicker
+                  city={form.city}
+                  ward={form.ward}
+                  onChange={(location) => {
+                    setField('city', location.city);
+                    setField('ward', location.ward);
+                    setField('district', location.district);
+                  }}
+                />
+              </View>
               <FormField
                 label="Loại địa chỉ *"
                 value={form.addressType}

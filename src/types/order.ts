@@ -57,4 +57,16 @@ export type Voucher = {
   revealTrigger?: string;
   assignedUserId?: number | null;
   unlockedByOrderId?: number | null;
+  usageLimitPerVoucher?: number | null;
+  claimCount?: number | null;
+  minAge?: number | null;
+  maxAge?: number | null;
+  usedCount?: number | null;
+  status?: string | null;
+  claimedAt?: string | null;
+  claimed?: boolean;
+  used?: boolean;
+  usedAt?: string | null;
+  claimStatus?: string | null;
+  claimExpiresAt?: string | null;
 };

@@ -71,7 +71,7 @@ export const clampInt = (value: unknown, min: number, max: number): number => {
 export const buildInitialSession = (pickOrder: StaffPickOrder): StaffPickSession => {
   const itemsById: Record<number, PickItemState> = {};
   pickOrder.items.forEach((it) => {
-    const picked = clampInt(it.pickedQuantity ?? it.orderedQuantity, 0, it.orderedQuantity);
+    const picked = clampInt(it.pickedQuantity ?? 0, 0, it.orderedQuantity);
     itemsById[it.orderItemId] = {
       orderItemId: it.orderItemId,
       orderedQuantity: it.orderedQuantity,

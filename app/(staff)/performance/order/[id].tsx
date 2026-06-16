@@ -246,26 +246,37 @@ export default function StaffPerformanceOrderDetailScreen() {
           </Card>
 
           {/* ───── Ảnh đóng gói & Giao hàng (Đưa lên trên danh sách mặt hàng) ───── */}
-          {(order.packingPhotoUrl || order.deliveryPhotoUrl) && (
-            <View className="flex-row" style={{ gap: 12 }}>
-              {order.packingPhotoUrl && (
-                <View className="flex-1 rounded-[30px] p-4 bg-[#EDF7F1] border border-[#D1EAD9]">
-                  <Text className="font-inter-bold text-[#111827] text-[13px] mb-2 text-center">Ảnh đóng gói</Text>
-                  <View className="w-full aspect-square rounded-[20px] bg-white overflow-hidden">
-                    <Image source={{ uri: order.packingPhotoUrl }} className="w-full h-full" contentFit="cover" cachePolicy="disk" transition={200} />
+          <View className="flex-row" style={{ gap: 12 }}>
+            <View className="flex-1 rounded-[30px] p-4 bg-[#EDF7F1] border border-[#D1EAD9]">
+              <Text className="font-inter-bold text-[#111827] text-[13px] mb-2 text-center">Ảnh đóng gói</Text>
+              <View className="w-full aspect-square rounded-[20px] bg-white overflow-hidden items-center justify-center">
+                {order.packingPhotoUrl && !order.packingPhotoUrl.startsWith('file://') ? (
+                  <Image source={{ uri: order.packingPhotoUrl }} className="w-full h-full" contentFit="cover" cachePolicy="disk" transition={200} />
+                ) : (
+                  <View className="p-3 items-center justify-center">
+                    <Text className="text-[11px] font-inter text-slate-400 text-center">
+                      {order.packingPhotoUrl ? "Ảnh nội bộ (local path)" : "Chưa có ảnh"}
+                    </Text>
                   </View>
-                </View>
-              )}
-              {order.deliveryPhotoUrl && (
-                <View className="flex-1 rounded-[30px] p-4 bg-[#EDF7F1] border border-[#D1EAD9]">
-                  <Text className="font-inter-bold text-[#111827] text-[13px] mb-2 text-center">Ảnh giao hàng</Text>
-                  <View className="w-full aspect-square rounded-[20px] bg-white overflow-hidden">
-                    <Image source={{ uri: order.deliveryPhotoUrl }} className="w-full h-full" contentFit="cover" cachePolicy="disk" transition={200} />
-                  </View>
-                </View>
-              )}
+                )}
+              </View>
             </View>
-          )}
+
+            <View className="flex-1 rounded-[30px] p-4 bg-[#EDF7F1] border border-[#D1EAD9]">
+              <Text className="font-inter-bold text-[#111827] text-[13px] mb-2 text-center">Ảnh giao hàng</Text>
+              <View className="w-full aspect-square rounded-[20px] bg-white overflow-hidden items-center justify-center">
+                {order.deliveryPhotoUrl && !order.deliveryPhotoUrl.startsWith('file://') ? (
+                  <Image source={{ uri: order.deliveryPhotoUrl }} className="w-full h-full" contentFit="cover" cachePolicy="disk" transition={200} />
+                ) : (
+                  <View className="p-3 items-center justify-center">
+                    <Text className="text-[11px] font-inter text-slate-400 text-center">
+                      {order.deliveryPhotoUrl ? "Ảnh nội bộ (local path)" : "Chưa có ảnh"}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
 
           {/* ───── Danh sách mặt hàng (Thiết kế lại gọn gàng hơn) ───── */}
           <Card className="p-5 rounded-[30px]">

@@ -9,7 +9,7 @@ import CustomerSearch from '../app/(customer)/search';
 var backMock = vi.fn();
 var pushMock = vi.fn();
 var queryParams: Record<string, unknown> = {};
-var useQueryMock = vi.fn(() => ({ data: [], isFetching: false, isError: false, refetch: vi.fn() }));
+var useQueryMock = vi.fn<(_options?: unknown) => any>(() => ({ data: [], isFetching: false, isError: false, refetch: vi.fn() }));
 
 vi.mock('expo-router', () => ({
   useRouter: () => ({ push: pushMock, back: backMock }),
@@ -25,8 +25,8 @@ vi.mock('expo-image', () => ({
 }));
 
 vi.mock('@shopify/flash-list', () => ({
-  FlashList: ({ data, renderItem }: { data: any[]; renderItem: ({ item }: { item: any }) => React.ReactNode }) => (
-    <>{data.map((item, index) => renderItem({ item, index }))}</>
+  FlashList: ({ data, renderItem }: { data: any[]; renderItem: (info: { item: any; index: number }) => React.ReactNode }) => (
+    <>{data.map((item, index) => <React.Fragment key={item?.id ?? index}>{renderItem({ item, index })}</React.Fragment>)}</>
   ),
 }));
 
@@ -99,7 +99,8 @@ describe('CustomerSearch', () => {
 
   test('renders empty prompt when no search query', () => {
     queryParams = {};
-    useQueryMock.mockImplementation(({ queryKey }: { queryKey: unknown[] }) => {
+    useQueryMock.mockImplementation((options?: unknown) => {
+      const { queryKey } = (options ?? {}) as { queryKey?: unknown[] };
       const key = Array.isArray(queryKey) ? String(queryKey[0]) : '';
       if (key === 'categories') {
         return { data: [{ id: 1, name: 'Rau' }], isLoading: false, isError: false, refetch: vi.fn() };
@@ -119,7 +120,8 @@ describe('CustomerSearch', () => {
 
   test('renders product results when initial query exists', () => {
     queryParams = { q: 'bánh' };
-    useQueryMock.mockImplementation(({ queryKey }: { queryKey: unknown[] }) => {
+    useQueryMock.mockImplementation((options?: unknown) => {
+      const { queryKey } = (options ?? {}) as { queryKey?: unknown[] };
       const key = Array.isArray(queryKey) ? String(queryKey[0]) : '';
       const queryOptions = Array.isArray(queryKey) ? (queryKey[1] as Record<string, unknown>) : {};
       if (key === 'categories') {

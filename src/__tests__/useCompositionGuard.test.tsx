@@ -1,38 +1,73 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react-native';
-import useCompositionGuard from '../hooks/useCompositionGuard';
+import renderer from 'react-test-renderer';
+import useCompositionGuard, { type UseCompositionGuardOptions } from '../hooks/useCompositionGuard';
+
+(globalThis as any).__DEV__ = true;
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+
+vi.mock('react-native', () => ({
+  Platform: { OS: 'ios' },
+}));
+
+type GuardResult = ReturnType<typeof useCompositionGuard>;
+
+function renderGuard(opts?: UseCompositionGuardOptions) {
+  let latest: GuardResult | undefined;
+  const Harness = () => {
+    latest = useCompositionGuard(opts);
+    return null;
+  };
+  renderer.act(() => {
+    renderer.create(<Harness />);
+  });
+  return {
+    get current() {
+      if (!latest) throw new Error('Hook did not render');
+      return latest;
+    },
+  };
+}
 
 describe('useCompositionGuard', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
+
   afterEach(() => {
     vi.useRealTimers();
   });
 
   it('sets composing on changeText for native and clears after debounce', () => {
-    const { result } = renderHook(() => useCompositionGuard({ debounceMs: 200 }));
-    act(() => {
+    const result = renderGuard({ debounceMs: 200 });
+    renderer.act(() => {
       result.current.onChangeText('x');
     });
     expect(result.current.isComposing).toBe(true);
-    // advance less than debounce: still composing
-    vi.advanceTimersByTime(100);
+    renderer.act(() => {
+      vi.advanceTimersByTime(100);
+    });
     expect(result.current.isComposing).toBe(true);
-    vi.advanceTimersByTime(150);
+    renderer.act(() => {
+      vi.advanceTimersByTime(150);
+    });
     expect(result.current.isComposing).toBe(false);
   });
 
   it('blocks immediate submit and schedules submit when composing', () => {
-    const { result } = renderHook(() => useCompositionGuard({ debounceMs: 200, recentThresholdMs: 50 }));
+    const result = renderGuard({ debounceMs: 200, recentThresholdMs: 50 });
     const spy = vi.fn();
-    act(() => {
+    renderer.act(() => {
       result.current.onChangeText('b');
     });
-    const submitted = result.current.requestSubmit(spy);
+    let submitted = true;
+    renderer.act(() => {
+      submitted = result.current.requestSubmit(spy);
+    });
     expect(submitted).toBe(false);
-    // scheduled call after debounce
-    vi.advanceTimersByTime(250);
+    renderer.act(() => {
+      vi.advanceTimersByTime(250);
+    });
     expect(spy).toHaveBeenCalled();
   });
 });

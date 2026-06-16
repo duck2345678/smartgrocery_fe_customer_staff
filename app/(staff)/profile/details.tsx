@@ -34,7 +34,7 @@ export default function StaffProfileDetailScreen() {
   
   const [formData, setFormData] = useState({
     fullName: user?.fullName || 'PO Staff',
-    phone: user?.phone || '0123 456 789',
+    phone: user?.phone || 'Chưa cung cấp',
   });
 
   const [errors, setErrors] = useState<{ fullName?: string; phone?: string }>({});
@@ -43,7 +43,7 @@ export default function StaffProfileDetailScreen() {
     setAvatar(user?.avatarUrl || null);
     setFormData({
       fullName: user?.fullName || 'PO Staff',
-      phone: user?.phone || '0123 456 789',
+      phone: user?.phone || 'Chưa cung cấp',
     });
     setErrors({});
   }, [user?.avatarUrl, user?.fullName, user?.phone]);
@@ -126,7 +126,13 @@ export default function StaffProfileDetailScreen() {
       {/* Header */}
       <View className="px-6 py-4 flex-row items-center">
         <Pressable 
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(staff)/profile');
+            }
+          }}
           className="w-12 h-12 rounded-full bg-white items-center justify-center shadow-sm"
         >
           <ChevronLeft size={24} color="#1E293B" />
@@ -180,7 +186,7 @@ export default function StaffProfileDetailScreen() {
               onEdit={() => setIsEditingPhone(true)}
               onSave={() => saveField('phone')}
               onCancel={() => { 
-                setFormData(p => ({ ...p, phone: user?.phone || '0123 456 789' })); 
+                setFormData(p => ({ ...p, phone: user?.phone || 'Chưa cung cấp' })); 
                 setErrors(p => ({ ...p, phone: undefined }));
                 setIsEditingPhone(false); 
               }}

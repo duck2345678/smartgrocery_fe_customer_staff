@@ -114,7 +114,13 @@ export default function WorkHistoryScreen() {
       {/* Header */}
       <View className="px-6 py-4 flex-row items-center border-b border-[#F1F5F9] bg-white">
         <Pressable 
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(staff)/profile');
+            }
+          }}
           className="w-10 h-10 rounded-full bg-slate-50 items-center justify-center border border-slate-100"
         >
           <ChevronLeft size={20} color="#1E293B" />
@@ -153,7 +159,7 @@ export default function WorkHistoryScreen() {
           <Text className="text-[14px] font-inter text-muted mt-3">Đang tải lịch sử công tác...</Text>
         </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, pt: 16 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingTop: 16 }}>
           
           {/* Summary Stats Card */}
           <View className="px-5 mb-6 mt-4">
@@ -241,7 +247,7 @@ export default function WorkHistoryScreen() {
                               {statusKey === 'OFF' ? 'Lịch nghỉ phép hàng tuần' : statusKey === 'NO_SCHEDULE' ? 'Không có lịch được xếp' : 'Không có ghi nhận chấm công'}
                             </Text>
                             <Text className="text-[12px] font-inter-bold text-[#475569]">
-                              {SHIFT_LABELS[day.shiftType] || day.shiftType}
+                              {day.shiftType ? (SHIFT_LABELS[day.shiftType] || day.shiftType) : '-'}
                             </Text>
                           </View>
                         )}

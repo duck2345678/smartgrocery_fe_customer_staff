@@ -1,7 +1,52 @@
+import { Platform } from 'react-native';
 import apiClient from './client';
 import { type CompletePickingPayload, type StaffPickOrder, type StaffPickItem } from '../utils/staffPickingUtils';
 import { resolveImageUrl } from '../utils/imageUtils';
 export type { CompletePickingPayload, StaffPickOrder, StaffPickItem };
+
+/**
+ * Upload a local image file to Supabase Storage via backend.
+ * Returns the public URL of the uploaded image.
+ */
+export async function uploadPhoto(localUri: string): Promise<string> {
+  // If already a remote URL, return as-is
+  if (localUri.startsWith('http://') || localUri.startsWith('https://')) {
+    return localUri;
+  }
+
+  const formData = new FormData();
+
+  // React Native needs a special object for FormData file append
+  const filename = localUri.split('/').pop() || `photo_${Date.now()}.jpg`;
+  const match = /\.([\w]+)$/.exec(filename);
+  const mimeType = match ? `image/${match[1] === 'jpg' ? 'jpeg' : match[1]}` : 'image/jpeg';
+
+  if (Platform.OS === 'web') {
+    // On web, fetch the blob and append
+    const response = await fetch(localUri);
+    const blob = await response.blob();
+    formData.append('file', blob, filename);
+  } else {
+    // On native (iOS/Android), append the URI object
+    formData.append('file', {
+      uri: localUri,
+      name: filename,
+      type: mimeType,
+    } as unknown as Blob);
+  }
+
+  const res = await apiClient.post('/files/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 30000,
+  });
+
+  // Response: { url: "https://..." }
+  const url = (res.data as Record<string, string>)?.url ?? res.data;
+  if (typeof url !== 'string' || !url.startsWith('http')) {
+    throw new Error('Upload thất bại: server không trả về URL hợp lệ.');
+  }
+  return url;
+}
 
 export type StaffOrderQueueItem = {
   id: number;
@@ -240,11 +285,15 @@ export const staffOrdersApi = {
   },
 
   pack: async (orderId: number, packingPhotoUrl: string): Promise<void> => {
-    await apiClient.post(`/orders/${orderId}/pack`, null, { params: { packingPhotoUrl } });
+    // Upload local file to Supabase Storage first
+    const publicUrl = await uploadPhoto(packingPhotoUrl);
+    await apiClient.post(`/orders/${orderId}/pack`, null, { params: { packingPhotoUrl: publicUrl } });
   },
 
   deliver: async (orderId: number, deliveryPhotoUrl: string): Promise<void> => {
-    await apiClient.post(`/orders/${orderId}/deliver`, null, { params: { deliveryPhotoUrl } });
+    // Upload local file to Supabase Storage first
+    const publicUrl = await uploadPhoto(deliveryPhotoUrl);
+    await apiClient.post(`/orders/${orderId}/deliver`, null, { params: { deliveryPhotoUrl: publicUrl } });
   },
 
   complete: async (orderId: number): Promise<void> => {

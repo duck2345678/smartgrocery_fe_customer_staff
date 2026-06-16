@@ -5,7 +5,7 @@ import { authApi } from '../../src/api/auth';
 import Input from '../../src/components/ui/Input';
 import Button from '../../src/components/ui/Button';
 import BrandMark from '../../src/components/ui/BrandMark';
-import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react-native';
 
 const isEmailValid = (email: string): boolean => /\S+@\S+\.\S+/.test(email.trim());
 
@@ -19,6 +19,15 @@ const getEmailError = (input: { email: string; touched: boolean; focused: boolea
   if (!input.touched || input.focused) return undefined;
   if (!input.email.trim()) return 'Vui lòng nhập email';
   if (!isEmailValid(input.email)) return 'Email không hợp lệ';
+  return undefined;
+};
+
+const isPhoneValid = (phone: string): boolean => /^(0[0-9]{9,10})$/.test(phone.trim());
+
+const getPhoneError = (input: { phone: string; touched: boolean; focused: boolean }): string | undefined => {
+  if (!input.touched || input.focused) return undefined;
+  if (!input.phone.trim()) return 'Vui lòng nhập số điện thoại';
+  if (!isPhoneValid(input.phone)) return 'Số điện thoại không hợp lệ';
   return undefined;
 };
 
@@ -36,19 +45,20 @@ const getConfirmPasswordError = (input: { password: string; confirmPassword: str
   return undefined;
 };
 
-const isRegisterFormValid = (input: { fullName: string; email: string; password: string; confirmPassword: string }): boolean =>
-  Boolean(input.fullName.trim()) && isEmailValid(input.email) && input.password.length >= 6 && input.password === input.confirmPassword;
+const isRegisterFormValid = (input: { fullName: string; email: string; phone: string; password: string; confirmPassword: string }): boolean =>
+  Boolean(input.fullName.trim()) && isEmailValid(input.email) && isPhoneValid(input.phone) && input.password.length >= 6 && input.password === input.confirmPassword;
 
 export default function RegisterScreen() {
   const router = useRouter();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [touched, setTouched] = useState({ fullName: false, email: false, password: false, confirmPassword: false });
-  const [focused, setFocused] = useState({ fullName: false, email: false, password: false, confirmPassword: false });
+  const [touched, setTouched] = useState({ fullName: false, email: false, phone: false, password: false, confirmPassword: false });
+  const [focused, setFocused] = useState({ fullName: false, email: false, phone: false, password: false, confirmPassword: false });
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const fullNameError = useMemo(
@@ -59,6 +69,10 @@ export default function RegisterScreen() {
     () => getEmailError({ email, touched: touched.email, focused: focused.email }),
     [email, focused.email, touched.email]
   );
+  const phoneError = useMemo(
+    () => getPhoneError({ phone, touched: touched.phone, focused: focused.phone }),
+    [phone, focused.phone, touched.phone]
+  );
   const passwordError = useMemo(
     () => getPasswordError({ password, touched: touched.password, focused: focused.password }),
     [password, focused.password, touched.password]
@@ -68,15 +82,15 @@ export default function RegisterScreen() {
     [confirmPassword, focused.confirmPassword, password, touched.confirmPassword]
   );
 
-  const isSubmitDisabled = loading || !isRegisterFormValid({ fullName, email, password, confirmPassword });
+  const isSubmitDisabled = loading || !isRegisterFormValid({ fullName, email, phone, password, confirmPassword });
 
   const handleRegister = async () => {
-    setTouched({ fullName: true, email: true, password: true, confirmPassword: true });
-    if (!isRegisterFormValid({ fullName, email, password, confirmPassword })) return;
+    setTouched({ fullName: true, email: true, phone: true, password: true, confirmPassword: true });
+    if (!isRegisterFormValid({ fullName, email, phone, password, confirmPassword })) return;
 
     setLoading(true);
     try {
-      const response = await authApi.register(fullName.trim(), email.trim(), password);
+      const response = await authApi.register(fullName.trim(), email.trim(), phone.trim(), password);
       if (response.requiresEmailVerification) {
         // Chuyển sang màn xác nhận OTP với email đã đăng ký
         router.push({ pathname: '/(auth)/verify-email', params: { email: email.trim() } });
@@ -129,6 +143,21 @@ export default function RegisterScreen() {
             onBlur={() => {
               setFocused((s) => ({ ...s, email: false }));
               setTouched((s) => ({ ...s, email: true }));
+            }}
+          />
+
+          <Input
+            label="Số điện thoại"
+            placeholder="0901234567"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            icon={<Phone size={20} color="#94A3B8" />}
+            error={phoneError}
+            onFocus={() => setFocused((s) => ({ ...s, phone: true }))}
+            onBlur={() => {
+              setFocused((s) => ({ ...s, phone: false }));
+              setTouched((s) => ({ ...s, phone: true }));
             }}
           />
 

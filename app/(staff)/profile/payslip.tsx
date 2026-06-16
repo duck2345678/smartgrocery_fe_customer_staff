@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { ScrollView, Text, View, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
@@ -72,7 +72,7 @@ export default function PayslipScreen() {
       {/* Header */}
       <View className="px-6 py-4 flex-row items-center border-b border-[#F1F5F9] bg-white">
         <Pressable 
-          onPress={() => router.back()}
+          onPress={() => router.replace('/(staff)/profile' as never)}
           className="w-10 h-10 rounded-full bg-slate-50 items-center justify-center border border-slate-100"
         >
           <ChevronLeft size={20} color="#1E293B" />
@@ -97,7 +97,7 @@ export default function PayslipScreen() {
                 <Text 
                   className={`text-[13px] font-inter-bold ${isSelected ? 'text-white' : 'text-[#475569]'}`}
                 >
-                  Thương lượng • T{item.month}/{item.year}
+                  Lương tháng T{item.month}/{item.year}
                 </Text>
               </Pressable>
             );
@@ -111,7 +111,7 @@ export default function PayslipScreen() {
           <Text className="text-[14px] font-inter text-muted mt-3">Đang tải phiếu báo lương...</Text>
         </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, pt: 16 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingTop: 16 }}>
 
           {/* Net Pay Summary */}
           <View className="px-5 mb-6 mt-4">
@@ -149,7 +149,7 @@ export default function PayslipScreen() {
                 icon={TrendingUp}
                 iconBg="#DCFCE7"
                 iconColor="#16A34A"
-                label="Lương cơ bản (giờ × đơn giá)"
+                label="Lương cơ bản (giờ x đơn giá)"
                 value={formatVND(grossPay)}
                 valueColor="#16A34A"
               />
@@ -158,7 +158,7 @@ export default function PayslipScreen() {
                 icon={TrendingDown}
                 iconBg="#FEF2F2"
                 iconColor="#DC2626"
-                label={`Khấu trừ trễ giờ (${lateDays} ngày × 50%)`}
+                label={`Khấu trừ trễ giờ (${lateDays} ngày x 50%)`}
                 value={`-${formatVND(deduction)}`}
                 valueColor="#DC2626"
               />
@@ -207,7 +207,7 @@ export default function PayslipScreen() {
           {/* Salary Policy */}
           <View className="px-5">
             <Card className="rounded-[24px] p-5 bg-[#EFF6FF] border border-blue-100">
-              <Text className="text-[14px] font-inter-bold text-[#1E40AF] mb-2">📋 Chính sách lương</Text>
+              <Text className="text-[14px] font-inter-bold text-[#1E40AF] mb-2">Chính sách lương</Text>
               <View style={{ gap: 6 }}>
                 <Text className="text-[13px] font-inter text-[#1E40AF]">• Lương cơ bản: 30.000đ / giờ</Text>
                 <Text className="text-[13px] font-inter text-[#1E40AF]">• Trễ giờ: Trừ 50% lương ngày hôm đó</Text>

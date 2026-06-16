@@ -48,6 +48,32 @@ export function useCart() {
     },
   });
 
+  const removeItems = useMutation({
+    mutationFn: (input: { cartItemIds: number[] }) => cartApi.removeItems({ cartItemIds: input.cartItemIds }),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: ['cart'] });
+      const previous = queryClient.getQueryData<Cart>(['cart']);
+
+      queryClient.setQueryData<Cart>(['cart'], (current) => {
+        const base = current?.items ?? [];
+        const nextItems = base.filter((it) => !input.cartItemIds.includes(it.cartItemId as number));
+        return { items: nextItems };
+      });
+
+      return { previous };
+    },
+    onError: (err, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(['cart'], context.previous);
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['cart'], data);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+  });
+
   const removeItem = useMutation({
     mutationFn: (input: { cartItemId: number }) => cartApi.removeItem({ cartItemId: Number(input.cartItemId) }),
     onMutate: async (input) => {
@@ -58,6 +84,31 @@ export function useCart() {
         const base = current?.items ?? [];
         const nextItems = base.filter((it) => it.cartItemId !== input.cartItemId);
         return { items: nextItems };
+      });
+
+      return { previous };
+    },
+    onError: (err, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(['cart'], context.previous);
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['cart'], data);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+  });
+
+  const clearCart = useMutation({
+    // @ts-ignore
+    mutationFn: () => cartApi.clearCart(),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['cart'] });
+      const previous = queryClient.getQueryData<Cart>(['cart']);
+
+      queryClient.setQueryData<Cart>(['cart'], () => {
+        return { items: [] };
       });
 
       return { previous };
@@ -103,7 +154,9 @@ export function useCart() {
     refetch: cartQuery.refetch,
     updateQuantity: updateQuantity.mutateAsync,
     removeItem: removeItem.mutateAsync,
+    removeItems: removeItems.mutateAsync,
+    clearCart: clearCart.mutateAsync,
     addProduct: addProduct.mutateAsync,
-    isUpdating: updateQuantity.isPending || removeItem.isPending || addProduct.isPending,
+    isUpdating: updateQuantity.isPending || removeItem.isPending || removeItems.isPending || addProduct.isPending || clearCart.isPending,
   };
 }

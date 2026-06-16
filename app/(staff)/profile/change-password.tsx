@@ -45,7 +45,7 @@ export default function ChangePasswordScreen() {
       Alert.alert(
         'Thành công',
         'Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại.',
-        [{ text: 'OK', onPress: () => router.back() }]
+        [{ text: 'OK', onPress: () => router.replace('/(staff)/profile') }]
       );
     }, 1200);
   };
@@ -57,7 +57,13 @@ export default function ChangePasswordScreen() {
       {/* Header */}
       <View className="px-6 py-4 flex-row items-center">
         <Pressable 
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(staff)/profile');
+            }
+          }}
           className="w-12 h-12 rounded-full bg-white items-center justify-center shadow-sm"
         >
           <ChevronLeft size={24} color="#1E293B" />

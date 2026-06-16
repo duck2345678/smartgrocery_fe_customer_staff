@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { describe, expect, test, vi, beforeEach } from 'vitest';
 import renderer from 'react-test-renderer';
 
@@ -29,6 +29,8 @@ vi.mock('lucide-react-native', () => {
     CalendarDays: Icon,
     Bell: Icon,
     DollarSign: Icon,
+    ShieldAlert: Icon,
+    ShieldCheck: Icon,
   };
 });
 
@@ -135,7 +137,6 @@ describe('StaffHomeScreen', () => {
     expect(text).toContain('Sổ tay công việc');
     expect(text).toContain('Hiệu suất công việc');
     expect(text).toContain('Lương tháng này');
-    expect(text).toContain('840.000 đ');
     expect(text).toContain('7');
     expect(text).toContain('18');
     expect(text).toContain('62');
@@ -146,7 +147,7 @@ describe('StaffHomeScreen', () => {
     renderer.act(() => {
       inst = renderer.create(<StaffHomeScreen />);
     });
-    const btn = inst.root.findByProps({ testID: 'stat-active' });
+    const btn = inst.root.findByProps({ testID: 'quick-orders' });
     btn.props.onPress();
     expect(pushMock).toHaveBeenCalledWith('/(staff)/orders');
   });

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
@@ -24,6 +24,7 @@ export default function AddressListScreen() {
   const { user } = useAuthStore();
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [settingDefaultId, setSettingDefaultId] = useState<number | null>(null);
 
   const fetchAddresses = useCallback(async () => {
     if (!user?.id) return;
@@ -44,12 +45,18 @@ export default function AddressListScreen() {
   );
 
   const handleSetDefault = async (addressId: number) => {
-    if (!user?.id) return;
+    if (!user?.id || settingDefaultId != null) return;
+    const previousAddresses = addresses;
+    setSettingDefaultId(addressId);
+    setAddresses((items) => items.map((item) => ({ ...item, isDefault: item.id === addressId })));
     try {
       await userApi.setDefaultAddress(user.id, addressId);
-      fetchAddresses();
+      await fetchAddresses();
     } catch (error: any) {
+      setAddresses(previousAddresses);
       Alert.alert('Lỗi', error.message || 'Không thể thiết lập địa chỉ mặc định.');
+    } finally {
+      setSettingDefaultId(null);
     }
   };
 
@@ -88,7 +95,7 @@ export default function AddressListScreen() {
     <SafeAreaView className="flex-1 bg-[#FBFBFC]" edges={['top']}>
       <Stack.Screen options={{ headerShown: false }} />
       
-      {/* ───── Header ───── */}
+      {/* Header */}
       <View className="px-5 py-4 flex-row items-center border-b border-slate-100 bg-white">
         <Pressable 
           onPress={() => router.back()} 
@@ -168,16 +175,26 @@ export default function AddressListScreen() {
                   <Text className="text-[14px] font-inter-bold text-slate-800">{addr.receiverName}</Text>
                   <Text className="text-[13px] font-inter text-slate-500 mt-1">{addr.receiverPhone}</Text>
                   <Text className="text-[13px] font-inter text-slate-600 mt-2 leading-5">
-                    {addr.streetAddress}, {addr.ward}, {addr.district}, {addr.city}
+                    {[
+                      addr.streetAddress,
+                      addr.ward,
+                      addr.district && addr.district.toLowerCase() !== addr.city?.toLowerCase() ? addr.district : null,
+                      addr.city
+                    ].filter(Boolean).join(', ')}
                   </Text>
                 </View>
 
                 {!addr.isDefault && (
                   <Pressable 
                     onPress={() => handleSetDefault(addr.id)}
+                    disabled={settingDefaultId != null}
                     className="mt-4 py-2.5 rounded-xl border border-slate-200 items-center active:bg-slate-50"
                   >
-                    <Text className="text-[12px] font-inter-bold text-slate-600">Thiết lập mặc định</Text>
+                    {settingDefaultId === addr.id ? (
+                      <ActivityIndicator size="small" color="#16A34A" />
+                    ) : (
+                      <Text className="text-[12px] font-inter-bold text-slate-600">Thiết lập mặc định</Text>
+                    )}
                   </Pressable>
                 )}
               </Card>

@@ -7,22 +7,114 @@ import Button from '../../../src/components/ui/Button';
 import { useCart } from '../../../src/hooks/useCart';
 import { CartItem } from '../../../src/types/cart';
 
+type ActiveGroup = 'MANUAL' | 'AI' | null;
+
 export default function CartScreen() {
   const router = useRouter();
-  const { items, isLoading, isError, refetch, updateQuantity, removeItem, isUpdating } =
+  const { items, isLoading, isError, refetch, updateQuantity, removeItem, removeItems, clearCart, isUpdating } =
     useCart();
-  
+
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [activeGroup, setActiveGroup] = useState<ActiveGroup>(null);
   const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
 
-  // Auto-initialize: select all items by default on initial load
+  // Derived: split items by source
+  const manualItems = useMemo(() => items.filter((i) => i.source !== 'AI'), [items]);
+  const aiItems = useMemo(() => items.filter((i) => i.source === 'AI'), [items]);
+
+  // Auto-initialize: select all MANUAL items by default on first load
   useEffect(() => {
     if (items.length > 0 && !hasInitializedSelection) {
-      setSelectedIds(new Set(items.map(i => i.cartItemId as number).filter(Boolean)));
+      const manualIds = manualItems.map(i => i.cartItemId as number).filter(Boolean);
+      if (manualIds.length > 0) {
+        setSelectedIds(new Set(manualIds));
+        setActiveGroup('MANUAL');
+      } else if (aiItems.length > 0) {
+        const aiIds = aiItems.map(i => i.cartItemId as number).filter(Boolean);
+        setSelectedIds(new Set(aiIds));
+        setActiveGroup('AI');
+      }
       setHasInitializedSelection(true);
     }
-  }, [items, hasInitializedSelection]);
+  }, [items, hasInitializedSelection, manualItems, aiItems]);
+
+  // Helper: get items belonging to a group type
+  const getGroupItems = useCallback((type: 'MANUAL' | 'AI') => {
+    return type === 'MANUAL' ? manualItems : aiItems;
+  }, [manualItems, aiItems]);
+
+  // Helper: determine which group a cartItemId belongs to
+  const getItemGroup = useCallback((cid: number): 'MANUAL' | 'AI' => {
+    const item = items.find(i => i.cartItemId === cid);
+    return item?.source === 'AI' ? 'AI' : 'MANUAL';
+  }, [items]);
+
+  // Select an item — if it belongs to a different group, clear previous selection
+  const selectItem = useCallback((cid: number) => {
+    const itemGroup = getItemGroup(cid);
+    setActiveGroup(prev => {
+      if (prev !== null && prev !== itemGroup) {
+        // Switching groups: clear previous selection and start fresh
+        setSelectedIds(new Set([cid]));
+        return itemGroup;
+      }
+      // Same group or first selection
+      setSelectedIds(prevIds => {
+        const next = new Set(prevIds);
+        if (next.has(cid)) {
+          next.delete(cid);
+        } else {
+          next.add(cid);
+        }
+        // If nothing selected anymore, reset active group
+        if (next.size === 0) {
+          setActiveGroup(null);
+        }
+        return next;
+      });
+      return prev ?? itemGroup;
+    });
+  }, [getItemGroup]);
+
+  // Toggle all items in a section
+  const toggleSection = useCallback((sectionData: CartItem[], sectionType: 'MANUAL' | 'AI') => {
+    const ids = sectionData.map(i => i.cartItemId as number).filter(Boolean);
+    if (ids.length === 0) return;
+
+    if (activeGroup !== null && activeGroup !== sectionType) {
+      // Switching groups: select all in new group
+      setSelectedIds(new Set(ids));
+      setActiveGroup(sectionType);
+      return;
+    }
+
+    const allSelected = ids.every(id => selectedIds.has(id));
+    if (allSelected) {
+      // Deselect all in section
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.delete(id));
+        if (next.size === 0) setActiveGroup(null);
+        return next;
+      });
+    } else {
+      // Select all in section
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.add(id));
+        return next;
+      });
+      setActiveGroup(sectionType);
+    }
+  }, [activeGroup, selectedIds]);
+
+  // Section checkbox state
+  const isSectionAllSelected = useCallback((sectionData: CartItem[]) => {
+    const ids = sectionData.map(i => i.cartItemId as number).filter(Boolean);
+    if (ids.length === 0) return false;
+    return ids.every(id => selectedIds.has(id));
+  }, [selectedIds]);
 
   // Compute selected items and subtotal
   const selectedItems = useMemo(() => {
@@ -33,25 +125,25 @@ export default function CartScreen() {
     return selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
   }, [selectedItems]);
 
+  // Sections for SectionList
   const sections = useMemo(() => {
-    const manual = items.filter((item) => item.source !== 'AI');
     const aiGroups = new Map<string, CartItem[]>();
-    items.filter((item) => item.source === 'AI').forEach((item) => {
+    aiItems.forEach((item) => {
       const key = item.aiListCode || 'AI-GENERATED';
       aiGroups.set(key, [...(aiGroups.get(key) ?? []), item]);
     });
 
     return [
-      ...(manual.length ? [{ key: 'manual', title: 'Giỏ hàng thủ công', subtitle: 'Sản phẩm bạn tự thêm', type: 'MANUAL' as const, data: manual }] : []),
+      ...(manualItems.length ? [{ key: 'manual', title: 'Sản phẩm thêm thủ công', subtitle: `${manualItems.length} sản phẩm bạn tự thêm`, type: 'MANUAL' as const, data: manualItems }] : []),
       ...Array.from(aiGroups.entries()).map(([key, data], index) => ({
         key,
-        title: data[0]?.aiListName || `Danh sách AI ${index + 1}`,
+        title: data[0]?.aiListName || `Danh sách AI gợi ý ${index + 1}`,
         subtitle: `${data.length} sản phẩm do AI gợi ý`,
         type: 'AI' as const,
         data,
       })),
     ];
-  }, [items]);
+  }, [manualItems, aiItems]);
 
   const toggleProcessing = (id: number, active: boolean) => {
     setProcessingIds(prev => {
@@ -62,53 +154,55 @@ export default function CartScreen() {
     });
   };
 
-  // Section checkbox helpers
-  const isSectionAllSelected = useCallback((sectionData: CartItem[]) => {
-    const ids = sectionData.map(i => i.cartItemId as number).filter(Boolean);
-    if (ids.length === 0) return false;
-    return ids.every(id => selectedIds.has(id));
-  }, [selectedIds]);
-
-  const toggleSection = useCallback((sectionData: CartItem[]) => {
-    const ids = sectionData.map(i => i.cartItemId as number).filter(Boolean);
-    const allSel = isSectionAllSelected(sectionData);
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (allSel) {
-        ids.forEach(id => next.delete(id));
-      } else {
-        ids.forEach(id => next.add(id));
-      }
-      return next;
-    });
-  }, [isSectionAllSelected]);
-
-  // Overall select all helpers
-  const allItemsSelected = items.length > 0 && items.every(i => selectedIds.has(i.cartItemId as number));
-  const toggleSelectAll = () => {
-    if (allItemsSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(items.map(i => i.cartItemId as number).filter(Boolean)));
-    }
+  // Delete selected items
+  const handleDeleteSelected = () => {
+    if (isUpdating || selectedIds.size === 0) return;
+    Alert.alert(
+      'Xoá sản phẩm đã chọn',
+      `Bạn có chắc chắn muốn xoá ${selectedIds.size} sản phẩm đã chọn khỏi giỏ hàng?`,
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        {
+          text: 'Xoá',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeItems({ cartItemIds: Array.from(selectedIds) });
+              setSelectedIds(new Set());
+              setActiveGroup(null);
+            } catch (e) {
+              Alert.alert('Thông báo', 'Không thể xoá các sản phẩm đã chọn. Vui lòng thử lại.');
+            }
+          }
+        }
+      ]
+    );
   };
 
+  // Section header renderer
   const renderSectionHeader = ({ section }: { section: { title: string; subtitle: string; type: 'MANUAL' | 'AI'; data: CartItem[] } }) => {
     const allSel = isSectionAllSelected(section.data);
+    const isOtherGroup = activeGroup !== null && activeGroup !== section.type;
+    const showCheckbox = !isOtherGroup || selectedIds.size === 0;
+
     return (
       <View className="mb-3 mt-4 rounded-3xl border border-slate-100 bg-white px-4 py-3 flex-row items-center justify-between">
         <View className="flex-row items-center flex-1">
           {/* Section Checkbox */}
-          <Pressable
-            onPress={() => toggleSection(section.data)}
-            className={`w-5 h-5 rounded-full mr-3 items-center justify-center border ${
-              allSel 
-                ? 'bg-primary border-primary' 
-                : 'border-slate-300 bg-white'
-            }`}
-          >
-            {allSel && <Check size={11} color="#FFF" />}
-          </Pressable>
+          {showCheckbox ? (
+            <Pressable
+              onPress={() => toggleSection(section.data, section.type)}
+              className={`w-5 h-5 rounded-full mr-3 items-center justify-center border ${
+                allSel 
+                  ? 'bg-primary border-primary' 
+                  : 'border-slate-300 bg-white'
+              }`}
+            >
+              {allSel && <Check size={11} color="#FFF" />}
+            </Pressable>
+          ) : (
+            <View className="w-5 h-5 mr-3" />
+          )}
 
           <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${section.type === 'AI' ? 'bg-emerald-50' : 'bg-slate-50'}`}>
             {section.type === 'AI' ? <Sparkles size={18} color="#059669" /> : <ShoppingBag size={18} color="#475569" />}
@@ -163,6 +257,7 @@ export default function CartScreen() {
               setSelectedIds(prev => {
                 const next = new Set(prev);
                 next.delete(cid);
+                if (next.size === 0) setActiveGroup(null);
                 return next;
               });
             } catch (e) {
@@ -181,7 +276,7 @@ export default function CartScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: CartItem }) => {
+  const renderItem = ({ item, section }: { item: CartItem; section: { type: 'MANUAL' | 'AI' } }) => {
     const isAtMax = item.quantity >= (item.stock ?? 999);
     const isAtMin = item.quantity <= 1;
     const cid = item.cartItemId as number;
@@ -189,13 +284,18 @@ export default function CartScreen() {
     const isDisabled = !cid || isProcessing || isUpdating;
     const isSelected = selectedIds.has(cid);
 
+    // Can this item be selected? Only if no other group is active, or same group is active
+    const isOtherGroup = activeGroup !== null && activeGroup !== section.type;
+    const canSelect = !isOtherGroup || selectedIds.size === 0;
+
     const toggleSelectItem = () => {
-      setSelectedIds(prev => {
-        const next = new Set(prev);
-        if (next.has(cid)) next.delete(cid);
-        else next.add(cid);
-        return next;
-      });
+      if (!canSelect && isOtherGroup) {
+        // Switching groups: clear old selection, start fresh with this item
+        setSelectedIds(new Set([cid]));
+        setActiveGroup(section.type);
+        return;
+      }
+      selectItem(cid);
     };
 
     return (
@@ -210,18 +310,26 @@ export default function CartScreen() {
           elevation: 2
         }}
       >
-        {/* Item Checkbox */}
-        <Pressable
-          onPress={toggleSelectItem}
-          disabled={isDisabled}
-          className={`w-5 h-5 rounded-full mr-3 items-center justify-center border ${
-            isSelected 
-              ? 'bg-primary border-primary' 
-              : 'border-slate-300 bg-white'
-          }`}
-        >
-          {isSelected && <Check size={11} color="#FFF" />}
-        </Pressable>
+        {/* Item Checkbox — only visible if can select */}
+        {canSelect ? (
+          <Pressable
+            onPress={toggleSelectItem}
+            disabled={isDisabled}
+            className={`w-5 h-5 rounded-full mr-3 items-center justify-center border ${
+              isSelected 
+                ? 'bg-primary border-primary' 
+                : 'border-slate-300 bg-white'
+            }`}
+          >
+            {isSelected && <Check size={11} color="#FFF" />}
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={toggleSelectItem}
+            disabled={isDisabled}
+            className="w-5 h-5 rounded-full mr-3 items-center justify-center border border-slate-200 bg-slate-50"
+          />
+        )}
 
         {/* Product Image */}
         <View className="w-20 h-20 rounded-2xl bg-slate-50 overflow-hidden border border-slate-100">
@@ -310,6 +418,23 @@ export default function CartScreen() {
     );
   };
 
+  // Determine the label for the active group
+  const activeGroupLabel = activeGroup === 'AI' ? 'AI gợi ý' : 'thủ công';
+  const activeGroupItems = activeGroup ? getGroupItems(activeGroup) : [];
+  const allInGroupSelected = activeGroupItems.length > 0 && activeGroupItems.every(i => selectedIds.has(i.cartItemId as number));
+
+  const toggleSelectAllInGroup = () => {
+    if (!activeGroup) return;
+    const groupItems = getGroupItems(activeGroup);
+    const ids = groupItems.map(i => i.cartItemId as number).filter(Boolean);
+    if (allInGroupSelected) {
+      setSelectedIds(new Set());
+      setActiveGroup(null);
+    } else {
+      setSelectedIds(new Set(ids));
+    }
+  };
+
   return (
     <View className="flex-1 bg-[#FBFBFC]">
       {/* Custom Header */}
@@ -320,34 +445,48 @@ export default function CartScreen() {
             Bạn có {items.length} mặt hàng
           </Text>
         </View>
-        <Pressable 
-          onPress={() => refetch()}
-          className="w-12 h-12 rounded-full bg-white items-center justify-center shadow-sm border border-slate-100"
-        >
-          {isLoading ? (
-             <RefreshCw size={22} color="#16A34A" className="animate-spin" />
-          ) : (
-            <ShoppingBag size={22} color="#16A34A" />
+        <View className="flex-row items-center" style={{ gap: 8 }}>
+          {selectedIds.size > 0 && (
+            <Pressable 
+              onPress={handleDeleteSelected}
+              disabled={isUpdating}
+              className="w-12 h-12 rounded-full bg-red-50 items-center justify-center border border-red-100"
+              style={{ shadowColor: '#EF4444', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}
+            >
+              <Trash2 size={20} color="#EF4444" />
+            </Pressable>
           )}
-        </Pressable>
+          <Pressable 
+            onPress={() => refetch()}
+            className="w-12 h-12 rounded-full bg-white items-center justify-center shadow-sm border border-slate-100"
+          >
+            {isLoading ? (
+               <RefreshCw size={22} color="#16A34A" className="animate-spin" />
+            ) : (
+              <ShoppingBag size={22} color="#16A34A" />
+            )}
+          </Pressable>
+        </View>
       </View>
 
-      {/* Select All Row */}
-      {items.length > 0 && (
+      {/* Select All in Active Group Row */}
+      {activeGroup && activeGroupItems.length > 0 && (
         <Pressable
-          onPress={toggleSelectAll}
+          onPress={toggleSelectAllInGroup}
           className="flex-row items-center px-6 py-3 bg-white border-b border-slate-100"
         >
           <View
             className={`w-5 h-5 rounded-full mr-3 items-center justify-center border ${
-              allItemsSelected 
+              allInGroupSelected 
                 ? 'bg-primary border-primary' 
                 : 'border-slate-300 bg-white'
             }`}
           >
-            {allItemsSelected && <Check size={11} color="#FFF" />}
+            {allInGroupSelected && <Check size={11} color="#FFF" />}
           </View>
-          <Text className="text-sm font-inter-semibold text-slate-700">Chọn tất cả ({items.length} sản phẩm)</Text>
+          <Text className="text-sm font-inter-semibold text-slate-700">
+            Chọn tất cả nhóm {activeGroupLabel} ({activeGroupItems.length} sản phẩm)
+          </Text>
         </Pressable>
       )}
 
@@ -404,7 +543,7 @@ export default function CartScreen() {
           </View>
           
           <Button
-            label={selectedItems.length === 0 ? "Chọn sản phẩm" : "Thanh toán ngay"}
+            label={selectedItems.length === 0 ? "Chọn sản phẩm để thanh toán" : "Thanh toán ngay"}
             onPress={() => {
               if (selectedIds.size === 0) {
                 Alert.alert('Thông báo', 'Vui lòng chọn ít nhất 1 sản phẩm để thanh toán.');

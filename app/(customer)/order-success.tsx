@@ -1,10 +1,11 @@
-import { View, Text } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import Button from '../../src/components/ui/Button';
 import { CheckCircle2, Gift } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { orderApi } from '../../src/api/orders';
+import { Image } from 'expo-image';
 
 export default function OrderSuccess() {
   const router = useRouter();
@@ -27,77 +28,150 @@ export default function OrderSuccess() {
   });
 
   const displayOrderNumber = order?.orderNumber ?? rawOrderNumber;
-  const itemCount = order?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   return (
-    <View className="flex-1 bg-background p-6">
+    <View className="flex-1 bg-slate-50 p-6">
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View className="flex-1 justify-center">
-        <View className="items-center">
-          <CheckCircle2 size={72} color="#16A34A" />
-          <Text className="text-2xl font-outfit-bold text-slate-900 mt-6">Đặt hàng thành công</Text>
-          {displayOrderNumber ? (
-            <Text className="text-slate-500 font-inter mt-2">Mã đơn: {displayOrderNumber}</Text>
-          ) : orderId > 0 ? (
-            <Text className="text-slate-500 font-inter mt-2">Mã tham chiếu: #{orderId}</Text>
-          ) : (
-            <Text className="text-slate-500 font-inter mt-2">Cảm ơn bạn đã mua sắm!</Text>
-          )}
+      <ScrollView showsVerticalScrollIndicator={false} className="flex-1" contentContainerStyle={{ paddingVertical: 24 }}>
+        <View className="items-center mb-6">
+          <View className="w-20 h-20 bg-emerald-50 rounded-full items-center justify-center border border-emerald-100 shadow-sm">
+            <CheckCircle2 size={44} color="#10B981" />
+          </View>
+          <Text className="text-2xl font-outfit-bold text-slate-900 mt-4">Đặt hàng thành công</Text>
+          <Text className="text-xs font-inter text-slate-500 mt-1.5 text-center px-4">
+            Cảm ơn bạn đã mua sắm! Đơn hàng của bạn đã được tiếp nhận và đang được xử lý.
+          </Text>
         </View>
 
         {order ? (
-          <View className="mt-6 rounded-3xl border border-border bg-white p-4">
-            <Text className="text-sm font-inter text-muted">Chi tiết đơn hàng</Text>
-            <View className="mt-3 space-y-2">
-              <Text className="text-base font-inter text-text">Số sản phẩm: {itemCount}</Text>
-              <Text className="text-base font-inter text-text">Thanh toán: {order.paymentMethod}</Text>
-              <Text className="text-base font-inter text-text">Trạng thái: {order.status}</Text>
-              <Text className="text-base font-inter text-text">Tổng thanh toán: {(order.totalAmount ?? 0).toLocaleString('vi-VN')}₫</Text>
+          <View className="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            {/* Receipt Header */}
+            <View className="bg-slate-50/50 p-4 border-b border-slate-100 flex-row items-center justify-between">
+              <View>
+                <Text className="text-[10px] font-inter text-muted uppercase tracking-wider">Mã đơn hàng</Text>
+                <Text className="text-sm font-outfit-bold text-slate-800 mt-0.5">
+                  {displayOrderNumber ?? '—'}
+                </Text>
+              </View>
+              <View className="items-end">
+                <Text className="text-[10px] font-inter text-muted uppercase tracking-wider">Thanh toán</Text>
+                <Text className="text-xs font-inter-bold text-primary mt-0.5">
+                  {order.paymentMethod}
+                </Text>
+              </View>
             </View>
-            {(order.items ?? []).length > 0 ? (
-              <View className="mt-4">
-                <Text className="text-sm font-inter-bold text-text mb-2">Mặt hàng</Text>
-                {(order.items ?? []).slice(0, 3).map((item) => (
-                  <View key={item.id} className="flex-row items-center justify-between py-1">
-                    <Text className="text-sm font-inter text-text" numberOfLines={1}>
-                      {item.productName} x{item.quantity}
-                    </Text>
-                    <Text className="text-sm font-inter-bold text-text">
-                      {(item.totalPrice ?? 0).toLocaleString('vi-VN')}₫
+
+            <View className="p-5">
+              {/* Items Section */}
+              {(order.items ?? []).length > 0 ? (
+                <View className="mb-4">
+                  <Text className="text-[10px] font-inter-bold text-muted uppercase tracking-wider mb-3">Sản phẩm mua</Text>
+                  <View className="gap-y-3">
+                    {(order.items ?? []).slice(0, 3).map((item) => (
+                      <View key={item.id} className="flex-row items-center justify-between">
+                        <View className="flex-row items-center flex-1 mr-4">
+                          <View className="w-10 h-10 rounded-lg bg-slate-50 overflow-hidden border border-slate-100 mr-2.5">
+                            {item.imageUrl ? (
+                              <Image
+                                source={{ uri: item.imageUrl }}
+                                style={{ width: '100%', height: '100%' }}
+                                contentFit="cover"
+                              />
+                            ) : (
+                              <View className="w-full h-full bg-slate-100 items-center justify-center animate-pulse" />
+                            )}
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-xs font-inter-semibold text-slate-800" numberOfLines={1}>
+                              {item.productName}
+                            </Text>
+                            <Text className="text-[10px] font-inter text-muted mt-0.5">
+                              Số lượng: {item.quantity} • {item.variantName || 'Mặc định'}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text className="text-xs font-outfit-bold text-slate-800">
+                          {(item.totalPrice ?? 0).toLocaleString('vi-VN')}₫
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  {(order.items ?? []).length > 3 ? (
+                    <View className="mt-3 py-1 px-2.5 bg-slate-50 rounded-lg self-start">
+                      <Text className="text-[10px] font-inter-semibold text-muted">
+                        + {(order.items ?? []).length - 3} sản phẩm khác
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {/* Divider */}
+              <View className="h-px border-t border-dashed border-slate-200 my-4" />
+
+              {/* Payment Summary */}
+              <View className="gap-y-2">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-xs font-inter text-muted">Tạm tính</Text>
+                  <Text className="text-xs font-inter text-slate-800">
+                    {(order.subtotal ?? 0).toLocaleString('vi-VN')}₫
+                  </Text>
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-xs font-inter text-muted">Phí giao hàng</Text>
+                  <Text className="text-xs font-inter text-slate-800">
+                    {(order.shippingFee ?? 0).toLocaleString('vi-VN')}₫
+                  </Text>
+                </View>
+                {order.discountAmount && Number(order.discountAmount) > 0 ? (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-xs font-inter text-muted">Giảm giá</Text>
+                    <Text className="text-xs font-inter-semibold text-emerald-600">
+                      -{(order.discountAmount).toLocaleString('vi-VN')}₫
                     </Text>
                   </View>
-                ))}
-                {(order.items ?? []).length > 3 ? (
-                  <Text className="text-xs font-inter text-muted mt-2">+ {(order.items ?? []).length - 3} sản phẩm khác</Text>
                 ) : null}
+                
+                <View className="h-px bg-slate-100 my-2" />
+
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-xs font-inter-bold text-slate-800">Tổng cộng</Text>
+                  <Text className="text-base font-outfit-bold text-primary">
+                    {(order.totalAmount ?? 0).toLocaleString('vi-VN')}₫
+                  </Text>
+                </View>
               </View>
-            ) : null}
+            </View>
           </View>
         ) : isLoading ? (
-          <Text className="text-sm font-inter text-muted mt-6">Đang tải chi tiết đơn hàng…</Text>
+          <View className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm items-center justify-center min-h-[150px]">
+            <Text className="text-xs font-inter text-muted">Đang tải chi tiết đơn hàng…</Text>
+          </View>
         ) : isError ? (
-          <Text className="text-sm font-inter text-muted mt-6">Không thể tải chi tiết đơn hàng.</Text>
+          <View className="rounded-3xl border border-red-100 bg-red-50/50 p-5 items-center justify-center min-h-[100px]">
+            <Text className="text-xs font-inter text-red-500">Không thể tải chi tiết đơn hàng.</Text>
+          </View>
         ) : null}
 
         {order?.rewardVoucher ? (
-          <View className="mt-4 rounded-3xl border border-emerald-100 bg-emerald-50 p-4">
+          <View className="mt-4 rounded-3xl border border-emerald-100 bg-emerald-50/60 p-4 shadow-sm">
             <View className="flex-row items-center">
-              <View className="w-11 h-11 rounded-2xl bg-white items-center justify-center mr-3">
-                <Gift size={21} color="#059669" />
+              <View className="w-10 h-10 rounded-2xl bg-white items-center justify-center mr-3 shadow-xs">
+                <Gift size={20} color="#10B981" />
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-outfit-bold text-emerald-900">Voucher an da duoc mo khoa</Text>
-                <Text className="text-xs font-inter text-emerald-700 mt-1">
-                  {order.rewardVoucher.voucherCode} se hien trong kho voucher cua ban.
+                <Text className="text-xs font-outfit-bold text-emerald-900">Voucher đã được mở khóa!</Text>
+                <Text className="text-[10px] font-inter text-emerald-700 mt-0.5 leading-relaxed">
+                  Mã <Text className="font-inter-bold text-emerald-950">{order.rewardVoucher.voucherCode}</Text> sẽ xuất hiện trong kho voucher của bạn.
                 </Text>
               </View>
             </View>
           </View>
         ) : null}
-      </View>
+      </ScrollView>
 
-      <View className="gap-y-3">
+      <View className="gap-y-3 pt-3 bg-slate-50 border-t border-slate-100">
         <Button
           label="Xem đơn hàng"
           onPress={() => {
@@ -119,4 +193,3 @@ export default function OrderSuccess() {
     </View>
   );
 }
-

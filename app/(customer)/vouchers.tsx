@@ -1,35 +1,80 @@
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { Alert, View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { orderApi } from '../../src/api/orders';
-import { ChevronLeft, Ticket, Copy, CheckCircle2, Sparkles, Tag, BellOff } from 'lucide-react-native';
-import { useState } from 'react';
-import * as Clipboard from 'expo-clipboard';
+import { ChevronLeft, Ticket, CheckCircle2, Sparkles, Tag, BellOff, LockKeyhole } from 'lucide-react-native';
+import { useMemo, useState } from 'react';
 
 export default function VouchersPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [claimingVoucherId, setClaimingVoucherId] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState<'regular' | 'ai'>('regular');
 
   const vouchersQuery = useQuery({
-    queryKey: ['available-vouchers'],
-    queryFn: () => orderApi.getAvailableVouchers(),
+    queryKey: ['claimable-vouchers'],
+    queryFn: () => orderApi.getClaimableVouchers(),
   });
 
-  const copyToClipboard = async (code: string) => {
-    await Clipboard.setStringAsync(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
+  const claimedVouchersQuery = useQuery({
+    queryKey: ['claimed-vouchers'],
+    queryFn: () => orderApi.getClaimedVouchers(),
+  });
+
+  const handleClaim = async (voucherId: number) => {
+    setClaimingVoucherId(voucherId);
+    try {
+      await orderApi.claimVoucher(voucherId);
+      Alert.alert('Thành công', 'Lưu mã giảm giá thành công!');
+      await queryClient.invalidateQueries({ queryKey: ['claimable-vouchers'] });
+      await queryClient.invalidateQueries({ queryKey: ['claimed-vouchers'] });
+    } catch (error: any) {
+      console.error('Claim voucher error:', error);
+      Alert.alert('Thất bại', error?.message || 'Không thể lưu voucher này. Vui lòng thử lại sau.');
+    } finally {
+      setClaimingVoucherId(null);
+    }
   };
 
-  const vouchers = vouchersQuery.data ?? [];
+  const vouchers = useMemo(() => {
+    const merged = [...(claimedVouchersQuery.data ?? []), ...(vouchersQuery.data ?? [])];
+    const seen = new Set<number>();
+    return merged.filter((voucher) => {
+      if (!voucher || typeof voucher.id !== 'number') return false;
+      if (seen.has(voucher.id)) return false;
+      seen.add(voucher.id);
+      return true;
+    });
+  }, [claimedVouchersQuery.data, vouchersQuery.data]);
+
+  const claimedVoucherIds = useMemo(() => {
+    return new Set((claimedVouchersQuery.data ?? []).map((voucher) => voucher.id));
+  }, [claimedVouchersQuery.data]);
 
   const regularVouchers = vouchers.filter(v => v.revealTrigger !== 'AI_ORDER_COMPLETED');
   const aiVouchers = vouchers.filter(v => v.revealTrigger === 'AI_ORDER_COMPLETED');
 
   const activeVouchers = activeCategory === 'ai' ? aiVouchers : regularVouchers;
+
+  const isLoading = vouchersQuery.isLoading || claimedVouchersQuery.isLoading;
+  const isError = vouchersQuery.isError || claimedVouchersQuery.isError;
+
+  const formatDiscount = (val: any, type: string) => {
+    const num = Number(val);
+    if (isNaN(num)) return '0';
+    if (type === 'PERCENT' || type === 'PERCENTAGE') {
+      return `Giảm ${num}%`;
+    }
+    return `Giảm ${num.toLocaleString('vi-VN')}₫`;
+  };
+
+  const formatMinOrder = (val: any) => {
+    const num = Number(val);
+    if (isNaN(num) || num <= 0) return 'Đơn tối thiểu 0₫';
+    return `Đơn tối thiểu ${num.toLocaleString('vi-VN')}₫`;
+  };
 
   return (
     <View className="flex-1 bg-[#F8FAFC]">
@@ -118,10 +163,26 @@ export default function VouchersPage() {
           </Text>
         </View>
 
-        {vouchersQuery.isLoading ? (
+        {isLoading ? (
           <View className="py-20 items-center justify-center">
             <ActivityIndicator color={activeCategory === 'ai' ? '#8B5CF6' : '#16A34A'} />
             <Text className="mt-4 text-slate-500 font-inter">Đang tải mã giảm giá...</Text>
+          </View>
+        ) : isError ? (
+          <View className="py-16 items-center justify-center bg-white rounded-[32px] border border-red-100 shadow-sm">
+            <Text className="text-red-600 font-outfit-bold text-[16px]">Lỗi tải mã giảm giá</Text>
+            <Text className="text-slate-400 font-inter text-center mt-2 px-10 text-[12.5px] leading-5">
+              Đã xảy ra sự cố khi kết nối với máy chủ. Vui lòng thử lại sau.
+            </Text>
+            <Pressable
+              onPress={() => {
+                void vouchersQuery.refetch();
+                void claimedVouchersQuery.refetch();
+              }}
+              className="mt-4 px-6 py-2.5 bg-primary rounded-xl"
+            >
+              <Text className="text-white font-outfit-bold text-[12px]">Tải lại</Text>
+            </Pressable>
           </View>
         ) : activeVouchers.length === 0 ? (
           <View className="py-16 items-center justify-center bg-white rounded-[32px] border border-slate-100 shadow-sm">
@@ -153,6 +214,7 @@ export default function VouchersPage() {
           <View className="pb-10">
             {activeVouchers.map((v) => {
               const isAi = v.revealTrigger === 'AI_ORDER_COMPLETED';
+              const isClaimed = claimedVoucherIds.has(v.id) || v.claimed === true;
               const cardBorderColor = isAi ? 'border-purple-200 bg-purple-50/10' : 'border-slate-100 bg-white';
               const tagColor = isAi ? '#8B5CF6' : '#16A34A';
               const tagBg = isAi ? 'bg-purple-100/50' : 'bg-emerald-50';
@@ -188,8 +250,13 @@ export default function VouchersPage() {
                     <View className="flex-1">
                       <View className="flex-row items-center flex-wrap">
                         <Text className="text-[16px] font-outfit-bold text-slate-900">
-                          Giảm {v.discountType === 'PERCENT' || v.discountType === 'PERCENTAGE' ? `${v.discountValue}%` : `${(v.discountValue).toLocaleString('vi-VN')}₫`}
+                          {formatDiscount(v.discountValue, v.discountType)}
                         </Text>
+                        {isClaimed && (
+                          <View className="ml-2 px-2 py-0.5 bg-emerald-100 rounded-full border border-emerald-200">
+                            <Text className="text-[8.5px] font-outfit-bold text-emerald-700 uppercase tracking-wider">Đã lưu</Text>
+                          </View>
+                        )}
                         {isAi && (
                           <View className="ml-2 px-2 py-0.5 bg-purple-100 rounded-full border border-purple-200">
                             <Text className="text-[8.5px] font-outfit-bold text-purple-700 uppercase tracking-wider">AI Gift</Text>
@@ -198,7 +265,7 @@ export default function VouchersPage() {
                       </View>
                       
                       <Text className="text-[12px] font-inter text-slate-500 mt-1 leading-4">
-                        {v.description || `Đơn tối thiểu ${v.minOrderAmount?.toLocaleString('vi-VN')}₫`}
+                        {v.description || formatMinOrder(v.minOrderAmount)}
                       </Text>
                       
                       <Text className="text-[10.5px] font-inter text-slate-400 mt-1">
@@ -208,22 +275,24 @@ export default function VouchersPage() {
 
                     {/* Copy Button */}
                     <Pressable 
-                      onPress={() => copyToClipboard(v.voucherCode)}
+                      onPress={() => handleClaim(v.id)}
                       style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
-                      className={`px-4 py-2.5 rounded-2xl flex-row items-center ${
-                        copiedCode === v.voucherCode 
-                          ? (isAi ? 'bg-purple-50 border border-purple-200' : 'bg-emerald-50 border border-emerald-200') 
-                          : buttonBg
-                      }`}
+                      className={`px-4 py-2.5 rounded-2xl flex-row items-center ${isClaimed ? 'bg-emerald-50 border border-emerald-200' : buttonBg}`}
+                      disabled={claimingVoucherId === v.id || isClaimed}
                     >
-                      {copiedCode === v.voucherCode ? (
+                      {isClaimed ? (
                         <>
-                          <CheckCircle2 size={13} color={isAi ? '#7C3AED' : '#059669'} />
-                          <Text className={`font-outfit-bold text-[11.5px] ml-1 ${isAi ? 'text-purple-700' : 'text-emerald-700'}`}>Đã lưu</Text>
+                          <CheckCircle2 size={13} color="#059669" />
+                          <Text className="text-emerald-700 font-outfit-bold text-[11.5px] ml-1">Đã lưu</Text>
+                        </>
+                      ) : claimingVoucherId === v.id ? (
+                        <>
+                          <LockKeyhole size={13} color="#FFF" />
+                          <Text className="text-white font-outfit-bold text-[11.5px] ml-1">Đang lưu</Text>
                         </>
                       ) : (
                         <>
-                          <Copy size={13} color="#FFF" />
+                          <CheckCircle2 size={13} color="#FFF" />
                           <Text className="text-white font-outfit-bold text-[11.5px] ml-1">Lưu mã</Text>
                         </>
                       )}

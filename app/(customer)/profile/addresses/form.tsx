@@ -15,6 +15,7 @@ import {
 import { useAuthStore } from '../../../../src/store/authStore';
 import { userApi } from '../../../../src/api/users';
 import { clsx } from 'clsx';
+import AddressLocationPicker from '../../../../src/components/customer/AddressLocationPicker';
 
 export default function AddressFormScreen() {
   const router = useRouter();
@@ -64,17 +65,17 @@ export default function AddressFormScreen() {
   const handleSave = async () => {
     if (!user?.id) return;
     
-    if (!streetAddress || !ward || !district || !city) {
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ các trường thông tin.');
+    if (!streetAddress.trim() || !ward.trim() || !city.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số nhà, tên đường và chọn đủ tỉnh/thành phố, phường/xã.');
       return;
     }
 
     setLoading(true);
     try {
       const data = {
-        streetAddress,
+        streetAddress: streetAddress.trim(),
         ward,
-        district,
+        district: district || city,
         city,
         addressType,
         isDefault
@@ -171,36 +172,15 @@ export default function AddressFormScreen() {
             </View>
           </View>
 
-          <View className="flex-row gap-x-4">
-            <View className="flex-1">
-              <Text className="text-[13px] font-inter-bold text-slate-500 mb-2 ml-1">Phường/Xã</Text>
-              <TextInput
-                className="px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100 font-inter text-[14px]"
-                placeholder="Phường..."
-                value={ward}
-                onChangeText={setWard}
-              />
-            </View>
-            <View className="flex-1">
-              <Text className="text-[13px] font-inter-bold text-slate-500 mb-2 ml-1">Quận/Huyện</Text>
-              <TextInput
-                className="px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100 font-inter text-[14px]"
-                placeholder="Quận..."
-                value={district}
-                onChangeText={setDistrict}
-              />
-            </View>
-          </View>
-
-          <View>
-            <Text className="text-[13px] font-inter-bold text-slate-500 mb-2 ml-1">Tỉnh/Thành phố</Text>
-            <TextInput
-              className="px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100 font-inter text-[14px]"
-              placeholder="Ví dụ: TP. Hồ Chí Minh"
-              value={city}
-              onChangeText={setCity}
-            />
-          </View>
+          <AddressLocationPicker
+            city={city}
+            ward={ward}
+            onChange={(location) => {
+              setCity(location.city);
+              setWard(location.ward);
+              setDistrict(location.district);
+            }}
+          />
 
           {/* Default Switch */}
           <View className="flex-row items-center justify-between py-2 ml-1">

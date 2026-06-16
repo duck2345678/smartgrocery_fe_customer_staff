@@ -214,7 +214,7 @@ export default function StaffHomeScreen() {
           <View className="mt-3" style={{ gap: 12 }}>
             <View className="flex-row" style={{ gap: 12 }}>
               <QuickAction icon={<Package size={24} color="#16A34A" />} title="Sản phẩm" subtitle="Tra cứu nhanh" onPress={() => router.push('/(staff)/products' as never)} />
-              <QuickAction icon={<ClipboardList size={24} color="#16A34A" />} title="Đơn hàng" subtitle="Xử lý & Giao hàng" onPress={() => router.push('/(staff)/orders' as never)} />
+              <QuickAction testID="quick-orders" icon={<ClipboardList size={24} color="#16A34A" />} title="Đơn hàng" subtitle="Xử lý & Giao hàng" onPress={() => router.push('/(staff)/orders' as never)} />
             </View>
             <View className="flex-row" style={{ gap: 12 }}>
               <QuickAction icon={<Clock size={24} color="#16A34A" />} title="Chấm công" subtitle="Vào ca / ra ca" onPress={() => router.push('/(staff)/attendance' as never)} />
@@ -314,9 +314,9 @@ function StatPill({ icon, label, value, onPress, testID }: { icon: React.ReactNo
 
 
 
-function QuickAction({ icon, title, subtitle, onPress }: { icon: React.ReactNode; title: string; subtitle: string; onPress: () => void }) {
+function QuickAction({ icon, title, subtitle, onPress, testID }: { icon: React.ReactNode; title: string; subtitle: string; onPress: () => void; testID?: string }) {
   return (
-    <Pressable onPress={onPress} className="flex-1 bg-white border border-[#E5E7EB] rounded-[26px] p-4 shadow-sm" style={{ elevation: 2 }}>
+    <Pressable testID={testID} onPress={onPress} className="flex-1 bg-white border border-[#E5E7EB] rounded-[26px] p-4 shadow-sm" style={{ elevation: 2 }}>
       <View className="w-12 h-12 rounded-2xl bg-[#DFF5E8] items-center justify-center">{icon}</View>
       <Text className="mt-3 text-[16px] font-outfit-bold text-[#0F172A]">{title}</Text>
       <Text className="mt-1 text-[13px] font-inter text-[#64748B]">{subtitle}</Text>

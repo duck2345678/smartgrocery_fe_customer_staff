@@ -149,9 +149,9 @@ export function logError(
     const timestamp = new Date().toISOString();
     console.error(`[${timestamp}] ${context}`, {
       error: error instanceof Error ? {
+        ...(error as AppError),
         message: error.message,
         stack: error.stack,
-        ...(error as AppError)
       } : error,
       ...additionalInfo
     });

@@ -10,7 +10,7 @@ import {
 import apiClient from './client';
 
 const toNum = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? 0));
-const AI_CHAT_TIMEOUT_MS = 20_000;
+const AI_CHAT_TIMEOUT_MS = 25_000;
 
 export const aiApi = {
   optimizeBasket: async (payload: BasketOptimizePayload): Promise<AIResult> => {

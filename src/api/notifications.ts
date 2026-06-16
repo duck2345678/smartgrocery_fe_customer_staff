@@ -5,8 +5,16 @@ export type Notification = {
   notificationType: string;
   title: string;
   message: string;
+  orderId?: number | null;
+  route?: string | null;
   isRead: boolean;
   createdAt: string;
+};
+
+const toNumber = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const mapNotification = (x: any): Notification => {
@@ -15,6 +23,8 @@ const mapNotification = (x: any): Notification => {
     notificationType: x.notificationType || '',
     title: x.title || '',
     message: x.message || '',
+    orderId: toNumber(x.orderId),
+    route: typeof x.route === 'string' ? x.route : null,
     isRead: !!x.isRead,
     createdAt: x.createdAt || '',
   };

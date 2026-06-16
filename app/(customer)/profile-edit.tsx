@@ -38,7 +38,12 @@ export default function ProfileEditScreen() {
     onSuccess: (updated) => {
       void qc.invalidateQueries({ queryKey: ['userProfile', userId] });
       if (authUser) {
-        setUser({ ...authUser, fullName: updated.fullName ?? authUser.fullName });
+        setUser({
+          ...authUser,
+          fullName: updated.fullName ?? authUser.fullName,
+          phone: updated.phone ?? authUser.phone,
+          avatarUrl: updated.avatarUrl ?? authUser.avatarUrl,
+        });
       }
       Alert.alert('Thành công', 'Thông tin hồ sơ đã được cập nhật.', [
         { text: 'OK', onPress: () => router.back() },

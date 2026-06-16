@@ -121,8 +121,18 @@ export const cartApi = {
   },
 
 
+  removeItems: async (input: { cartItemIds: number[] }): Promise<CartResponse> => {
+    const response = await apiClient.delete('/carts/items', { data: input.cartItemIds });
+    return mapCartDto(response.data);
+  },
+
   removeItem: async (input: { cartItemId: number }): Promise<CartResponse> => {
     const response = await apiClient.delete(`/carts/item/${input.cartItemId}`);
+    return mapCartDto(response.data);
+  },
+
+  clearCart: async (): Promise<CartResponse> => {
+    const response = await apiClient.delete('/carts/clear');
     return mapCartDto(response.data);
   },
 
